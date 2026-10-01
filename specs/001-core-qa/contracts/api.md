@@ -16,6 +16,7 @@
 |------|------|------|
 | POST | `/api/documents` | multipart 上传 → 201 `{id, status}`；sha256 重复 → 200 `{duplicate: true, existing_id}`（FR-001）；无法解析仍 201（status=unparseable，FR-014） |
 | GET | `/api/documents` | → 列表（仅 source_type=upload）：`[{id, name, format, size, status, status_reason?, progress?, parse_hint?, created_at}]`（FR-002/009；progress=`{done,total,unit}`，processing 时为解析/索引进度；parse_hint 见表 R7：表格较多→可深度解析） |
+| GET | `/api/documents/{id}` | → 单文档详情（浏览页/状态查询用，FR-015） |
 | GET | `/api/documents/{id}/original` | 原文件流（`Content-Disposition` 保留原名，FR-013）；`?inline=1` 返回内联视图（在线浏览用，白名单格式，FR-015） |
 | POST | `/api/documents/{id}/reprocess` | 重试解析（如 embedding 故障后）；`?mode=deep` = PDF 深度解析（Docling 分批，表格/版面更完整但约 20 分钟，R7） |
 | DELETE | `/api/documents/{id}` | 204；级联删除 chunks + 原文件（FR-003/011） |

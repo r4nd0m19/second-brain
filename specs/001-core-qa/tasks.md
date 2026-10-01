@@ -132,7 +132,7 @@
 - [x] T041 [US1] PDF 文本层快通道（R7，2026-10-01 事故复盘补）：`server/app/ingestion/pdf_fast.py`（pypdfium2 直抽 + 段落/断词/页眉页脚/字号标题启发式 + 表格占比检测）
   - Deps: T015
   - DoD: 1240 页 PDF 全流程（含 embedding）<5 分钟、峰值内存 <500MB（实测 49s / 133MB）；标题与页码入 chunk；无文本层 → unparseable（FR-014 不变）
-- [x] T042 [US1] 解析进度与中断恢复（R7）：批次间进度写 status_reason（"解析中 x/y 页"→"正在生成索引…"）；启动扫尾把中断的 processing 标记"可重试"
+- [x] T042 [US1] 解析进度与中断恢复（R7）：批次间进度写 status_reason（"解析中 x/y 页"→"索引中 x/y 块"）；启动扫尾把中断的 processing 标记"可重试"
   - Deps: T017
   - DoD: 界面可见解析进度；服务重启后卡死文档显示"上次解析被中断…点重试"（实测通过）
 - [x] T043 [US1] 深度解析与表格提示（R7）：Docling 分页批处理（120 页/批、默认关 OCR）+ `reprocess?mode=deep` + 表格占比 ≥8% 时 parse_hint 与「深度解析」按钮
@@ -219,7 +219,7 @@
   - DoD: 题集 ≥20 题（含中文/英文、命中/兜底/二次命中三类）；评测脚本一键跑批，输出"库内作答率与出处正确率 ≥80%"报告
 - [ ] T032 [P] 验收脚本：`server/tests/acceptance/`（quickstart 场景 1-9 自动化）
   - Deps: T022, T027, T029, T031
-  - DoD: `pytest tests/acceptance/` 全绿（覆盖 SC-001~008）
+  - DoD: `pytest tests/acceptance/` 全绿（覆盖 SC-001~008；SC-002 样例题集与评分见 T040）
 - [ ] T033 [P] 中文 FTS 落地与检索调优：`server/alembic/` + `server/app/retrieval/`（zhparser 或 pg_trgm）
   - Deps: T019
   - DoD: 中文关键词检索可用；混合检索权重可配置；性能抽测记录（10 万级检索响应、回答首字 <10s）

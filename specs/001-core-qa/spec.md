@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-01
 
-**Status**: Draft（澄清完成，可进入 plan）
+**Status**: Implemented（核心链路已实现并验收，收尾批次进行中）
 
 **Input**: "让 second-brain 从零转起来的最小可用闭环：文件上传入库、对话式问答（带出处）、模型兜底、兜底回写。"
 
