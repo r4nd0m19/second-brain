@@ -64,4 +64,4 @@
 - 修订流程：说明原因 → 用户批准 → 语义化更新版本号
 - `/speckit-plan` 的 Constitution Check 必须逐条验证上述原则；违反项必须记录在 plan.md 的 Complexity Tracking 中并说明正当理由
 
-**Version**: 1.0.0-draft | **Ratified**: 待用户批准（2026-10-01 起草） | **Last Amended**: 2026-10-01
+**Version**: 1.0.0 | **Ratified**: 2026-10-01（用户批准） | **Last Amended**: 2026-10-01

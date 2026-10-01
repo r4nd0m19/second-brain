@@ -7,11 +7,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Protocol
 
 import httpx
 
 from app.config import settings
+
+# 逐批进度回调：(已处理条数, 总条数) —— 由入库管线用于"索引中 x/y 块"进度（R7 配套）
+ProgressCallback = Callable[[int, int], Awaitable[None]]
 
 
 class EmbeddingError(RuntimeError):
@@ -21,8 +25,10 @@ class EmbeddingError(RuntimeError):
 class EmbeddingProvider(Protocol):
     dim: int
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
-        """批量向量化，返回与输入同序的向量列表。"""
+    async def embed(
+        self, texts: list[str], on_progress: ProgressCallback | None = None
+    ) -> list[list[float]]:
+        """批量向量化，返回与输入同序的向量列表；逐批回调进度。"""
 
 
 class OpenAICompatEmbedding:
@@ -43,7 +49,9 @@ class OpenAICompatEmbedding:
         self.batch_size = batch_size
         self.timeout = timeout
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
+    async def embed(
+        self, texts: list[str], on_progress: ProgressCallback | None = None
+    ) -> list[list[float]]:
         vectors: list[list[float]] = []
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             for start in range(0, len(texts), self.batch_size):
@@ -60,6 +68,8 @@ class OpenAICompatEmbedding:
                 items = response.json()["data"]
                 items.sort(key=lambda item: item.get("index", 0))  # 保序，防止乱序响应
                 vectors.extend(item["embedding"] for item in items)
+                if on_progress is not None:
+                    await on_progress(min(start + len(batch), len(texts)), len(texts))
         return vectors
 
 
@@ -69,4 +79,5 @@ def get_embedding_provider() -> EmbeddingProvider:
         api_key=settings.embedding_api_key,
         model=settings.embedding_model,
         dim=settings.embedding_dim,
+        batch_size=settings.embedding_batch_size,  # 快通道入库耗时主项（R7）
     )

@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import mimetypes
+import re
 import uuid
 from pathlib import Path
 
@@ -43,7 +44,20 @@ async def _get_owned_document(
     return doc
 
 
+_PROGRESS_RE = re.compile(r"(\d+)\s*/\s*(\d+)\s*(页|块)")
+
+
 def _doc_dict(doc: Document) -> dict:
+    # 结构化进度（进度条用）：从进度文案提取，如"解析中 300/1240 页"、"索引中 64/3046 块"
+    progress = None
+    if doc.status is DocumentStatus.processing and doc.status_reason:
+        match = _PROGRESS_RE.search(doc.status_reason)
+        if match:
+            progress = {
+                "done": int(match.group(1)),
+                "total": int(match.group(2)),
+                "unit": match.group(3),
+            }
     return {
         "id": str(doc.id),
         "name": doc.name,
@@ -51,6 +65,8 @@ def _doc_dict(doc: Document) -> dict:
         "size": doc.size_bytes,
         "status": doc.status.value,
         "status_reason": doc.status_reason,
+        "progress": progress,
+        "parse_hint": doc.parse_hint,
         "created_at": doc.created_at.isoformat() if doc.created_at else None,
     }
 
@@ -128,9 +144,24 @@ async def list_documents(
     return [_doc_dict(doc) for doc in rows]
 
 
+@router.get("/{document_id}")
+async def get_document(
+    document_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    doc = await _get_owned_document(session, user, document_id)
+    return _doc_dict(doc)
+
+
+# 可安全内联浏览的格式（FR-015）；其余格式一律 attachment（防同源 XSS）
+_INLINE_FORMATS = {"pdf", "epub", "txt", "md", "markdown"}
+
+
 @router.get("/{document_id}/original")
 async def download_original(
     document_id: uuid.UUID,
+    inline: bool = False,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> FileResponse:
@@ -139,21 +170,29 @@ async def download_original(
     if not path.exists():
         raise HTTPException(status_code=410, detail="原文件已不存在")
     media_type = mimetypes.guess_type(doc.name)[0] or "application/octet-stream"
-    return FileResponse(path, filename=doc.name, media_type=media_type)
+    disposition = "inline" if (inline and doc.format in _INLINE_FORMATS) else "attachment"
+    return FileResponse(
+        path, filename=doc.name, media_type=media_type, content_disposition_type=disposition
+    )
 
 
 @router.post("/{document_id}/reprocess")
 async def reprocess(
     document_id: uuid.UUID,
+    mode: str = "auto",
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    """重试解析；mode=deep 时 PDF 走 Docling 分页批处理（表格/版面更完整，较慢，R7）。"""
+    if mode not in {"auto", "deep"}:
+        raise HTTPException(status_code=400, detail="mode 仅支持 auto / deep")
     doc = await _get_owned_document(session, user, document_id)
     doc.status = DocumentStatus.processing
     doc.status_reason = None
+    doc.parse_hint = None
     await session.commit()
-    enqueue_ingestion(doc.id)
-    return {"id": str(doc.id), "status": "processing"}
+    enqueue_ingestion(doc.id, mode)
+    return {"id": str(doc.id), "status": "processing", "mode": mode}
 
 
 @router.delete("/{document_id}", status_code=204)

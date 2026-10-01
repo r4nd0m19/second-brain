@@ -1,6 +1,6 @@
 # Quickstart — F1 核心问答（core-qa）验证指南
 
-> 目标：本地起一套环境，跑通 spec 的 SC-001~007 验收场景。
+> 目标：本地起一套环境，跑通 spec 的 SC-001~008 验收场景。
 
 ## 前置
 
@@ -46,4 +46,4 @@ cd web && npm install && npm run build
 ## 自动化
 
 - 单元/集成：`cd server && pytest`
-- 验收（tasks 阶段生成）：`pytest tests/acceptance/` —— 场景 1-8 脚本化
+- 验收（tasks 阶段生成）：`pytest tests/acceptance/` —— 场景 1-9 脚本化

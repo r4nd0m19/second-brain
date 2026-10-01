@@ -2,6 +2,10 @@
 
 失效降级语义（spec US2 场景 2）：抛 LLMError，由编排层转成 SSE `error` 事件 +
 可重试；不影响已上传资料与历史对话。
+
+流式事件（FR-017）：StreamEvent = {"type": "token", "text": ...}
+                                | {"type": "usage", "usage": {...}}
+usage 通过 stream_options.include_usage 请求（末尾块由服务端返回官方 token 计数）。
 """
 
 from __future__ import annotations
@@ -20,13 +24,19 @@ class ChatMessage(TypedDict):
     content: str
 
 
+class StreamEvent(TypedDict, total=False):
+    type: str  # "token" | "usage"
+    text: str
+    usage: dict
+
+
 class LLMError(RuntimeError):
     """对话模型服务不可用 / 返回异常。"""
 
 
 class LLMClient(Protocol):
-    def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[str]:
-        """流式生成：逐段 yield 文本增量。"""
+    def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[StreamEvent]:
+        """流式生成：依次 yield token / usage 事件。"""
 
 
 class OpenAICompatLLM:
@@ -43,8 +53,13 @@ class OpenAICompatLLM:
         self.model = model
         self.timeout = timeout
 
-    async def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[str]:
-        payload = {"model": self.model, "messages": messages, "stream": True}
+    async def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[StreamEvent]:
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "stream_options": {"include_usage": True},  # 末尾块带回 token 计数（FR-017）
+        }
         async with httpx.AsyncClient(timeout=self.timeout) as client, client.stream(
             "POST",
             f"{self.base_url}/chat/completions",
@@ -64,9 +79,22 @@ class OpenAICompatLLM:
                     obj = json.loads(data)
                 except json.JSONDecodeError:
                     continue
-                delta = obj.get("choices", [{}])[0].get("delta", {}).get("content")
-                if delta:
-                    yield delta
+                usage = obj.get("usage")
+                if usage:
+                    yield {"type": "usage", "usage": usage}
+                choices = obj.get("choices") or []
+                if choices:
+                    delta = (choices[0].get("delta") or {}).get("content")
+                    if delta:
+                        yield {"type": "token", "text": delta}
+
+
+def estimate_cost_cny(usage: dict) -> float:
+    """按配置单价估算费用（.env 可改；默认 deepseek 空闲时段价）。"""
+    return (
+        usage.get("prompt_tokens", 0) / 1_000_000 * settings.price_input_per_million
+        + usage.get("completion_tokens", 0) / 1_000_000 * settings.price_output_per_million
+    )
 
 
 def get_llm_client() -> LLMClient:

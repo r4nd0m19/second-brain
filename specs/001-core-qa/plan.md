@@ -15,7 +15,7 @@
 - 后端: FastAPI、uvicorn、SQLAlchemy 2.x + asyncpg、pgvector-python、Docling（解析）、SSE 流式响应
 - 前端: Next.js（`output: 'export'`）+ React；PWA（manifest + Service Worker）
 **Storage**: PostgreSQL 16 + pgvector（HNSW 向量索引 + FTS 全文）；原始文件存磁盘（按归属目录，FR-013）
-**Testing**: pytest（后端单元/集成）；SC-001~007 验收脚本（quickstart.md 场景化）
+**Testing**: pytest（后端单元/集成）；SC-001~008 验收脚本（quickstart.md 场景化）
 **Target Platform**: Linux 服务器（2C4G 起步）；客户端 = 浏览器 / 可安装 PWA（Windows、Android）
 **Project Type**: web-service（单人自托管；架构面向多用户留路）
 **Performance Goals**: 提问后 10 秒内开始流式回复；10 万内容块规模检索不显著降级
@@ -32,7 +32,7 @@
 | 前端 | Next.js 静态导出（PWA） | 前端体验 + FastAPI 同端口托管；个人 PWA 无需 SSR | Vite+React（可随时换）；双服务（留作升级路径） |
 | 数据库/检索 | Postgres + pgvector（+FTS） | 多用户零迁移债、行级隔离、混合检索内建 | SQLite+sqlite-vec（迁移债）；LanceDB（多租户弱） |
 | Embedding | 云 API（硅基流动 bge-m3 默认候选） | 省服务器资源、可扩多用户 | 本地 CPU（隐私优，未采纳；provider 接口保留可切换） |
-| 文档解析 | Docling（MIT） | 结构保留 + 标题路径分块 + 多格式 + 本地 | PyMuPDF（许可/结构问题）、LlamaParse（付费 API） |
+| 文档解析 | PDF：pypdfium2 文本层快通道（默认）+ Docling 深度解析（按需）；其余格式：Docling | 快通道秒级/内存恒定（R7 事故复盘）；Docling 结构强但大 PDF 内存不受控（~14GB OOM） | pymupdf4llm（AGPL + 抽取准确率低）、PyMuPDF（许可/结构问题）、LlamaParse（付费 API） |
 
 ### 架构选择
 - **结论**: 单体服务：FastAPI = 唯一运行时（REST API + SSE + 托管 web 静态产物）；Postgres 独立进程；入库解析走进程内后台任务（v1）。模块边界：`auth / documents / ingestion / retrieval / chat / storage`（全部可独立替换）。与 project.md §9 约束一致。
@@ -48,6 +48,16 @@
 ### 接口设计决策
 - REST + SSE（流式回答）；下载走原文件端点；认证 = 会话 Cookie（HttpOnly）
 - 详见 [contracts/api.md](./contracts/api.md)
+
+### 增量设计（2026-10-01 增补 FR-015/016/017）
+- **在线浏览（FR-015）**: 前端 `/view/` 页（PDF iframe / EPUB epubjs 渲染 / 文本视图）；原文件端点加 `inline=1` 内联参数（白名单格式）
+- **出处跳转（FR-016）**: `/view/?id=&page=&q=&h=&from=` 参数协议；PDF `#page=`、文本高亮、EPUB CFI 精确定位 + 引文高亮（实现要点与踩坑记录见 research.md R6）；从对话进入可返回对话
+- **用量记录（FR-017）**: LLM 请求 `include_usage` → messages.usage 落库 + done 事件携带 + 回答下方小字展示
+
+### 解析策略（R7，2026-10-01 事故复盘后调整）
+- **PDF 快通道（默认）**: `pdf_fast.py`（pypdfium2 直抽 + 段落/断词/页眉页脚/字号标题启发式）；实测 1240 页 49 秒、内存 <500MB —— 大文件不再有 OOM 风险（原 Docling 全量 ~14GB 曾致宿主崩溃）
+- **深度解析（按需）**: `reprocess?mode=deep` → Docling 分页批处理（120 页/批、默认关 OCR），表格/版面更完整、约 20 分钟
+- **质量提示与恢复**: 表格占比 ≥8% → documents.parse_hint 提示"可深度解析"；批次间进度写 status_reason；启动扫尾标记中断任务为可重试
 
 ### 错误处理策略
 - **业务状态 ≠ 异常**: 无法解析 → `unparseable` 状态 + 用户可见原因（不丢弃，FR-014）
@@ -83,12 +93,12 @@
 specs/001-core-qa/
 ├── spec.md          # 需求规格（含澄清）
 ├── plan.md          # 本文件
-├── research.md      # Phase 0 调研（R1-R5）
+├── research.md      # Phase 0 调研 + 实现补记（R1-R6）
 ├── data-model.md    # 数据模型
-├── quickstart.md    # 验证指南（SC-001~007 场景）
+├── quickstart.md    # 验证指南（SC-001~008 场景）
 ├── contracts/       # 接口契约
 │   └── api.md
-└── tasks.md         # /speckit-tasks（未生成）
+└── tasks.md         # 任务清单（44 项，已生成）
 ```
 
 ### Source Code (repository root)
@@ -100,15 +110,16 @@ second-brain/
 │   │   ├── main.py              # 入口：API 挂载 + 静态产物托管
 │   │   ├── auth/                # 认证（单用户白名单单账号 → 可扩多用户）
 │   │   ├── documents/           # 上传 / 资料管理 / 无法解析登记 / 下载
-│   │   ├── ingestion/           # Docling 解析 → 分块 → 云 embedding 管线
+│   │   ├── ingestion/           # 解析（pdf_fast 快通道 / Docling）+ 分块 + 云 embedding
 │   │   ├── retrieval/           # pgvector + FTS 混合检索（可替换接口）
 │   │   ├── chat/                # 对话编排：检索→生成(SSE)→兜底→回写
+│   │   ├── conversations/       # 会话列表 / 消息读取 / 删除（FR-009/011）
 │   │   ├── models/              # SQLAlchemy 模型（全表带 owner）
 │   │   └── storage/             # 原文件存储抽象（本地磁盘实现）
 │   ├── tests/                   # pytest + 验收脚本
 │   └── pyproject.toml
 ├── web/                         # Next.js 前端（静态导出）
-│   ├── app/                     # 登录 / 对话 / 资料列表
+│   ├── app/                     # 登录 / 资料 / 对话 / 浏览（/view）
 │   ├── public/                  # PWA manifest / icons / SW
 │   └── package.json
 ├── deploy/                      # docker-compose（app + postgres）+ 部署说明

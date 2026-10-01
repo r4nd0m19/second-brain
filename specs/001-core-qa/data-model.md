@@ -24,8 +24,10 @@
 | size_bytes | bigint | |
 | sha256 | text | 内容判重（同 owner 相同 → 拒绝并提示，FR-001） |
 | status | enum | `processing` / `indexed` / `unparseable`（FR-002/014） |
-| status_reason | text NULL | 无法解析原因（扫描版/格式不支持/损坏） |
+| status_reason | text NULL | 无法解析原因（扫描版/格式不支持/损坏）；解析中为进度文案 |
+| parse_hint | text NULL | 解析质量提示（表格较多→建议深度解析；R7） |
 | source_type | enum | `upload` / `conversation`（FR-008 回写；对话来源不进资料列表，FR-009） |
+| conversation_id | uuid FK NULL | 回写会话 ↔ 文档链接（FR-008；仅 conversation 来源有值） |
 | original_path | text | 原文件存储位置（字节级保真，FR-013） |
 | created_at / updated_at | timestamptz | |
 
@@ -68,6 +70,7 @@
 | source_type | enum NULL | assistant 专属：`kb` / `model_knowledge` / `prior_conversation`（FR-005/007/008） |
 | citations | jsonb NULL | `[{document_id, chunk_id, heading_path, page, quote}]`（FR-006 出处三要素；quote 长度约 ≤300 字，可配置） |
 | related_hints | jsonb NULL | 弱相关提示列表（FR-007） |
+| usage | jsonb NULL | 模型 token 用量 + 估算费用（FR-017；含 cost_cny） |
 | created_at | timestamptz | |
 
 ## 多用户留路自检

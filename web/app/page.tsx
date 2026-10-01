@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, ApiError, Doc, formatSize } from "@/lib/api";
@@ -10,11 +11,29 @@ const STATUS_LABEL: Record<Doc["status"], string> = {
   unparseable: "无法解析",
 };
 
+function ProgressBar({ done, total }: { done: number; total: number }) {
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  return (
+    <div className="progress" title={`${done}/${total}`}>
+      <div className="progress-fill" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function IndeterminateBar() {
+  return (
+    <div className="progress">
+      <div className="progress-fill progress-indeterminate" />
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [username, setUsername] = useState<string | null>(null);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<{ name: string; pct: number | null } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
@@ -52,8 +71,11 @@ export default function HomePage() {
     if (!file) return;
     setError(null);
     setNotice(null);
+    setUploading({ name: file.name, pct: 0 });
     try {
-      const result = await api.upload(file);
+      const result = await api.upload(file, (pct) =>
+        setUploading((u) => (u ? { ...u, pct } : u)),
+      );
       if ("duplicate" in result) {
         setNotice(`已存在相同文件（${file.name}），未重复入库`);
       } else {
@@ -63,6 +85,7 @@ export default function HomePage() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "上传失败");
     } finally {
+      setUploading(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -77,9 +100,9 @@ export default function HomePage() {
     }
   }
 
-  async function onReprocess(doc: Doc) {
+  async function onReprocess(doc: Doc, mode: "auto" | "deep" = "auto") {
     try {
-      await api.reprocess(doc.id);
+      await api.reprocess(doc.id, mode);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "重试失败");
@@ -99,6 +122,9 @@ export default function HomePage() {
           <span className="muted" style={{ marginRight: 12 }}>
             {username ?? ""}
           </span>
+          <Link className="btn" style={{ marginRight: 8, textDecoration: "none" }} href="/chat/">
+            对话
+          </Link>
           <button className="btn" onClick={onLogout}>
             退出
           </button>
@@ -120,6 +146,19 @@ export default function HomePage() {
         <label htmlFor="file-input" className="btn btn-primary" style={{ display: "inline-block" }}>
           选择文件上传
         </label>
+        {uploading && (
+          <div style={{ marginTop: 8 }}>
+            <div className="muted">
+              上传中：{uploading.name}
+              {uploading.pct !== null && `（${uploading.pct}%）`}
+            </div>
+            {uploading.pct !== null ? (
+              <ProgressBar done={uploading.pct} total={100} />
+            ) : (
+              <IndeterminateBar />
+            )}
+          </div>
+        )}
         {notice && <p className="notice">{notice}</p>}
         {error && <p className="error">{error}</p>}
       </div>
@@ -146,8 +185,29 @@ export default function HomePage() {
               <tr key={doc.id}>
                 <td>
                   {doc.name}
-                  {doc.status === "unparseable" && doc.status_reason && (
+                  {doc.status === "processing" && (
+                    <div style={{ maxWidth: 220, marginTop: 4 }}>
+                      {doc.progress ? (
+                        <ProgressBar done={doc.progress.done} total={doc.progress.total} />
+                      ) : (
+                        <IndeterminateBar />
+                      )}
+                    </div>
+                  )}
+                  {doc.status !== "indexed" && doc.status_reason && (
                     <div className="muted">{doc.status_reason}</div>
+                  )}
+                  {doc.parse_hint && (
+                    <div className="muted">
+                      {doc.parse_hint}
+                      <button
+                        className="btn"
+                        style={{ marginLeft: 8, fontSize: 12, padding: "2px 10px" }}
+                        onClick={() => onReprocess(doc, "deep")}
+                      >
+                        深度解析
+                      </button>
+                    </div>
                   )}
                 </td>
                 <td className="muted">{formatSize(doc.size)}</td>
@@ -156,6 +216,9 @@ export default function HomePage() {
                 </td>
                 <td>
                   <div className="actions">
+                    <Link className="btn" href={`/view/?id=${doc.id}`}>
+                      浏览
+                    </Link>
                     {doc.status !== "indexed" && (
                       <button className="btn" onClick={() => onReprocess(doc)}>
                         重试

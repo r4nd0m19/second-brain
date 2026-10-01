@@ -95,7 +95,7 @@
 - [x] T014 [US1] 上传端点：`server/app/documents/router.py`（multipart、sha256 判重 FR-001、登记 processing、存原文件）
   - Deps: T008, T009
   - DoD: 201 `{id,status}`；相同内容返回 200 duplicate（契约符合 contracts/api.md）；超过单文件上限（默认 200MB）时拒绝并明确提示
-- [ ] T015 [US1] Docling 解析管线：`server/app/ingestion/parser.py`（PDF/EPUB/TXT/MD/DOCX；扫描件/损坏 → unparseable + 原因，FR-014）
+- [x] T015 [US1] Docling 解析管线：`server/app/ingestion/parser.py`（PDF/EPUB/TXT/MD/DOCX；扫描件/损坏 → unparseable + 原因，FR-014）
   - Deps: T013, T014
   - DoD: 文本型 PDF 解析出带标题路径的文档树；扫描版 PDF 判定 unparseable 且保留登记
 - [x] T016 [US1] 分块 + embedding 入库：`server/app/ingestion/pipeline.py`（HybridChunker → heading_path/page/chapter 入 chunks）
@@ -107,18 +107,41 @@
 - [x] T018 [US1] 资料管理端点：`server/app/documents/router.py`（列表——仅 source_type=upload，FR-009 / 原文件下载 FR-013 / 删除级联 FR-003+011）
   - Deps: T008, T009
   - DoD: 下载文件 sha256 与上传件一致（SC-006）；删除后 chunks 与原文件同步消失；列表接口仅返回上传来源的资料（过滤条件正确）
-- [ ] T019 [US1] 混合检索：`server/app/retrieval/search.py`（pgvector + FTS + 相关度分数；可替换接口）
+- [x] T019 [US1] 混合检索：`server/app/retrieval/search.py`（pgvector + FTS + 相关度分数；可替换接口）
   - Deps: T007, T016
   - DoD: 语义相近的提问命中正确 chunk；返回含 document/chunk 元数据与分数
-- [ ] T020 [US1] 对话端点（命中分支）：`server/app/chat/router.py`（编排含会话历史上下文，FR-004 + SSE：meta/token/done/error）
+- [x] T020 [US1] 对话端点（命中分支）：`server/app/chat/router.py`（编排含会话历史上下文，FR-004 + SSE：meta/token/done/error）
   - Deps: T011, T019
   - DoD: 命中时 `meta.citations` 含 资料名+位置+引用片段（FR-006）；事件序列符合 api.md；多轮追问可结合上文理解（如"那本书里怎么说的"指代明确）
-- [ ] T021 [US1] 前端-资料页：`web/app/`（登录页 + 上传进度/状态/列表/下载/删除）
+- [x] T021 [US1] 前端-资料页：`web/app/`（登录页 + 上传进度/状态/列表/下载/删除）
   - Deps: T012, T018
   - DoD: 浏览器完成 上传 → 看到 indexed → 下载 全流程
-- [ ] T022 [US1] 前端-对话页：`web/app/chat/`（SSE 渲染 + 出处展示：资料名/位置/可展开引用片段）
+- [x] T022 [US1] 前端-对话页：`web/app/chat/`（SSE 渲染 + 出处展示：正文 [N] 内联可点击跳转 + 底部出处列表：资料名/位置/可展开引用片段）
   - Deps: T012, T020
-  - DoD: 提问书中细节 → 流式回答 + 出处可见（quickstart 场景 2 手工通过）；引用指向已删除资料时显示"来源已删除"且不报错（T028 复用同一渲染组件）
+  - DoD: 提问书中细节 → 流式回答 + 出处可见（quickstart 场景 2 手工通过）；正文 [N] 编号为可点击跳转按钮（底部列表为编号对照，不再重复放按钮）；引用指向已删除资料时显示"来源已删除"且不报错（T028 复用同一渲染组件）
+- [x] T036 [US1] 在线浏览原文件（FR-015，2026-10-01 增补）：后端 inline 下载参数 + 单文档端点；前端 `/view/` 浏览页（PDF 内置阅读、EPUB 渲染、文本视图）
+  - Deps: T018, T021
+  - DoD: 资料列表点"浏览"→ 浏览器内直接查看 PDF/EPUB/TXT/MD 原文件；无法解析的 PDF 同样可浏览；其他格式提示下载；EPUB 阅读进度显示真实百分比
+- [x] T037 [US1] 出处跳转原文位置（FR-016，2026-10-01 增补）：对话答题的出处链接 → `/view/?id=&page=&q=&from=chat`；PDF 翻页、文本高亮定位、EPUB 精确定位（CFI 到引文页 + 引文高亮，逐级退回"章节 → 开头"）；从对话进入可"返回对话"；已删资料提示
+  - Deps: T022, T036
+  - DoD: 点击回答中的出处 → 打开原文件并跳到对应位置（PDF 页、文本高亮、EPUB 引文页 + 黄色高亮）；从对话进入时"返回"回对话页；资料已删除时显示"来源已删除"提示
+- [x] T039 [US1] 检索查询改写（FR-004 多轮上下文增强，2026-10-01 增补）：指代性追问（"这本书/它/刚才"等）拼上一轮问题做检索
+  - Deps: T020
+  - DoD: 指代性追问能命中正确资料并给出出处（已实测："它主要面向什么读者"命中目标书）
+
+- [x] T041 [US1] PDF 文本层快通道（R7，2026-10-01 事故复盘补）：`server/app/ingestion/pdf_fast.py`（pypdfium2 直抽 + 段落/断词/页眉页脚/字号标题启发式 + 表格占比检测）
+  - Deps: T015
+  - DoD: 1240 页 PDF 全流程（含 embedding）<5 分钟、峰值内存 <500MB（实测 49s / 133MB）；标题与页码入 chunk；无文本层 → unparseable（FR-014 不变）
+- [x] T042 [US1] 解析进度与中断恢复（R7）：批次间进度写 status_reason（"解析中 x/y 页"→"正在生成索引…"）；启动扫尾把中断的 processing 标记"可重试"
+  - Deps: T017
+  - DoD: 界面可见解析进度；服务重启后卡死文档显示"上次解析被中断…点重试"（实测通过）
+- [x] T043 [US1] 深度解析与表格提示（R7）：Docling 分页批处理（120 页/批、默认关 OCR）+ `reprocess?mode=deep` + 表格占比 ≥8% 时 parse_hint 与「深度解析」按钮
+  - Deps: T041
+  - DoD: 深度解析内存受控、批次间可释放；表格多的书自动出现提示按钮（本书 3.7% 不触发）；深度解析后 hint 清除
+
+- [x] T044 [US1] 上传与解析进度条（2026-10-01 增补）：上传改用 XHR 上报进度（fetch 不暴露上传进度）；解析/索引进度结构化（status_reason 提取为 API progress 字段）驱动前端进度条
+  - Deps: T042
+  - DoD: 上传显示百分比进度条；解析（深度模式"x/y 页"）与索引（"x/y 块"，实测 3046 块逐批推进）显示确定进度条；无数字阶段显示不确定动画
 
 **Checkpoint**: US1 独立可用 —— **MVP 达成**，可开始真实使用与验收
 
@@ -130,15 +153,18 @@
 
 **Independent Test**: 空库/库外问题提问 → 得到回答且标注"来自模型知识"
 
-- [ ] T023 [US2] 检索判定与兜底分支：`server/app/chat/orchestrator.py`（阈值判定 → model_knowledge + related_hints，FR-007；元数据匹配：提问涉及"无法解析"文件（按文件名匹配）时，告知其存在但内容暂不可读，FR-014）
+- [x] T023 [US2] 检索判定与兜底分支：`server/app/chat/orchestrator.py`（阈值判定 → model_knowledge + related_hints，FR-007；元数据匹配：提问涉及"无法解析"文件（按文件名匹配）时，告知其存在但内容暂不可读，FR-014）
   - Deps: T020
   - DoD: 库外问题走兜底并标注来源；弱相关附"库中可能相关"提示且不混入主回答；问及无法解析文件时得到"有此文件、内容暂不可读"的明确回复（与资料列表可互相核对）
-- [ ] T024 [US2] 模型故障降级：`server/app/chat/`（error 事件 + 可重试，不影响历史与资料）
+- [x] T024 [US2] 模型故障降级：`server/app/chat/`（error 事件 + 可重试，不影响历史与资料）
   - Deps: T023
   - DoD: 断开模型 API 后提问得到明确错误；恢复后重试成功
-- [ ] T025 [US2] 前端：来源类型标注 + "库中可能相关"提示 UI：`web/app/chat/`
+- [x] T025 [US2] 前端：来源类型标注 + "库中可能相关"提示 UI：`web/app/chat/`
   - Deps: T023
   - DoD: "模型知识"标注清晰可辨；弱相关提示可展开查看
+- [x] T038 [US2] 对话 token 用量记录与展示（FR-017，2026-10-01 增补）：LLM 客户端请求 include_usage；messages.usage 落库（tokens + 估算费用）；done 事件携带；回答下方小字展示
+  - Deps: T020
+  - DoD: 每轮回答下方显示 ↑输入 ↓输出 tokens 与 ≈¥ 估算金额；messages.usage 非空（库中可查）；金额按 .env 单价可配置
 
 **Checkpoint**: US1 + US2 均独立可用
 
@@ -150,13 +176,13 @@
 
 **Independent Test**: 问库外问题 → 再问同一问题 → 第二次来自库且无新模型调用
 
-- [ ] T026 [US3] 回写管线：`server/app/chat/writeback.py`（问答对 → source_type=conversation，分块 + embedding，FR-008）
+- [x] T026 [US3] 回写管线：`server/app/chat/writeback.py`（问答对 → source_type=conversation，分块 + embedding，FR-008）
   - Deps: T010, T023
   - DoD: 兜底完成后问答入库且可被检索；回写失败不阻塞用户回答
-- [ ] T027 [US3] 二次命中标注 + 对话历史端点：`server/app/conversations/router.py`（prior_conversation；列表/消息/删除 FR-009+011）
+- [x] T027 [US3] 二次命中标注 + 对话历史端点：`server/app/conversations/router.py`（prior_conversation；列表/消息/删除 FR-009+011）
   - Deps: T026
   - DoD: 重复提问命中既往对话且无新模型调用（SC-004）；删除对话生效
-- [ ] T028 [US3] 前端-对话历史：`web/app/`（侧栏：列表/查看/删除）
+- [x] T028 [US3] 前端-对话历史：`web/app/`（侧栏：列表/查看/删除）
   - Deps: T027
   - DoD: UI 中可查看与删除历史会话（对话区，不出现在资料列表 —— FR-009）
 
@@ -187,7 +213,10 @@
 
 - [ ] T031 备份机制：`deploy/backup/`（本地每日 pg_dump + 原文件增量 → 异地对象存储同步 + 恢复脚本）
   - Deps: T007, T009
-  - DoD: 定时产出备份且异地有副本；恢复演练 1 次通过（SC-008）
+  - DoD: 定时产出备份且异地有副本；恢复演练 1 次通过（SC-008）；删除的内容不再进入后续备份（验收含抽查）
+- [ ] T040 [US1] SC-002 样例题集与通过率评测（2026-10-01 analyze 补）：`server/tests/acceptance/questions.yaml`（≥20 题：问题 + 标准答案要点 + 出处对照）+ 评测脚本输出通过率
+  - Deps: T019, T020
+  - DoD: 题集 ≥20 题（含中文/英文、命中/兜底/二次命中三类）；评测脚本一键跑批，输出"库内作答率与出处正确率 ≥80%"报告
 - [ ] T032 [P] 验收脚本：`server/tests/acceptance/`（quickstart 场景 1-9 自动化）
   - Deps: T022, T027, T029, T031
   - DoD: `pytest tests/acceptance/` 全绿（覆盖 SC-001~008）

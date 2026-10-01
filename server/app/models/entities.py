@@ -69,6 +69,15 @@ class Document(Base, OwnerMixin, TimestampMixin):
         _enum(SourceType), nullable=False, default=SourceType.upload
     )
     original_path: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        sa.ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )  # 回写类资料（source_type=conversation）所属会话（FR-008）；对话删除时级联清理
+    parse_hint: Mapped[str | None] = mapped_column(
+        sa.Text, nullable=True
+    )  # 解析质量提示（如表格较多→建议深度解析；R7）
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
     )
@@ -128,5 +137,6 @@ class Message(Base, OwnerMixin, TimestampMixin):
     source_type: Mapped[AnswerSource | None] = mapped_column(_enum(AnswerSource), nullable=True)  # 仅 assistant
     citations: Mapped[list | None] = mapped_column(JSONB, nullable=True)   # [{document_id, chunk_id, heading_path, page, quote}]
     related_hints: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # 弱相关提示（FR-007）
+    usage: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # token 用量与费用估算（FR-017）
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")

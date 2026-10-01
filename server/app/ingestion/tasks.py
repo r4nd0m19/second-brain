@@ -16,12 +16,13 @@ logger = logging.getLogger(__name__)
 _running: set[asyncio.Task] = set()
 
 
-def enqueue_ingestion(document_id: uuid.UUID) -> None:
+def enqueue_ingestion(document_id: uuid.UUID, mode: str = "auto") -> None:
     """调度一次入库（解析+分块+embedding）；不阻塞上传请求（spec NFR）。
 
-    注：服务重启会丢失进行中的任务 —— 处于 processing 状态的文档可通过
-    reprocess 端点重试（幂等，见 pipeline）。
+    mode: auto（PDF 快通道/其余 Docling）| deep（PDF 走 Docling 分页批处理）。
+    注：服务重启会丢失进行中的任务 —— 启动时由 mark_interrupted_documents()
+    将遗留的 processing 文档标记为可重试（R7），用户在界面点「重试」显式触发。
     """
-    task = asyncio.create_task(ingest_document(document_id))
+    task = asyncio.create_task(ingest_document(document_id, mode))
     _running.add(task)
     task.add_done_callback(_running.discard)
