@@ -94,7 +94,7 @@
 
 - [ ] T014 [US1] 上传端点：`server/app/documents/router.py`（multipart、sha256 判重 FR-001、登记 processing、存原文件）
   - Deps: T008, T009
-  - DoD: 201 `{id,status}`；相同内容返回 200 duplicate（契约符合 contracts/api.md）
+  - DoD: 201 `{id,status}`；相同内容返回 200 duplicate（契约符合 contracts/api.md）；超过单文件上限（默认 200MB）时拒绝并明确提示
 - [ ] T015 [US1] Docling 解析管线：`server/app/ingestion/parser.py`（PDF/EPUB/TXT/MD/DOCX；扫描件/损坏 → unparseable + 原因，FR-014）
   - Deps: T013, T014
   - DoD: 文本型 PDF 解析出带标题路径的文档树；扫描版 PDF 判定 unparseable 且保留登记
@@ -104,21 +104,21 @@
 - [ ] T017 [US1] 后台任务执行器：`server/app/ingestion/tasks.py`（进程内异步 + reprocess 端点）
   - Deps: T016
   - DoD: 上传立即返回、解析后异步完成；`POST /api/documents/{id}/reprocess` 可重试
-- [ ] T018 [US1] 资料管理端点：`server/app/documents/router.py`（列表 / 原文件下载 FR-013 / 删除级联 FR-003+011）
+- [ ] T018 [US1] 资料管理端点：`server/app/documents/router.py`（列表——仅 source_type=upload，FR-009 / 原文件下载 FR-013 / 删除级联 FR-003+011）
   - Deps: T008, T009
-  - DoD: 下载文件 sha256 与上传件一致（SC-006）；删除后 chunks 与原文件同步消失
+  - DoD: 下载文件 sha256 与上传件一致（SC-006）；删除后 chunks 与原文件同步消失；列表接口仅返回上传来源的资料（过滤条件正确）
 - [ ] T019 [US1] 混合检索：`server/app/retrieval/search.py`（pgvector + FTS + 相关度分数；可替换接口）
   - Deps: T007, T016
   - DoD: 语义相近的提问命中正确 chunk；返回含 document/chunk 元数据与分数
-- [ ] T020 [US1] 对话端点（命中分支）：`server/app/chat/router.py`（编排 + SSE：meta/token/done/error）
+- [ ] T020 [US1] 对话端点（命中分支）：`server/app/chat/router.py`（编排含会话历史上下文，FR-004 + SSE：meta/token/done/error）
   - Deps: T011, T019
-  - DoD: 命中时 `meta.citations` 含 资料名+位置+引用片段（FR-006）；事件序列符合 api.md
+  - DoD: 命中时 `meta.citations` 含 资料名+位置+引用片段（FR-006）；事件序列符合 api.md；多轮追问可结合上文理解（如"那本书里怎么说的"指代明确）
 - [ ] T021 [US1] 前端-资料页：`web/app/`（登录页 + 上传进度/状态/列表/下载/删除）
   - Deps: T012, T018
   - DoD: 浏览器完成 上传 → 看到 indexed → 下载 全流程
 - [ ] T022 [US1] 前端-对话页：`web/app/chat/`（SSE 渲染 + 出处展示：资料名/位置/可展开引用片段）
   - Deps: T012, T020
-  - DoD: 提问书中细节 → 流式回答 + 出处可见（quickstart 场景 2 手工通过）
+  - DoD: 提问书中细节 → 流式回答 + 出处可见（quickstart 场景 2 手工通过）；引用指向已删除资料时显示"来源已删除"且不报错（T028 复用同一渲染组件）
 
 **Checkpoint**: US1 独立可用 —— **MVP 达成**，可开始真实使用与验收
 
@@ -130,9 +130,9 @@
 
 **Independent Test**: 空库/库外问题提问 → 得到回答且标注"来自模型知识"
 
-- [ ] T023 [US2] 检索判定与兜底分支：`server/app/chat/orchestrator.py`（阈值判定 → model_knowledge + related_hints，FR-007）
+- [ ] T023 [US2] 检索判定与兜底分支：`server/app/chat/orchestrator.py`（阈值判定 → model_knowledge + related_hints，FR-007；元数据匹配：提问涉及"无法解析"文件（按文件名匹配）时，告知其存在但内容暂不可读，FR-014）
   - Deps: T020
-  - DoD: 库外问题走兜底并标注来源；弱相关附"库中可能相关"提示且不混入主回答
+  - DoD: 库外问题走兜底并标注来源；弱相关附"库中可能相关"提示且不混入主回答；问及无法解析文件时得到"有此文件、内容暂不可读"的明确回复（与资料列表可互相核对）
 - [ ] T024 [US2] 模型故障降级：`server/app/chat/`（error 事件 + 可重试，不影响历史与资料）
   - Deps: T023
   - DoD: 断开模型 API 后提问得到明确错误；恢复后重试成功
@@ -193,7 +193,7 @@
   - DoD: `pytest tests/acceptance/` 全绿（覆盖 SC-001~008）
 - [ ] T033 [P] 中文 FTS 落地与检索调优：`server/alembic/` + `server/app/retrieval/`（zhparser 或 pg_trgm）
   - Deps: T019
-  - DoD: 中文关键词检索可用；混合检索权重可配置
+  - DoD: 中文关键词检索可用；混合检索权重可配置；性能抽测记录（10 万级检索响应、回答首字 <10s）
 - [ ] T034 [P] 安全加固：`deploy/` + `server/app/auth/`（登录限速、HTTPS/Caddy 部署说明、密钥清单）
   - Deps: T008
   - DoD: 登录限速生效；部署文档含 HTTPS 完整步骤
