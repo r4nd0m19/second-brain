@@ -53,7 +53,7 @@
 |------|------|------|
 | id | uuid PK | |
 | owner_user_id | uuid | |
-| title | text | 默认取首问前 N 字 |
+| title | text | 默认取首问前 20 字（可配置） |
 | created_at | timestamptz | |
 
 ## messages（消息）
@@ -66,7 +66,7 @@
 | role | enum | `user` / `assistant` |
 | content | text | |
 | source_type | enum NULL | assistant 专属：`kb` / `model_knowledge` / `prior_conversation`（FR-005/007/008） |
-| citations | jsonb NULL | `[{document_id, chunk_id, heading_path, page, quote}]`（FR-006 出处三要素） |
+| citations | jsonb NULL | `[{document_id, chunk_id, heading_path, page, quote}]`（FR-006 出处三要素；quote 长度约 ≤300 字，可配置） |
 | related_hints | jsonb NULL | 弱相关提示列表（FR-007） |
 | created_at | timestamptz | |
 
