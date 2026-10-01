@@ -1,0 +1,25 @@
+# ── Claude Code（机器本地工具目录：skills 可由 specify init 重建；可能含本地配置）──
+.claude/
+
+# ── speckit 机器本地状态 ──
+.specify/presets/.cache/
+# 注：.specify/.gitignore（由 speckit 管理）已忽略 feature.json 与扩展本地配置
+
+# ── OS / 编辑器 ──
+.DS_Store
+Thumbs.db
+*.swp
+
+# ── 环境与密钥 ──
+.env
+.env.*
+*.pem
+
+# ── 常见技术栈（按需增删）──
+node_modules/
+__pycache__/
+.venv/
+venv/
+dist/
+build/
+*.log
