@@ -13,6 +13,7 @@ Thumbs.db
 # ── 环境与密钥 ──
 .env
 .env.*
+!.env.example
 *.pem
 
 # ── 常见技术栈（按需增删）──
@@ -23,3 +24,6 @@ venv/
 dist/
 build/
 *.log
+.next/
+web/out/
+data/

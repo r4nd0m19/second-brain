@@ -1,0 +1,21 @@
+# 生产部署时扩展 app 服务（T035）；当前用于本地/服务器数据库
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: secondbrain
+      POSTGRES_PASSWORD: secondbrain
+      POSTGRES_DB: secondbrain
+    ports:
+      # 本机 WSL 已有系统 Postgres 占用 5432，故映射到 5433（仅影响本机开发）
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secondbrain -d secondbrain"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db_data:
