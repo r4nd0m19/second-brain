@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# 文档同步提醒（警告不阻断）—— 机制见 .claude/CLAUDE.md「文档同步」
+# 触发条件：本次提交有代码改动（server/ web/ deploy/ 的非 .md 文件）但零文档改动（*.md / specs/ / .specify/）
+# 误报可忽略；急用可 git commit --no-verify
+
+staged=$(git diff --cached --name-only)
+[[ -z "$staged" ]] && exit 0
+
+docs=$(printf '%s\n' "$staged" | grep -E '(\.md$|^specs/|^\.specify/)')
+code=$(printf '%s\n' "$staged" | grep -E '^(server/|web/|deploy/)' | grep -vE '\.md$')
+
+if [[ -n "$code" ]] && [[ -z "$docs" ]]; then
+  cat >&2 <<'EOF'
+
+⚠  文档同步提醒：本次提交有代码改动，但一个文档都没动。
+   若涉及 行为/接口/数据模型/技术决策 变化，请先同步（矩阵见 .claude/CLAUDE.md）：
+     行为→spec+tasks ｜ 接口→contracts ｜ 模型→data-model ｜ 决策→research ｜ 结构→plan
+   确无需同步可忽略本条；本提醒不阻断提交。
+
+EOF
+fi
+exit 0

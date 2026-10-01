@@ -75,8 +75,21 @@
 - **配套**: 解析批次间进度写 status_reason；启动扫尾把中断的 processing 文档标记"可重试"（不自动重跑，防崩溃连锁）
 - **Sources**: [PDF parser benchmark](https://github.com/applied-artificial-intelligence/pdf-parser-benchmark/blob/main/docs/PARSERS.md)、[确定性文本抽取](https://quidproquo.cc/posts/ai/2026-08-06-pdf-text-extraction-libraries-en/)、[Docling OOM #3345](https://github.com/docling-project/docling/issues/3345)、[Docling 批量处理指南](https://mintlify.wiki/docling-project/docling/guides/batch-processing)、[Qiita 大 PDF 对策](https://qiita.com/henagineer/items/0ddd70cff12e368dad99)
 
+## R8 备份：传输与加密选型（2026-10-01 决策）
+
+- **Decision**: 本地备份先行（每日 pg_dump + 原文件镜像 + 保留策略 + 恢复脚本/演练，备份快照用**客户端加密**保护）；异地同步**延后至部署阶段**——rclone 仅作传输，上传的始终是客户端加密后的密文；厂商候选 OSS/COS（与服务器同厂同地域配套，换家仅改一行配置）
+- **加密理由**: 服务端加密（SSE）的密钥在厂商手里——理论上厂商内部/依法调取可见明文，属于"信任转移"而非消除；客户端加密（零知识）使"选哪家"退化为价格/网络问题，隐私不依赖对任何厂商的信任（呼应 constitution IV 数据最小暴露）
+- **代价（须知）**: 密钥/密码丢失 = 备份不可恢复（无找回）→ 密钥须离线多处保管；恢复演练必须覆盖解密链路
+- **Alternatives**:
+  - 厂商服务端加密（未采纳：信任转移而非消除）
+  - Cloudflare R2 / Backblaze B2（免费额度优，但国内网络不稳；加密层兼容它，可随时切换）
+  - 自建异地（NAS/低配 VPS 作 rclone 目标；运维成本高，留作将来备选）
+- **本地阶段说明**: 本地无第三方，DB dump 仍做客户端加密（防介质泄密）；原文件镜像保持增量明文（与源数据同信任域，远程阶段由密文快照覆盖）
+- **Sources**: [rclone crypt 零知识加密指南](https://rcloneview.com/support/zh-Hans/blog/encrypt-cloud-backups-crypt-remote-guide-rcloneview)、[OSS/COS 价格对比](https://www.net8.com.cn/article/129886.html)、[2026 对象存储深度评测](https://zhuanlan.zhihu.com/p/2071058527653729112)、[rclone 对象存储备份实战](https://www.zz1984.com/1080.html)
+
 ## 未决项（留给实现阶段）
 
 - 云 embedding 默认提供商最终拍板（硅基流动 vs 百炼，凭实际测试效果）
+- 异地对象存储厂商：部署阶段与服务器同厂选定（候选 OSS/COS；R8）
 - 中文 FTS 扩展选型（zhparser vs pg_trgm，装包环境决定）
 - 首个可用模型默认（DeepSeek，成本优先）在 .env 可切换

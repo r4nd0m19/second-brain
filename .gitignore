@@ -1,5 +1,6 @@
 # ── Claude Code（机器本地工具目录：skills 可由 specify init 重建；可能含本地配置）──
-.claude/
+.claude/*
+!.claude/CLAUDE.md
 
 # ── speckit 机器本地状态 ──
 .specify/presets/.cache/
