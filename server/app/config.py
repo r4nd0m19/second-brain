@@ -56,7 +56,18 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
     retrieval_hit_threshold: float = 0.60
     retrieval_weak_threshold: float = 0.50
-    retrieval_keyword_boost: float = 0.05  # 关键词命中的分数加成（T033：混合检索权重可配置）
+    retrieval_keyword_boost: float = 0.12  # 关键词命中的分数加成（仅作用于向量候选，R15；0.05→0.12，2026-10-02 过线实测）
+    retrieval_ef_search: int = 200  # HNSW 检索力度（召回余量；索引删改 churn 后退化时兜底，2026-10-02）
+
+    # 联网检索（F4，004-web-search；key 为空 = 能力关闭，零行为变化）
+    web_search_api_key: str = ""
+    web_search_max_results: int = 5
+    web_search_snippet_max: int = 800
+    web_search_timeout_s: float = 5.0
+    web_search_freshness: str = "noLimit"
+    web_search_engine: str = "search_std"  # 智谱引擎档位：search_std(￥0.01)/search_pro(￥0.03)/search_pro_sogou(￥0.05)/search_pro_quark(￥0.05)
+    web_search_fallback_engine: str = "search_pro_sogou"  # 主引擎零链接时兜底一次（实测 link 按引擎/查询确定性缺失；空串=禁用）
+    web_search_daily_limit: int = 30  # 每日搜索次数上限（0=不限；进程内计数护栏）
     retrieval_keyword_terms: int = 4  # 查询拆词上限（T033）
     chat_history_limit: int = 10
     timerange_max_years: int = 5  # 时间解析兜底的最大跨度（F2 US3；超出视为解析失败）

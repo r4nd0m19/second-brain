@@ -38,6 +38,11 @@ class LLMClient(Protocol):
     def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[StreamEvent]:
         """流式生成：依次 yield token / usage 事件。"""
 
+    async def complete_with_tools(
+        self, messages: list[dict], tools: list[dict], tool_choice: str = "auto"
+    ) -> dict:
+        """非流式 + 工具调用（F4 决策器用）：返回 {content, tool_calls:[{name, arguments}]}。"""
+
 
 class OpenAICompatLLM:
     def __init__(
@@ -87,6 +92,44 @@ class OpenAICompatLLM:
                     delta = (choices[0].get("delta") or {}).get("content")
                     if delta:
                         yield {"type": "token", "text": delta}
+
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        tool_choice: str = "auto",
+        max_tokens: int = 200,
+    ) -> dict:
+        """非流式请求（带 tools）：解析 OpenAI 兼容 tool_calls 为 {name, arguments}。"""
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=payload,
+            )
+        if response.status_code != 200:
+            body = response.text[:300]
+            raise LLMError(f"对话模型返回 {response.status_code}: {body!r}")
+        data = response.json()
+        message = ((data.get("choices") or [{}])[0].get("message")) or {}
+        tool_calls = []
+        for call in message.get("tool_calls") or []:
+            function = call.get("function") or {}
+            try:
+                arguments = json.loads(function.get("arguments") or "{}")
+            except json.JSONDecodeError:
+                arguments = {}
+            tool_calls.append({"name": function.get("name") or "", "arguments": arguments})
+        return {"content": message.get("content") or "", "tool_calls": tool_calls}
 
 
 async def complete_chat(client: LLMClient, messages: list[ChatMessage]) -> str:
