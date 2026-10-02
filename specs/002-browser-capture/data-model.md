@@ -48,7 +48,7 @@
 | name | text | 设备 / 用途标识（如 "Windows Chrome"） |
 | prefix | text | 明文前缀（`sb_cap_` 后 8 字符），列表识别用 |
 | token_hash | text | `sha256(token)`；**明文仅创建响应返回一次**（show once） |
-| scope | text | 默认 `capture`（权限边界 = 仅采集端点；为 B1 等未来采集器复用同机制留路） |
+| scope | text | `capture`（缺省，采集端点）/ `read`（MCP 只读）/ `write`（MCP 只读+写入回存，2026-10-02 MCP 接入；写入需单独 grant） |
 | created_at / last_used_at / revoked_at | timestamptz | `last_used_at` 节流更新；吊销 = `revoked_at` 置值（保留审计行） |
 
 **校验**: hash 匹配 + `revoked_at IS NULL` + scope 覆盖端点族 → 401（无效 / 吊销）与 403（scope 不符）区分。

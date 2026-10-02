@@ -67,6 +67,8 @@ X-Content-Type-Options: nosniff
  "visit_count": 3, "snapshot": {"state": "kept", "bytes": 1234567}}
 ```
 
+**2026-10-02 列表增强（试用驱动，F1/F2 共用端点）**：新增 `q`（标题/站点/网址 + 正文分块子串匹配，走既有 `chunks.content` pg_trgm GIN 索引；正文命中条目附 `match={type:"content",snippet}`，标题/网址命中 type=name/url）、`sort`（白名单字段 + `-` 前缀倒序；browser 默认 `-last_captured_at`，非法字段 400）、`page`/`page_size`（缺省 20 / 上限 100 / 越界钳制）；响应由裸数组改为信封 `{items,total,page,page_size}`。
+
 ### DELETE /api/documents（新增：批量清理形态）
 
 `?source=browser&before=<ISO>&after=<ISO>`（**必须显式 source=browser** 防误删；至少一个时间界；作用于 `last_captured_at`）→ `200 {deleted: n}`（计数需要响应体；204 不允许 body——单条删除保持既有 204 无体）。
@@ -78,8 +80,9 @@ X-Content-Type-Options: nosniff
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | /api/capture/tokens | → `[{id, name, prefix, scope, created_at, last_used_at, revoked_at}]` |
-| POST | /api/capture/tokens | `{name}` → `201 {id, token}`——**token 明文仅此一次返回**（show once） |
+| POST | /api/capture/tokens | `{name, scope?}`（scope ∈ `capture`/`read`/`write`，缺省 capture；2026-10-02 MCP 接入扩展）→ `201 {id, token}`——**token 明文仅此一次返回**（show once） |
 | DELETE | /api/capture/tokens/{id} | 吊销（置 `revoked_at`，保留审计行）→ `204` |
+| DELETE | /api/capture/tokens/{id}?purge=1 | **彻底删除**（仅限已吊销；未吊销 → `409`）→ `204`；列表/库中不再存在（2026-10-02 凭据区精简：吊销→删除两步，防误删） |
 
 ## Chat / 检索（行为变更，SSE 事件结构不变）
 

@@ -68,7 +68,7 @@ async def wait_status(
     """轮询直到文档达到目标状态；返回 (文档, 耗时秒)。"""
     t0 = time.monotonic()
     while time.monotonic() - t0 < timeout:
-        docs = (await client.get("/api/documents")).json()
+        docs = (await client.get("/api/documents", params={"page_size": 100})).json()["items"]
         doc = next((d for d in docs if d["id"] == doc_id), None)
         if doc and doc["status"] in statuses:
             return doc, time.monotonic() - t0
@@ -76,12 +76,24 @@ async def wait_status(
     raise AssertionError(f"等待 {statuses} 超时（{timeout:.0f}s）：{doc_id}")
 
 
-async def cleanup(client: httpx.AsyncClient, *, doc_id: str | None = None, conv_id: str | None = None) -> None:
-    """测试产物清理：删文档（级联 chunks/原文件）与对话（级联回写文档）。"""
+async def cleanup(
+    client: httpx.AsyncClient,
+    *,
+    doc_id: str | None = None,
+    conv_id: str | None = None,
+    token_id: str | None = None,
+) -> None:
+    """测试产物清理：删文档（级联 chunks/原文件）、对话（级联回写文档）；
+    采集凭据吊销后彻底删除（验收库=真实库，不留残留）。"""
     if doc_id:
         await client.delete(f"/api/documents/{doc_id}")
     if conv_id:
         await client.delete(f"/api/conversations/{conv_id}")
+    if token_id:
+        await client.delete(f"/api/capture/tokens/{token_id}")  # 吊销（立即失效）
+        await client.delete(
+            f"/api/capture/tokens/{token_id}", params={"purge": "1"}
+        )  # 彻底删除
 
 
 # ── F2 浏览器采集（验收助手）──
@@ -94,13 +106,13 @@ def make_html(title: str = "测试页", body: str = "测试内容") -> bytes:
     ).encode("utf-8")
 
 
-async def create_capture_token(client: httpx.AsyncClient, name: str | None = None) -> str:
-    """会话创建采集凭据，返回明文 token（show once）。"""
+async def create_capture_token(client: httpx.AsyncClient, name: str | None = None) -> dict:
+    """会话创建采集凭据，返回 {id, name, prefix, token}（明文仅此一次）。"""
     resp = await client.post(
         "/api/capture/tokens", json={"name": name or f"acceptance-{uuid.uuid4().hex[:6]}"}
     )
     assert resp.status_code == 201, f"创建凭据失败 {resp.status_code}: {resp.text[:200]}"
-    return resp.json()["token"]
+    return resp.json()
 
 
 async def capture_page(
@@ -131,7 +143,11 @@ async def wait_browser_indexed(client: httpx.AsyncClient, doc_id: str, timeout: 
     """轮询浏览器来源列表直到条目 indexed/unparseable；返回该条目。"""
     t0 = time.monotonic()
     while time.monotonic() - t0 < timeout:
-        docs = (await client.get("/api/documents", params={"source": "browser"})).json()
+        docs = (
+            await client.get(
+                "/api/documents", params={"source": "browser", "page_size": 100}
+            )
+        ).json()["items"]
         doc = next((d for d in docs if d["id"] == doc_id), None)
         if doc and doc["status"] in {"indexed", "unparseable"}:
             return doc

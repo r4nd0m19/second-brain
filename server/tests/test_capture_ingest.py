@@ -130,6 +130,30 @@ async def test_create_token_via_api_revoke_and_ping(client, account):
     r = await client.get("/api/capture/ping", headers=_auth(created["token"]))
     assert r.status_code == 401
 
+    # 彻底删除（2026-10-02）：仅限已吊销；删除后列表消失、再删 404
+    r = await client.delete(f"/api/capture/tokens/{created['id']}", params={"purge": "1"})
+    assert r.status_code == 204
+    r = await client.get("/api/capture/tokens")
+    assert all(item["id"] != created["id"] for item in r.json())
+    r = await client.delete(f"/api/capture/tokens/{created['id']}", params={"purge": "1"})
+    assert r.status_code == 404
+
+
+async def test_purge_requires_revoked(client, account):
+    """未吊销直接 purge → 409（先吊销后删除的两步语义）。"""
+    client.cookies.set(COOKIE_NAME, make_session(account["user_id"]))
+    created = (
+        await client.post("/api/capture/tokens", json={"name": "待删除"})
+    ).json()
+    r = await client.delete(f"/api/capture/tokens/{created['id']}", params={"purge": "1"})
+    assert r.status_code == 409
+    assert "吊销" in r.json()["detail"]
+    # 普通 DELETE 仍是吊销（非删除），凭据仍在列表中
+    await client.delete(f"/api/capture/tokens/{created['id']}")
+    listed = (await client.get("/api/capture/tokens")).json()
+    assert any(item["id"] == created["id"] for item in listed)
+    await client.delete(f"/api/capture/tokens/{created['id']}", params={"purge": "1"})
+
 
 # ── 采集行为 ──
 
@@ -178,7 +202,7 @@ async def test_capture_create_update_idempotent_and_replay(client, account):
     client.cookies.set(COOKIE_NAME, make_session(account["user_id"]))
     lst = await client.get("/api/documents", params={"source": "browser"})
     assert lst.status_code == 200
-    entry = next(d for d in lst.json() if d["id"] == doc_id)
+    entry = next(d for d in lst.json()["items"] if d["id"] == doc_id)
     assert entry["source_url"] == "https://example.com/post/1"
     assert entry["visit_count"] == 2
     assert entry["snapshot"]["state"] == "kept"
@@ -254,7 +278,7 @@ async def test_empty_text_creates_metadata_only_entry(client, account):
 
     client.cookies.set(COOKIE_NAME, make_session(account["user_id"]))
     lst = await client.get("/api/documents", params={"source": "browser"})
-    entry = next(d for d in lst.json() if d["id"] == body["id"])
+    entry = next(d for d in lst.json()["items"] if d["id"] == body["id"])
     assert entry["status"] == "indexed"
     assert "仅元信息" in (entry["status_reason"] or "")
     await client.delete(f"/api/documents/{body['id']}")

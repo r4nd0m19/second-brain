@@ -17,7 +17,8 @@ from sc002_eval import ask
 @pytest.mark.acceptance
 async def test_sc001_capture_ask_and_replay(client):
     """SC-001：采集 → 入库 → 提问命中且出处含链接/时间；SC-008 原型：快照回放（CSP + gzip）。"""
-    token = await create_capture_token(client)
+    tok = await create_capture_token(client)
+    token = tok["token"]
     nonce = uuid.uuid4().hex[:6]
     marker = f"星尘计划{nonce}"
     url = f"https://acceptance.example.com/{nonce}"
@@ -54,13 +55,14 @@ async def test_sc001_capture_ask_and_replay(client):
         assert snap.headers.get("content-encoding") == "gzip"
         assert "<html" in snap.content.decode("utf-8").lower()
     finally:
-        await cleanup(client, doc_id=doc_id, conv_id=conv_id)
+        await cleanup(client, doc_id=doc_id, conv_id=conv_id, token_id=tok["id"])
 
 
 @pytest.mark.acceptance
 async def test_sc008_replay_hostile_html_is_contained(client):
     """T043 安全复核：含脚本/表单/外链的快照——内容原样保留，但响应头强制沙箱（脚本不可执行）。"""
-    token = await create_capture_token(client)
+    tok = await create_capture_token(client)
+    token = tok["token"]
     nonce = uuid.uuid4().hex[:6]
     url = f"https://acceptance.example.com/hostile-{nonce}"
     hostile = (
@@ -92,21 +94,26 @@ async def test_sc008_replay_hostile_html_is_contained(client):
         body = snap.content.decode("utf-8")
         assert "<script>" in body  # 原样保真（安全边界在 CSP/沙箱，不在内容过滤——R4）
     finally:
-        await cleanup(client, doc_id=doc_id)
+        await cleanup(client, doc_id=doc_id, token_id=tok["id"])
 
 
 @pytest.mark.acceptance
 async def test_sc003_blocked_domain_zero_rows(client):
     """SC-003（服务端语义）：黑名单域名在服务端零行——真实扩展的源头拦截见 T045 手测。"""
     blocked = f"bank-{uuid.uuid4().hex[:6]}.example.org"
-    docs = (await client.get("/api/documents", params={"source": "browser"})).json()
+    docs = (
+        await client.get(
+            "/api/documents", params={"source": "browser", "page_size": 100}
+        )
+    ).json()["items"]
     assert all(blocked not in (d.get("site_name") or "") for d in docs)
 
 
 @pytest.mark.acceptance
 async def test_sc004_delete_removes_from_recall(client):
     """SC-004：删除条目 → 检索与出处同步消失、快照不可达。"""
-    token = await create_capture_token(client)
+    tok = await create_capture_token(client)
+    token = tok["token"]
     nonce = uuid.uuid4().hex[:6]
     marker = f"瞬逝数据{nonce}"
     url = f"https://acceptance.example.com/gone-{nonce}"
@@ -133,13 +140,14 @@ async def test_sc004_delete_removes_from_recall(client):
         conv2_id = again.get("conversation_id")
         assert all(c.get("source_url") != url for c in again["citations"]), "删除后不应再被引用"
     finally:
-        await cleanup(client, doc_id=doc_id, conv_id=conv_id or conv2_id)
+        await cleanup(client, doc_id=doc_id, conv_id=conv_id or conv2_id, token_id=tok["id"])
 
 
 @pytest.mark.acceptance
 async def test_sc007_time_lookup_list_and_search(client):
     """SC-007：时间清单（规则命中）与语义×时间组合检索（过滤生效、窗口外被排除）。"""
-    token = await create_capture_token(client)
+    tok = await create_capture_token(client)
+    token = tok["token"]
     nonce = uuid.uuid4().hex[:6]
     recent_title = f"近三天手记{nonce}"
     old_title = f"陈年旧文{nonce}"
@@ -154,7 +162,8 @@ async def test_sc007_time_lookup_list_and_search(client):
             url=f"https://acceptance.example.com/recent-{nonce}",
             title=recent_title,
             text=f"# {recent_title}\n\n{marker}：把颜色映射到频率，这是本周的实验笔记。",
-            captured_at=(now - timedelta(days=1)).isoformat(),
+            # 取当前时间：清单只列最近 50 条，条目须为最新才不会因窗口内条目多而被截断（2026-10-02）
+            captured_at=now.isoformat(),
         )
         old = await capture_page(
             client,
@@ -189,3 +198,4 @@ async def test_sc007_time_lookup_list_and_search(client):
             await cleanup(client, doc_id=doc_id)
         for cid in conv_ids:
             await cleanup(client, conv_id=cid)
+        await cleanup(client, token_id=tok["id"])
