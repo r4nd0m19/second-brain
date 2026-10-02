@@ -15,6 +15,7 @@ cd ../extension && npm ci && npm run build         # 产物 extension/dist
 - Web UI（登录后）：「采集凭据」区块 → 新建（如 "Windows Chrome"）→ **复制 token（仅显示一次）**
 - Chrome/Edge → `chrome://extensions`（或 `edge://extensions`）→ 开发者模式 → Load unpacked → 选 `extension/dist`
 - Options：填 Server URL + token → 「保存并测试」→ 显示已连接
+- **注意**：每次在 `chrome://extensions` 点「重新加载」后，**已打开的页面需 F5 刷新**才会注入新内容脚本（旧页面不刷新仍跑旧脚本）；排障看设置页底部「诊断」区（队列/最近成功/最近错误）
 
 ## 2. 自动采集（SC-001）
 
@@ -25,6 +26,7 @@ cd ../extension && npm ci && npm run build         # 产物 extension/dist
 - 黑名单加入某域名 → 访问并停留 → `GET /api/documents?source=browser` 无任何该域名条目（含元信息）
 - 一键暂停 → 浏览 → 无新条目；恢复后继续工作
 - 删除一条 → 对话检索与出处同步消失；快照不可达（404）
+- 备份链路：跑 `deploy/backup/backup.sh` → storage-mirror 含快照；删除条目后再跑 → 同步消失（constitution V）
 
 ## 4. 离线容错（SC-005）
 

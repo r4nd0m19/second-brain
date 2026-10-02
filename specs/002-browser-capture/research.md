@@ -92,6 +92,20 @@
 
 **来源**: pgvector README（Filtering / Iterative index scans — <https://github.com/pgvector/pgvector>）；pgvector 0.8.0 发布公告 <https://www.postgresql.org/about/news/pgvector-080-released-2952/>；Crunchy Data 混合检索 <https://www.crunchydata.com/blog/hybrid-vector-search>；Tigerdata 时间过滤教程 <https://www.tigerdata.com/blog/refining-vector-search-queries-with-time-filters-in-pgvector-a-tutorial>
 
+**压测记录（T044，2026-10-02 实机；脚本 `server/tests/perf/pg_vector_time_bench.sh`，可复跑）**：
+10 万 chunks（1024 维随机向量，HNSW 777MB）+ 24 个网页文档（浏览时间分散 120 天 → 7 天窗口选择性 ≈ 8%）：
+
+| 用例 | 计划 | 执行 |
+|------|------|------|
+| ① 时间过滤 + 迭代扫描 OFF（ef_search=40） | HNSW Index Scan | **0.55 ms**（88 候选行中过筛） |
+| ② 时间过滤 + relaxed_order + ef_search=100（R5 生产写法） | planner 选精确扫描（B-tree 时间预滤 + 100% 召回） | **65 ms** |
+| ③ 无时间过滤基线（ef_search=100） | 并行精确扫描 | 193 ms |
+
+结论：① 100k 规模两条路径都远低于 1s 预算，且**过滤后不劣于无过滤**（65ms vs 193ms）；
+② `ef_search=100` 会抬高 HNSW 成本估算，planner 可能主动选精确扫描（召回 100%、延迟线性于窗口行数）——
+本规模正合适，正是 0.8 "改进过滤代价估算后可能改选 B-tree" 的预期行为；③ 迭代扫描保留为
+HNSW 路径下的防 overfiltering 安全网。百万级再评估按月分区（R5 正文）。
+
 ---
 
 ## R6 中文相对时间解析（自然语言 → 时间范围）（2026-10-02）
@@ -111,6 +125,22 @@
 **来源**: dateparser 文档 <https://dateparser.readthedocs.io/en/latest/>；Duckling 中文支持 <https://github.com/facebook/duckling/pull/523>；LLM 时间范围 JSON schema 参考 <https://arxiv.org/pdf/2601.09523v1.pdf>；规则+LLM 混合解析 <https://zenodo.org/records/16352283>；mcp-chinese-time <https://glama.ai/mcp/servers/wyl116/mcp-chinese-time>
 
 ---
+
+## 实测修复记录（2026-10-02 真机试用驱动）
+
+真机试用暴露并修复的问题（均为实现层修正，不改 FR）：
+
+1. **自我污染**：兜底回答（"我没有浏览记录权限"）被 F1 回写机制入库，再次提问时被检索为"资料"并被当作事实 → 修复：SYSTEM_PROMPT 明确「网页资料 = 用户浏览过的页面」「既往对话仅参考、不得据此拒绝」；`_format_hit` 对 conversation 来源加"仅参考"标注。
+2. **SPA 提取时机**：Upwork 资料页在触发时仍处渲染中，只提取到 265B 导航骨架 → 修复：提取前等待 DOM 静默（`waitForDomQuiet`，静态页约 1.5s / 最长 8s；扩展 jsdom 单测覆盖）。
+3. **中英混排拆词**：'…在 upwork 上面的资料' 整句成项，英文词未参与关键词匹配 → 修复：`_terms` 提取 ASCII 词单独成项（Next.js 等同理；F1/F2 共用检索层受益）。
+4. **标题参与匹配**：SPA 页正文可能只有导航，页面标题（document.name）才是最佳信号 → 修复：关键词分支同时匹配正文与标题（单测覆盖）。
+5. **本机页不采**：扩展采集到 second-brain 自身界面（localhost）→ 默认跳过回环地址（`isLoopbackHost` + 单测）。
+6. **空正文 400**：正文与快照均失败时扩展两个字段皆缺 → 旧校验 400 拒收（Starlette 丢弃空字符串表单字段，空串与缺省不可区分，已实核）→ 改为"缺 file 且无 text = 仅元信息条目"（spec Edge Case 语义）。
+7. **快照回放返回**：从对话打开 `/snap` 后"返回资料库"→ 修复：带 `from=chat` 回跳对话（与 view 页同模式）。
+8. **上传/快照竞态**：队列在快照分片落盘前就上传 → 快照迟到成孤儿（表现为"有的条目没快照"）→ 修复：入队标记 `snapshotPending`，上传等 `snapshot-complete`（完整性校验 count==total）或 30s 超时（残片丢弃降级仅正文）再发。
+9. **采集完成反馈**（用户要求）：此前只有全局徽标计数，不知道"当前这篇采到了没" → 新增：上传成功 → 该标签页徽标短暂 ✓（4s）+ 页面右下角 Shadow DOM 小提示（3s 自动消失、pointer-events:none、文案区分"含页面快照/仅正文"）。
+10. **队列并发丢失更新（根因级）**：多个消息处理器并发"读整队列→改一条→写回"互相覆盖 → 条目凭空消失/卡死/重复上传（试用期大量怪象的共同根因）→ 修复：全部队列写操作经进程内互斥串行化（`mutateQueue`）。同轮拆除不稳定的"离屏上传器"跨上下文握手（上传改为 SW 内直传，25s 超时），并在设置页新增「诊断」区（队列/尝试次数/最近成功/最近错误）。
+11. **滚动高亮被误判为换页**：OI Wiki 等站点滚动时会持续 `replaceState` 更新 `#锚点` → 此前每次 onHistoryStateUpdated 都重置阅读计时 → "达标→重置→再达标"无限重复采集（快照反复重生成、提示连环弹）→ 修复：仅当**去掉 hash 后 URL 真正变化**才视为换页。
 
 ## 未决项（留给实现阶段）
 

@@ -4,7 +4,7 @@
 
 ## documents（变更：新枚举值 + 扩展列）
 
-`source_type` 新增枚举值 **`browser`**（非原生枚举 VARCHAR+CHECK，迁移 = 重建 CHECK）。`source_type='browser'` 的行即 spec 中的**网页条目（WebPage）**——不建新表，复用 owner / 删除 / 备份 / 检索体系。
+`source_type` 新增枚举值 **`browser`**（非原生枚举 VARCHAR(32)；**实核 2026-10-02：SQLAlchemy `create_constraint` 默认 False，库中无 CHECK 约束**——新增值只需改模型枚举，无需迁移约束）。`source_type='browser'` 的行即 spec 中的**网页条目（WebPage）**——不建新表，复用 owner / 删除 / 备份 / 检索体系。
 
 既有字段在浏览器来源下的语义：
 
@@ -37,7 +37,7 @@
 - 重访（同 URL）：`last_captured_at` / `visit_count` 更新；正文 hash 变化 → 删旧 chunks → 重新分块嵌入（回到 processing → indexed）；未变 → 仅更新元数据与快照。`capture_id` 与上次相同 → **幂等 no-op**（不计数）。
 - 仅元信息（正文提取失败或扩展配置关闭）→ `indexed`（0 chunks）。
 
-**迁移**: documents 新增列 + source_type CHECK 重建 + 两个索引，单个 Alembic 迁移完成。
+**迁移**: documents 新增列 + 两个索引 + capture_tokens 表，单个 Alembic 迁移完成（source_type 为 VARCHAR，无 CHECK 需重建）。
 
 ## capture_tokens（新表；spec 实体 CaptureToken）
 

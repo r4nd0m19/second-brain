@@ -26,12 +26,12 @@ multipart/form-data，字段与 SingleFile 官方扩展「upload to REST Form AP
 | 201 | `{id, duplicate:false, snapshot:"kept"\|"skipped_oversize"}` | 新条目 |
 | 200 | `{id, duplicate:true}` | `capture_id` 已处理过（幂等重放，不重复计数） |
 | 200 | `{id, updated:true, reindexed:bool, snapshot:"…"}` | 同 URL 更新（标题 / 正文 / 快照 / 计数） |
-| 400 | 错误格式 | url 非法；file 与 text 均缺 |
+| 400 | 错误格式 | url 非法（**唯一 400 来源**） |
 | 401 / 403 | 错误格式 | token 无效 / 已吊销 · scope 不符 |
 | 413 | 错误格式 | 超出请求体天花板（100MB，防滥用） |
 | 429 | 错误格式 + `Retry-After` | 按 token 限速（可配置） |
 
-行为：快照超 `capture_max_snapshot_mb`（默认 20）→ 降级 `skipped_oversize`（不报错入库）；正文 hash 变化 → 异步重分块 + 嵌入（入库响应秒级）；快照落盘 `{owner}/{doc}/snapshot.html.gz`（先写文件、后提交 DB 行）。
+行为：快照超 `capture_max_snapshot_mb`（默认 20）→ 降级 `skipped_oversize`（不报错入库）；正文 hash 变化 → 异步重分块 + 嵌入（入库响应秒级）；快照落盘 `{owner}/{doc}/snapshot.html.gz`（先写文件、后提交 DB 行）。**缺 file 且无 text → 仅元信息条目**（spec Edge Case；更新场景不覆盖既有正文——注：Starlette 丢弃空字符串表单字段，空串与缺省等价，2026-10-02 实核）。
 
 ### GET /api/capture/ping（token 认证）
 
@@ -69,7 +69,7 @@ X-Content-Type-Options: nosniff
 
 ### DELETE /api/documents（新增：批量清理形态）
 
-`?source=browser&before=<ISO>&after=<ISO>`（**必须显式 source=browser** 防误删；至少一个时间界；作用于 `last_captured_at`）→ `204 {deleted: n}`。
+`?source=browser&before=<ISO>&after=<ISO>`（**必须显式 source=browser** 防误删；至少一个时间界；作用于 `last_captured_at`）→ `200 {deleted: n}`（计数需要响应体；204 不允许 body——单条删除保持既有 204 无体）。
 
 删除链路 = 单条删除同链路（BlobStore 目录级联 + chunks CASCADE；FR-007 检索 / 出处同步生效）。既有路径形态 `DELETE /api/documents/{id}` 不变。
 
