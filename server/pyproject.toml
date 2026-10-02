@@ -20,6 +20,7 @@ dependencies = [
   "itsdangerous",
   "httpx",
   "docling",
+  "mcp",
 ]
 
 [project.optional-dependencies]

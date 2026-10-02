@@ -17,18 +17,23 @@ from app.chat.router import router as chat_router
 from app.conversations.router import router as conversations_router
 from app.documents.router import router as documents_router
 from app.ingestion.pipeline import mark_interrupted_documents
+from app.mcp.server import ExactMount, build_mcp_asgi_app, mcp
 from app.stats import router as stats_router
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web" / "out"
 
 mimetypes.add_type("application/manifest+json", ".webmanifest")  # PWA manifest（T029）
 
+# MCP（Claude Code 等 harness 接入）：Streamable HTTP，挂载于 /mcp（鉴权见 app/mcp/auth.py）
+mcp_asgi = build_mcp_asgi_app()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await ensure_admin_user()  # 单用户初始化（T008）
     await mark_interrupted_documents()  # 上次中断的解析 → 标记可重试（R7）
-    yield
+    async with mcp.session_manager.run():  # MCP 会话管理器（挂载后须由父应用驱动）
+        yield
 
 
 app = FastAPI(title="second-brain", version="0.1.0", lifespan=lifespan)
@@ -41,6 +46,8 @@ app.include_router(capture_tokens_router)
 app.include_router(chat_router)
 app.include_router(conversations_router)
 app.include_router(stats_router)
+# MCP 挂载：先于 SPA 回退路由；（ExactMount：`/mcp` 无尾斜杠也要命中，见 app/mcp/server.py）
+app.router.routes.append(ExactMount("/mcp", app=mcp_asgi))
 
 
 @app.get("/health")
