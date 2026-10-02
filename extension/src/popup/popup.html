@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>second-brain 采集</title>
+    <style>
+      body { font-family: system-ui, sans-serif; width: 260px; margin: 0; padding: 12px 14px; color: #222; }
+      h3 { margin: 0 0 8px; font-size: 14px; }
+      .row { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+      #status { font-size: 13px; font-weight: 600; }
+      #stats { font-size: 13px; color: #444; margin: 6px 0; line-height: 1.6; }
+      #error { font-size: 12px; color: #b3261e; margin: 6px 0; display: none; white-space: pre-line; }
+      #debug { font-size: 11px; color: #888; margin: 4px 0; display: none; word-break: break-all; }
+      button { width: 100%; padding: 6px; margin-top: 8px; cursor: pointer; }
+      a { font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h3>second-brain 采集</h3>
+    <div id="status">加载中…</div>
+    <div class="row"><label><input id="paused" type="checkbox" /> 暂停采集</label></div>
+    <div id="stats"></div>
+    <div id="error"></div>
+    <div id="debug"></div>
+    <button id="options">打开设置</button>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "second-brain 采集",
+  "version": "0.1.0",
+  "description": "浏览即入库：自动把读过的网页存入你的第二大脑",
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "second-brain 采集" },
+  "options_page": "options.html",
+  "permissions": ["storage", "alarms", "offscreen", "webNavigation", "unlimitedStorage"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "incognito": "not_allowed"
+}
