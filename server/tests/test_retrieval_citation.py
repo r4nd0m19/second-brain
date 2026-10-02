@@ -31,6 +31,15 @@ def test_browser_citation_has_url_and_time() -> None:
     assert citation["document_name"] == "示例"
 
 
+def test_conversation_citation_has_conversation_id() -> None:
+    import uuid as _uuid
+
+    conv_id = _uuid.uuid4()
+    citation = _chunk(SourceType.conversation, conversation_id=conv_id).to_citation()
+    assert citation["conversation_id"] == str(conv_id)
+    assert "source_url" not in citation
+
+
 def test_upload_citation_unchanged() -> None:
     citation = _chunk(SourceType.upload).to_citation()
     assert "source_url" not in citation
