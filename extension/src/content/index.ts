@@ -13,6 +13,14 @@ import type {
 } from "../shared/messages";
 import type { Settings } from "../shared/settings";
 import { loadSettings } from "../shared/settings";
+import {
+  contentHash,
+  looksLikeChallenge,
+  pruneRecent,
+  RECENT_CAPTURES_KEY,
+  shouldSkipRepeat,
+} from "../shared/skip";
+import type { RecentCapture } from "../shared/skip";
 import { captureSnapshot } from "../shared/snapshot";
 import { ReadingMeter, scrollRatio } from "../shared/trigger";
 import { hostOf, isLoopbackHost, normalizeUrl } from "../shared/url";
@@ -116,12 +124,40 @@ async function onTriggered(): Promise<void> {
   console.debug(`[second-brain] 提取完成：${article.text.length} 字 | 标题「${article.title}」`);
   if (!article.text && !settings.captureMetadataOnly) return; // 配置关闭：提取失败不采
 
+  const title = article.title || document.title;
+
+  // 反爬验证/拦截页（DDoS-Guard / Cloudflare 等）：不是内容，跳过（2026-10-02 实测）
+  if (looksLikeChallenge(title, article.text)) {
+    console.debug("[second-brain] 识别为验证/拦截页，跳过采集");
+    return;
+  }
+
+  // 同 URL 短时重复（页面自动刷新循环，如行情/仪表盘/未通过的验证页）：
+  // 内容指纹相同且在窗口（10 分钟）内 → 跳过，不计数、不上传、不生成快照
+  const hash = contentHash(title, article.text);
+  try {
+    const stored = (await chrome.storage.local.get(RECENT_CAPTURES_KEY))[
+      RECENT_CAPTURES_KEY
+    ] as Record<string, RecentCapture> | undefined;
+    const recent = stored ?? {};
+    if (shouldSkipRepeat(recent[currentUrl], hash, Date.now())) {
+      console.debug("[second-brain] 与上次采集内容相同（10 分钟内），跳过重复采集");
+      return;
+    }
+    recent[currentUrl] = { hash, at: Date.now() };
+    await chrome.storage.local.set({
+      [RECENT_CAPTURES_KEY]: pruneRecent(recent, Date.now()),
+    });
+  } catch {
+    /* 存储不可用：照常采集（退回旧行为） */
+  }
+
   const captureId = crypto.randomUUID();
   const message: PageReadMessage = {
     target: "sw",
     type: "page-read",
     url: currentUrl,
-    title: article.title || document.title,
+    title,
     text: article.text,
     capturedAt: new Date().toISOString(),
     captureId,
