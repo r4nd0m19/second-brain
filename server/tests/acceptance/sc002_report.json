@@ -9,8 +9,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 1.6,
-      "answer_head": "**书里对\"大泥球\"的描述**：它是一种架构反模式（antipattern），源于架构的缺失（the absence of architecture）[2]。具"
+      "seconds": 1.4,
+      "answer_head": "根据资料，书里对“大泥球”的描述是：\n\n**它是一种缺少架构的常见反模式（antipattern）**[2]，表现为：\n\n- 结构混乱、无序扩张、拖泥带水的“意"
     },
     {
       "id": "f02",
@@ -19,8 +19,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 1.9,
-      "answer_head": "**\"隔离层\"（layers of isolation）的含义**：它指的是这样一个概念——只要各层之间的契约（contracts）保持不变，在架构的某一层所做"
+      "seconds": 2.1,
+      "answer_head": "根据资料，分层架构中的**“隔离层”（layers of isolation）**意思是：\n\n**某一层所做的变更通常不会影响或波及架构中其他层的组件**——前"
     },
     {
       "id": "f03",
@@ -29,8 +29,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 1.4,
-      "answer_head": "管道架构适合以下系统：\n\n1. **具有清晰、有序且确定性的单向处理步骤的系统**，且适用于任何复杂度的系统[2]。其简单性也使它很适合工期紧、预算受限的情形["
+      "seconds": 1.3,
+      "answer_head": "根据资料，管道（pipeline）架构适合处理以下类型的系统：\n\n1. **任意复杂度、但处理步骤明确、有序且单向确定（one-way processing s"
     },
     {
       "id": "f04",
@@ -39,8 +39,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.1,
-      "answer_head": "根据资料，书中引用康威定律想说明的核心道理是：**软件架构会（不可避免地）映照出构建它的组织的沟通结构**。\n\n康威定律的经典表述是：\"设计系统的组织……会被约"
+      "seconds": 1.7,
+      "answer_head": "根据资料，书中引用康威定律想说明的道理是：**软件架构会（不自觉地）复制开发它的组织的沟通结构**——正如 Melvin Conway 在 20 世纪 60 年"
     },
     {
       "id": "f05",
@@ -49,8 +49,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.6,
-      "answer_head": "根据资料，软件架构决策本质上是权衡，原因可以归纳为以下几点：\n\n1. **这是软件架构的第一定律**：书中明确提出\"软件架构中的一切都是权衡\"（Everythi"
+      "seconds": 2.4,
+      "answer_head": "根据资料，软件架构决策本质上是权衡，原因有以下几点：\n\n**1. 每个决策选项都带有显著的权衡**\n软件架构决策是这样一种决策：其中每一个选项都各有利弊、都有显"
     },
     {
       "id": "f06",
@@ -59,8 +59,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.6,
-      "answer_head": "根据资料，书中推荐微服务采用\"database-per-service\"（每服务一库）数据拓扑，原因和要点如下：\n\n**1. 这是微服务的标准数据库拓扑**\n书"
+      "seconds": 2.1,
+      "answer_head": "书推荐微服务采用“database per service”数据拓扑，主要有以下原因：\n\n**1. 控制变更（change control）**\n使用单体共享数"
     },
     {
       "id": "f07",
@@ -70,7 +70,7 @@
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
       "seconds": 1.7,
-      "answer_head": "**风险风暴不是一次性活动**（Risk storming is not a one-time process）[4]。\n\n书中的具体说明：\n\n1. **贯穿系"
+      "answer_head": "不是一次性活动。\n\n书中明确说：**风险风暴不是一次性过程（not a one-time process），它贯穿系统的整个生命周期持续进行**，团队要努力在风"
     },
     {
       "id": "f08",
@@ -79,8 +79,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.3,
-      "answer_head": "根据资料，事件驱动架构中避免事件丢失可采用以下办法：\n\n**总体思路：用事件转发（Event Forwarding）模式**\n图 15-20 中每一处可能发生数"
+      "seconds": 2.5,
+      "answer_head": "根据资料，事件驱动架构里避免数据丢失可以采用以下几种办法：\n\n**1. 用事件转发模式（Event Forwarding pattern）**\n数据丢失的各处问"
     },
     {
       "id": "g01",
@@ -89,8 +89,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.8,
-      "answer_head": "根据资料，游戏引擎的运行时游戏玩法基础系统（runtime gameplay foundation system）通常由以下主要子系统构成：\n\n书中提到，虽然每"
+      "seconds": 2.2,
+      "answer_head": "根据资料，游戏引擎的**运行时玩法基础系统（runtime gameplay foundation systems）** 通常提供以下主要子系统：\n\n1. **"
     },
     {
       "id": "g02",
@@ -99,8 +99,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 1.6,
-      "answer_head": "根据资料，游戏循环实现方式不当会产生以下副作用：\n\n**以让 Windows 消息优先于渲染和模拟的循环实现为例**：这样实现游戏循环的一个副作用是，**Win"
+      "seconds": 2.4,
+      "answer_head": "根据资料8.3节，游戏循环若实现不当会产生以下副作用：\n\n**以资料中给出的 Windows 消息循环实现为例：**\n这种实现方式的一个副作用是，**Windo"
     },
     {
       "id": "g03",
@@ -109,8 +109,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.8,
-      "answer_head": "根据资料，游戏引擎要专门处理字符串、而不直接依赖通用字符串类型（如 C++ 的 std::string 一类），主要有以下原因：\n\n**1. 字符串表面简单，实"
+      "seconds": 3.9,
+      "answer_head": "根据资料，游戏引擎要专门处理字符串，主要源于字符串本身的几个固有难题，以及性能和管理上的需求。std::string 能解决其中一部分，但不足以应对全部问题。\n"
     },
     {
       "id": "g04",
@@ -119,8 +119,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 1.7,
-      "answer_head": "根据资料1，对于**单个完整帧图像**应如何渲染，渲染管线通常定义/包含以下内容：\n\n- 一个对**顶点着色器、几何着色器和/或像素着色器程序的 \"main\" "
+      "seconds": 1.4,
+      "answer_head": "根据资料，渲染管线为「渲染单张全帧图像（a single full-frame image）」所定义的内容包括：对某个顶点着色器、几何着色器和/或像素着色器的「"
     },
     {
       "id": "g05",
@@ -129,18 +129,18 @@
       "passed": false,
       "note": "来源应为 kb，实为 model_knowledge",
       "source_type": "model_knowledge",
-      "seconds": 2.5,
-      "answer_head": "根据资料，环境映射（environment mapping）里找到某个表面点对应贴图纹素的方法是：\n\n**基本思路**：给定某个表面为点的位置和法线，先计算**"
+      "seconds": 1.5,
+      "answer_head": "根据资料，在环境映射中，需要根据该表面点的**法线方向**来计算贴图的 **UV 坐标**，从而找到对应纹素[1]。\n\n也就是说，贴图纹素不是按表面位置直接查表"
     },
     {
       "id": "g06",
       "category": "hit",
       "question": "OpenAL 在书里被提到时的许可状况是怎样的？",
       "passed": false,
-      "note": "来源应为 kb，实为 model_knowledge",
-      "source_type": "model_knowledge",
+      "note": "来源应为 kb，实为 prior_conversation",
+      "source_type": "prior_conversation",
       "seconds": 1.8,
-      "answer_head": "根据资料，OpenAL 在书中被“顺带一提”时，作者提到其许可状况**有些令人困惑（is somewhat confusing）**[3]。\n\n另外，资料还提到"
+      "answer_head": "根据你提供的资料，我无法回答这个问题。\n\n现有的【资料】只有一条既往对话答复，内容是关于**环境映射（environment mapping）**中如何根据表面"
     },
     {
       "id": "g07",
@@ -149,8 +149,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.3,
-      "answer_head": "当动画的时间缩放（time scale）设为 0.5 时，播放会发生的变化是：**动画看起来播放得比原速更慢**——以原速的一半回放。\n\n**原因与机制**：\n"
+      "seconds": 2.2,
+      "answer_head": "当时间缩放设为 0.5（即播放速率 R = 0.5）时，动画会以**正常速度的一半**播放（即变慢/半速播放）[1][2][3]。\n\n**原理说明：**\n- 时"
     },
     {
       "id": "b01",
@@ -159,8 +159,8 @@
       "passed": true,
       "note": "非库来源（model_knowledge）✓",
       "source_type": "model_knowledge",
-      "seconds": 2.3,
-      "answer_head": "基于通用知识（资料中未涉及量子计算，以下回答来自我的一般知识）：\n\n表面码（surface code）的纠错阈值取决于具体的噪声模型和译码算法，通常给出的是**"
+      "seconds": 2.1,
+      "answer_head": "根据通用知识（非资料，你本次未提供相关资料），表面码（surface code）的纠错阈值在理想化模型下大约为 **1%**：\n\n- 最常被引用的数值是 **≈"
     },
     {
       "id": "b02",
@@ -169,8 +169,8 @@
       "passed": true,
       "note": "非库来源（prior_conversation）✓",
       "source_type": "prior_conversation",
-      "seconds": 2.0,
-      "answer_head": "你提供的【资料1】内容是关于**表面码纠错阈值**的，以及标题提到\"大泥球\"（Big Ball of Mud）相关内容，**并未涉及 2026 年世界杯的举办城"
+      "seconds": 1.5,
+      "answer_head": "2026 年世界杯由美国、加拿大、墨西哥三国联合举办，共在 **16 座城市**举行：\n\n**美国（11 座）：**\n- 亚特兰大、波士顿（福克斯堡）、达拉斯（"
     },
     {
       "id": "b03",
@@ -179,18 +179,18 @@
       "passed": true,
       "note": "非库来源（model_knowledge）✓",
       "source_type": "model_knowledge",
-      "seconds": 5.9,
-      "answer_head": "基于通用知识回答（资料中未涉及 Rust 或无锁队列）。\n\n# Rust 无锁队列实现思路\n\nRust 实现无锁（lock-free）队列，**核心难点是内存回"
+      "seconds": 3.8,
+      "answer_head": "你本次没有提供相关资料，以下基于通用知识回答。\n\nRust 实现无锁队列，核心是**用原子操作（`Atomic*`）+ `UnsafeCell` 保护共享数据*"
     },
     {
       "id": "b04",
       "category": "fallback",
       "question": "正宗的法式可颂怎么做？",
       "passed": true,
-      "note": "非库来源（prior_conversation）✓",
-      "source_type": "prior_conversation",
-      "seconds": 5.4,
-      "answer_head": "你提供的【资料1】内容是关于 **Rust 无锁队列实现**的，**并未涉及法式可颂（croissant）的做法**，因此我无法依据该资料回答。\n\n以下基于通用"
+      "note": "非库来源（model_knowledge）✓",
+      "source_type": "model_knowledge",
+      "seconds": 4.2,
+      "answer_head": "你本次没有提供相关资料，以下基于通用知识回答。\n\n正宗法式可颂（croissant）的核心是**开酥**——用面团包裹黄油片，反复折叠擀压，形成上百层黄油与面皮"
     },
     {
       "id": "b05",
@@ -199,8 +199,8 @@
       "passed": true,
       "note": "非库来源（model_knowledge）✓",
       "source_type": "model_knowledge",
-      "seconds": 2.6,
-      "answer_head": "你提供的【资料1】内容是关于**法式可颂做法**的，以及标题提到\"大泥球\"（Big Ball of Mud）相关内容，**并未涉及木星卫星数量**，因此我无法依"
+      "seconds": 1.4,
+      "answer_head": "截至我的知识范围，木星已确认的卫星数量约为 **95 颗**（也有以 **97 颗** 计的报道，差异来自不同机构对星历与确认状态的更新节奏）。\n\n需要说明：你"
     },
     {
       "id": "r01",
@@ -209,8 +209,8 @@
       "passed": true,
       "note": "二次命中 prior_conversation ✓",
       "source_type": "prior_conversation",
-      "seconds": 1.5,
-      "answer_head": "**表面码（surface code）的纠错阈值约为 1% 这一量级** [1]。\n\n具体依噪声模型不同：\n- **电路级噪声（circuit-level no"
+      "seconds": 1.8,
+      "answer_head": "根据你提供的【资料1】（既往对话答复，仅供参考、可能过时或有误）：\n\n表面码的纠错阈值在理想化模型下大约为 **1%** [1]。\n\n- 最常被引用的数值是 *"
     },
     {
       "id": "r02",
@@ -219,8 +219,8 @@
       "passed": true,
       "note": "二次命中 prior_conversation ✓",
       "source_type": "prior_conversation",
-      "seconds": 4.3,
-      "answer_head": "**问的是如何用 Rust 实现无锁队列**，这在【资料1】中有完整回答，【资料2】无关。以下依据资料整理：\n\n## Rust 无锁队列实现思路\n\n核心难点是*"
+      "seconds": 2.6,
+      "answer_head": "根据你提供的【资料1】（既往对话答复，仅供参考、可能过时或有误），要点如下：\n\n**核心思路**：用原子操作（`Atomic*`）+ `UnsafeCell` "
     }
   ]
 }

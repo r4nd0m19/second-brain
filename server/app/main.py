@@ -11,10 +11,13 @@ from fastapi.staticfiles import StaticFiles
 from app.auth.middleware import ApiAuthMiddleware
 from app.auth.router import router_auth, router_me
 from app.auth.service import ensure_admin_user
+from app.capture.router import router as capture_router
+from app.capture.tokens_router import router as capture_tokens_router
 from app.chat.router import router as chat_router
 from app.conversations.router import router as conversations_router
 from app.documents.router import router as documents_router
 from app.ingestion.pipeline import mark_interrupted_documents
+from app.stats import router as stats_router
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web" / "out"
 
@@ -33,8 +36,11 @@ app.add_middleware(ApiAuthMiddleware)
 app.include_router(router_auth)
 app.include_router(router_me)
 app.include_router(documents_router)
+app.include_router(capture_router)
+app.include_router(capture_tokens_router)
 app.include_router(chat_router)
 app.include_router(conversations_router)
+app.include_router(stats_router)
 
 
 @app.get("/health")

@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     storage_dir: str = "./data/storage"
     max_upload_mb: int = 200
 
+    # 浏览器采集（F2；data-model.md / contracts/capture-api.md）
+    capture_max_snapshot_mb: int = 20  # 单页快照体积上限：超出降级为仅正文+元信息（FR-014）
+    capture_max_request_mb: int = 100  # 采集请求体天花板（防滥用；超出 413）
+    capture_rate_limit: int = 120  # 采集端点按凭据限速（每分钟请求数；超出 429）
+
     # 解析（PDF 快通道 / 深度解析；2026-10-01 事故复盘后调整，见 research.md R7）
     pdf_fast_parse: bool = True  # PDF 默认走文本层快通道（秒级、内存恒定）
     parse_deep_page_batch: int = 120  # 深度解析每批页数（内存受控）
@@ -54,6 +59,7 @@ class Settings(BaseSettings):
     retrieval_keyword_boost: float = 0.05  # 关键词命中的分数加成（T033：混合检索权重可配置）
     retrieval_keyword_terms: int = 4  # 查询拆词上限（T033）
     chat_history_limit: int = 10
+    timerange_max_years: int = 5  # 时间解析兜底的最大跨度（F2 US3；超出视为解析失败）
 
     # 模型计价（¥/百万 tokens；默认 deepseek-chat 空闲时段价，用于用量估算 FR-017）
     price_input_per_million: float = 1.1

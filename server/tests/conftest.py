@@ -30,6 +30,7 @@ async def engine():
     test_engine = create_async_engine(_db_url(TEST_DB))
     async with test_engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.run_sync(Base.metadata.create_all)
     yield test_engine
     async with test_engine.begin() as conn:

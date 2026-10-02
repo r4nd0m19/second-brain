@@ -1,9 +1,10 @@
-"""验收测试工具（T032）：极简 PDF 构造、上传/轮询/清理等。"""
+"""验收测试工具（T032）：极简 PDF 构造、上传/轮询/清理等；F2 增加采集相关助手。"""
 
 from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 
 import httpx
 
@@ -81,3 +82,58 @@ async def cleanup(client: httpx.AsyncClient, *, doc_id: str | None = None, conv_
         await client.delete(f"/api/documents/{doc_id}")
     if conv_id:
         await client.delete(f"/api/conversations/{conv_id}")
+
+
+# ── F2 浏览器采集（验收助手）──
+
+
+def make_html(title: str = "测试页", body: str = "测试内容") -> bytes:
+    """极简 HTML 快照（验收用）。"""
+    return (
+        f"<html><head><title>{title}</title></head><body><h1>{title}</h1><p>{body}</p></body></html>"
+    ).encode("utf-8")
+
+
+async def create_capture_token(client: httpx.AsyncClient, name: str | None = None) -> str:
+    """会话创建采集凭据，返回明文 token（show once）。"""
+    resp = await client.post(
+        "/api/capture/tokens", json={"name": name or f"acceptance-{uuid.uuid4().hex[:6]}"}
+    )
+    assert resp.status_code == 201, f"创建凭据失败 {resp.status_code}: {resp.text[:200]}"
+    return resp.json()["token"]
+
+
+async def capture_page(
+    client: httpx.AsyncClient,
+    token: str,
+    *,
+    url: str,
+    title: str,
+    text: str,
+    captured_at: str | None = None,
+    capture_id: str | None = None,
+) -> httpx.Response:
+    """模拟扩展上传一条网页（正文 + 快照，multipart 与 SingleFile 格式对齐）。"""
+    data: dict[str, str] = {"url": url, "title": title, "text": text}
+    if captured_at:
+        data["captured_at"] = captured_at
+    if capture_id:
+        data["capture_id"] = capture_id
+    return await client.post(
+        "/api/capture/pages",
+        headers={"Authorization": f"Bearer {token}"},
+        data=data,
+        files={"file": ("page.html", make_html(title), "text/html")},
+    )
+
+
+async def wait_browser_indexed(client: httpx.AsyncClient, doc_id: str, timeout: float = 180) -> dict:
+    """轮询浏览器来源列表直到条目 indexed/unparseable；返回该条目。"""
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < timeout:
+        docs = (await client.get("/api/documents", params={"source": "browser"})).json()
+        doc = next((d for d in docs if d["id"] == doc_id), None)
+        if doc and doc["status"] in {"indexed", "unparseable"}:
+            return doc
+        await asyncio.sleep(2)
+    raise AssertionError(f"等待浏览器条目入库超时（{timeout:.0f}s）：{doc_id}")

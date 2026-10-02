@@ -22,6 +22,7 @@ class DocumentStatus(str, enum.Enum):
 class SourceType(str, enum.Enum):
     upload = "upload"
     conversation = "conversation"
+    browser = "browser"
 
 
 class MessageRole(str, enum.Enum):
@@ -78,6 +79,21 @@ class Document(Base, OwnerMixin, TimestampMixin):
     parse_hint: Mapped[str | None] = mapped_column(
         sa.Text, nullable=True
     )  # 解析质量提示（如表格较多→建议深度解析；R7）
+
+    # ── 浏览器采集扩展列（F2；仅 source_type=browser 使用，全部 NULLABLE，见 data-model.md）──
+    source_url: Mapped[str | None] = mapped_column(sa.Text, nullable=True)  # 规范化 URL（去 fragment）
+    site_name: Mapped[str | None] = mapped_column(sa.Text, nullable=True)  # 域名（host）
+    first_captured_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    last_captured_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    visit_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # 访问次数（FR-005）
+    snapshot_path: Mapped[str | None] = mapped_column(sa.Text, nullable=True)  # {owner}/{doc}/snapshot.html.gz
+    snapshot_bytes: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)  # 压缩后字节数
+    snapshot_state: Mapped[str | None] = mapped_column(
+        sa.Text, nullable=True
+    )  # kept / skipped_oversize / skipped_error
+    capture_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )  # 最近一次采集事件幂等键（重试去重）
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
     )
@@ -86,6 +102,16 @@ class Document(Base, OwnerMixin, TimestampMixin):
 
     __table_args__ = (
         sa.Index("ix_documents_owner_sha256", "owner_user_id", "sha256"),
+        # F2：同 URL 一条目（per-owner；FR-005）
+        sa.Index(
+            "uq_documents_owner_source_url",
+            "owner_user_id",
+            "source_url",
+            unique=True,
+            postgresql_where=sa.text("source_type = 'browser'"),
+        ),
+        # F2：时间过滤检索 / "看过哪些"列表（R5）
+        sa.Index("ix_documents_source_last_captured", "source_type", "last_captured_at"),
     )
 
 
@@ -146,3 +172,22 @@ class Message(Base, OwnerMixin, TimestampMixin):
     usage: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # token 用量与费用估算（FR-017）
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+
+class CaptureToken(Base, TimestampMixin):
+    """采集凭据（F2 spec 实体 CaptureToken）：哈希存储、可吊销、scope 边界（research R2）。"""
+
+    __tablename__ = "capture_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(sa.Text, nullable=False)  # 设备/用途标识（如 "Windows Chrome"）
+    prefix: Mapped[str] = mapped_column(sa.Text, nullable=False)  # 明文前缀（列表识别用）
+    token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False, unique=True)  # sha256；明文仅创建时返回
+    scope: Mapped[str] = mapped_column(
+        sa.Text, nullable=False, default="capture", server_default="capture"
+    )  # 权限边界（为 B1 等未来采集器复用留路）
+    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)

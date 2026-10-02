@@ -71,6 +71,7 @@ async def ask(client: httpx.AsyncClient, question: str, conv_id: str | None) -> 
         "citations": meta.get("citations") or [],
         "answer": answer,
         "conversation_id": meta.get("conversation_id"),
+        "meta": meta,  # F2：完整 meta（含 time_range_label 等）
     }
 
 

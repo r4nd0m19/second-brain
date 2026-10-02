@@ -13,6 +13,7 @@ from __future__ import annotations
 import mimetypes
 import re
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -58,7 +59,7 @@ def _doc_dict(doc: Document) -> dict:
                 "total": int(match.group(2)),
                 "unit": match.group(3),
             }
-    return {
+    data = {
         "id": str(doc.id),
         "name": doc.name,
         "format": doc.format,
@@ -69,6 +70,18 @@ def _doc_dict(doc: Document) -> dict:
         "parse_hint": doc.parse_hint,
         "created_at": doc.created_at.isoformat() if doc.created_at else None,
     }
+    if doc.source_type is SourceType.browser:  # F2：网页来源附加字段
+        data.update(
+            {
+                "source_url": doc.source_url,
+                "site_name": doc.site_name,
+                "first_captured_at": doc.first_captured_at.isoformat() if doc.first_captured_at else None,
+                "last_captured_at": doc.last_captured_at.isoformat() if doc.last_captured_at else None,
+                "visit_count": doc.visit_count,
+                "snapshot": {"state": doc.snapshot_state or "none", "bytes": doc.snapshot_bytes},
+            }
+        )
+    return data
 
 
 @router.post("", status_code=201)
@@ -128,15 +141,20 @@ async def upload(
 
 @router.get("")
 async def list_documents(
+    source: str = "upload",
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
+    """source=upload（缺省，F1 行为不变）| browser（F2 浏览器来源；conversation 不列表）。"""
+    if source not in {"upload", "browser"}:
+        raise HTTPException(status_code=400, detail="source 仅支持 upload / browser")
+    source_type = SourceType.browser if source == "browser" else SourceType.upload
     rows = (
         await session.scalars(
             select(Document)
             .where(
                 Document.owner_user_id == user.id,
-                Document.source_type == SourceType.upload,  # FR-009：仅上传来源
+                Document.source_type == source_type,
             )
             .order_by(Document.created_at.desc())
         )
@@ -207,3 +225,65 @@ async def delete_document(
     )
     await session.delete(doc)  # chunks 由 FK CASCADE 清理
     await session.commit()
+
+
+# 快照回放：CSP sandbox + gzip 直出（F2 research R4；防归档页成为攻击面）
+_SNAPSHOT_CSP = (
+    "sandbox; default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; "
+    "img-src data:; font-src data:; media-src data:; frame-ancestors 'self'; "
+    "base-uri 'none'; form-action 'none'"
+)
+
+
+@router.get("/{document_id}/snapshot")
+async def get_snapshot(
+    document_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> FileResponse:
+    """浏览器来源的页面快照（前端以 `<iframe sandbox=\"\">` 嵌入）。"""
+    doc = await _get_owned_document(session, user, document_id)
+    if doc.snapshot_state != "kept" or not doc.snapshot_path:
+        raise HTTPException(status_code=404, detail="该条目没有快照")
+    path = get_blob_store().path(doc.snapshot_path)
+    if not path.exists():
+        raise HTTPException(status_code=410, detail="快照文件已不存在")
+    return FileResponse(
+        path,
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Content-Encoding": "gzip",  # 文件即 gzip 字节，原样直出
+            "Content-Security-Policy": _SNAPSHOT_CSP,
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, max-age=3600",
+        },
+    )
+
+
+@router.delete("", status_code=200)
+async def cleanup_documents(
+    source: str = "",
+    before: datetime | None = None,
+    after: datetime | None = None,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """按时间范围批量清理（F2 FR-007）：必须显式 source=browser，至少一个时间界。"""
+    if source != "browser":
+        raise HTTPException(status_code=400, detail="批量清理必须显式 source=browser")
+    if before is None and after is None:
+        raise HTTPException(status_code=400, detail="至少提供 before 或 after 之一")
+    conditions = [
+        Document.owner_user_id == user.id,
+        Document.source_type == SourceType.browser,
+    ]
+    if after is not None:
+        conditions.append(Document.last_captured_at >= after)
+    if before is not None:
+        conditions.append(Document.last_captured_at < before)
+    docs = (await session.scalars(select(Document).where(*conditions))).all()
+    for doc in docs:
+        await run_in_threadpool(get_blob_store().delete_document_dir, str(user.id), str(doc.id))
+        await session.delete(doc)  # chunks 由 FK CASCADE 清理
+    await session.commit()
+    return {"deleted": len(docs)}

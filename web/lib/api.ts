@@ -12,15 +12,44 @@ export type Doc = {
   progress?: { done: number; total: number; unit: string } | null;
   parse_hint: string | null;
   created_at: string | null;
+  // F2 浏览器来源附加字段（source=browser 时存在）
+  source_url?: string;
+  site_name?: string;
+  first_captured_at?: string;
+  last_captured_at?: string;
+  visit_count?: number;
+  snapshot?: { state: "kept" | "skipped_oversize" | "skipped_error" | "none"; bytes: number | null };
 };
 
 export type Citation = {
   document_id: string;
-  chunk_id: string;
+  chunk_id: string | null;
   document_name: string;
   heading_path: string | null;
   page: number | null;
-  quote: string;
+  quote: string | null;
+  /** 浏览器来源（F2）：原网页链接与浏览时间 */
+  source_url?: string | null;
+  last_captured_at?: string | null;
+};
+
+export type CaptureToken = {
+  id: string;
+  name: string;
+  prefix: string;
+  scope: string;
+  created_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+};
+
+export type StorageStats = {
+  database_bytes: number;
+  storage_bytes: number;
+  snapshot_bytes: number;
+  snapshot_files: number;
+  storage_files: number;
+  documents: Record<string, number>;
 };
 
 export type UsageInfo = {
@@ -81,7 +110,31 @@ export const api = {
 
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
 
-  listDocs: () => request<Doc[]>("/api/documents"),
+  listDocs: (source: "upload" | "browser" = "upload") =>
+    request<Doc[]>(`/api/documents?source=${source}`),
+
+  cleanupBrowserDocs: (range: { before?: string; after?: string }) => {
+    const query = new URLSearchParams({ source: "browser" });
+    if (range.before) query.set("before", range.before);
+    if (range.after) query.set("after", range.after);
+    return request<{ deleted: number }>(`/api/documents?${query.toString()}`, {
+      method: "DELETE",
+    });
+  },
+
+  storageStats: () => request<StorageStats>("/api/stats/storage"),
+
+  listCaptureTokens: () => request<CaptureToken[]>("/api/capture/tokens"),
+
+  createCaptureToken: (name: string) =>
+    request<{ id: string; name: string; prefix: string; token: string }>("/api/capture/tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+
+  revokeCaptureToken: (id: string) =>
+    request<void>(`/api/capture/tokens/${id}`, { method: "DELETE" }),
 
   getDoc: (id: string) => request<Doc>(`/api/documents/${id}`),
 

@@ -99,6 +99,7 @@ async def _stream(
                 "source_type": plan.source_type.value,
                 "citations": plan.citations,
                 "related_hints": plan.related_hints,
+                "time_range_label": plan.time_range_label,  # F2 US3：时间解析回显
             },
         )
 

@@ -19,7 +19,8 @@ from app.config import settings
 from app.db import SessionLocal
 from app.ingestion.embedding import EmbeddingError, get_embedding_provider
 from app.ingestion.parser import ParseInfraError, UnparseableError, iter_parse_document
-from app.models import Chunk, Document, DocumentStatus
+from app.ingestion.webpage import chunk_markdown
+from app.models import Chunk, Document, DocumentStatus, SourceType
 from app.storage import get_blob_store
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,53 @@ def _table_hint(meta: dict | None) -> str | None:
     return None
 
 
+async def _embed_and_store(session, doc: Document, drafts: list, meta: dict | None) -> None:
+    """embedding + 落块（上传与网页来源共用）；进度写 status_reason（x/y 块）。"""
+    total_blocks = len(drafts)
+    doc.status_reason = f"索引中 0/{total_blocks} 块"
+    await session.commit()
+
+    async def _on_embed_progress(done_blocks: int, total_count: int) -> None:
+        doc.status_reason = f"索引中 {done_blocks}/{total_count} 块"
+        await session.commit()
+
+    vectors = await get_embedding_provider().embed(
+        [d.content for d in drafts], on_progress=_on_embed_progress
+    )
+
+    for draft, vector in zip(drafts, vectors, strict=True):
+        session.add(
+            Chunk(
+                document_id=doc.id,
+                owner_user_id=doc.owner_user_id,
+                content=draft.content,
+                heading_path=draft.heading_path,
+                page=draft.page,
+                chapter=draft.chapter,
+                paragraph=draft.paragraph,
+                embedding=vector,
+            )
+        )
+    doc.status = DocumentStatus.indexed
+    doc.status_reason = None
+    doc.parse_hint = _table_hint(meta)
+    logger.info("ingest ok: %s chunks=%d", doc.name, len(drafts))
+
+
+async def _ingest_webpage(session, doc: Document) -> None:
+    """网页来源入库（F2）：content.md → Markdown 分块 → embedding；无正文时仅元信息。"""
+    path = get_blob_store().path(doc.original_path)
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    drafts = chunk_markdown(text)
+    if not drafts:
+        # 仅元信息条目（spec Edge Case）：无正文可索引，直接 indexed（0 chunks）
+        doc.status = DocumentStatus.indexed
+        doc.status_reason = "仅元信息（无正文可索引）"
+        logger.info("ingest browser metadata-only: %s", doc.name)
+        return
+    await _embed_and_store(session, doc, drafts, None)
+
+
 async def ingest_document(document_id: uuid.UUID, mode: str = "auto") -> None:
     async with SessionLocal() as session:
         doc = await session.get(Document, document_id)
@@ -55,6 +103,12 @@ async def ingest_document(document_id: uuid.UUID, mode: str = "auto") -> None:
         try:
             # 幂等：清理旧内容块（重试/重入库不产生重复）
             await session.execute(delete(Chunk).where(Chunk.document_id == doc.id))
+
+            if doc.source_type is SourceType.browser:
+                # 网页来源（F2）：正文已由扩展提取为 content.md，免 Docling 解析
+                await _ingest_webpage(session, doc)
+                await session.commit()
+                return
 
             path = get_blob_store().path(doc.original_path)
             gen = iter_parse_document(path, doc.format, mode)
@@ -75,35 +129,7 @@ async def ingest_document(document_id: uuid.UUID, mode: str = "auto") -> None:
 
             if not drafts:
                 raise UnparseableError("未提取到可检索内容")
-            total_blocks = len(drafts)
-            doc.status_reason = f"索引中 0/{total_blocks} 块"
-            await session.commit()
-
-            async def _on_embed_progress(done_blocks: int, total_count: int) -> None:
-                doc.status_reason = f"索引中 {done_blocks}/{total_count} 块"
-                await session.commit()
-
-            vectors = await get_embedding_provider().embed(
-                [d.content for d in drafts], on_progress=_on_embed_progress
-            )
-
-            for draft, vector in zip(drafts, vectors, strict=True):
-                session.add(
-                    Chunk(
-                        document_id=doc.id,
-                        owner_user_id=doc.owner_user_id,
-                        content=draft.content,
-                        heading_path=draft.heading_path,
-                        page=draft.page,
-                        chapter=draft.chapter,
-                        paragraph=draft.paragraph,
-                        embedding=vector,
-                    )
-                )
-            doc.status = DocumentStatus.indexed
-            doc.status_reason = None
-            doc.parse_hint = _table_hint(meta)
-            logger.info("ingest ok: %s chunks=%d mode=%s", doc.name, len(drafts), mode)
+            await _embed_and_store(session, doc, drafts, meta)
 
         except UnparseableError as exc:
             doc.status = DocumentStatus.unparseable

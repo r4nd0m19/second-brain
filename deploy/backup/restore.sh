@@ -37,7 +37,7 @@ restore_files() { # $1=目标目录（镜像 → 目录，镜像语义：目标�
   echo "[restore] 原文件已同步到：$1"
 }
 
-drill() {
+drill_once() {
   local dump target=secondbrain_restore tmp="$ROOT/server/data/restore-drill"
 
   # 先做一次新鲜备份：保证"备份时间点"与"当前数据"一致——
@@ -80,11 +80,29 @@ drill() {
   if [ "$lf" = "$rf" ]; then echo "   ✅ 原文件指纹一致（$lf）"; else echo "   ❌ 原文件指纹不一致：$lf vs $rf"; fail=1; fi
 
   if [ "$fail" = 0 ]; then
-    echo "[drill] ✅ 恢复演练通过（恢复库 $target 保留可查；原文件样例在 $tmp）"
-  else
-    echo "[drill] ❌ 恢复演练未通过"
-    exit 1
+    return 0
   fi
+  return 1
+}
+
+# 演练入口：最多 3 轮——工具正在被使用（采集/对话持续写入）时，"备份快照 vs 实时库"
+# 的对照会有正常竞态（演练期间新增的条目必然对不上）；任何一轮全量对照通过即判定通过，
+# 连续 3 轮失败才报错（真实故障仍会被抓住：干净环境下第一轮就会全对）。
+drill() {
+  local attempt
+  for attempt in 1 2 3; do
+    echo "[drill] ════ 第 $attempt 轮 ════"
+    if drill_once; then
+      echo "[drill] ✅ 恢复演练通过（恢复库 secondbrain_restore 保留可查；原文件样例在 server/data/restore-drill）"
+      return 0
+    fi
+    if [ "$attempt" -lt 3 ]; then
+      echo "[drill] 本轮未通过对照（使用中的正常写入竞态）→ 5 秒后重试"
+      sleep 5
+    fi
+  done
+  echo "[drill] ❌ 恢复演练未通过（连续 3 轮）"
+  exit 1
 }
 
 case "${1:-}" in

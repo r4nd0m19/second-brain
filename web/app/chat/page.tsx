@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { api, Citation, Conversation, UsageInfo } from "@/lib/api";
 
@@ -12,6 +14,7 @@ type ChatMsg = {
   citations?: Citation[];
   related_hints?: Citation[];
   usage?: UsageInfo;
+  time_range_label?: string | null;
   error?: string;
   streaming?: boolean;
 };
@@ -34,28 +37,67 @@ function lastContent(messages: ChatMsg[]): string {
 }
 
 function citationHref(c: Citation): string {
+  if (c.source_url) return `/snap/?id=${c.document_id}&from=chat`; // 网页来源 → 快照回放页（返回时回对话）
   const params = new URLSearchParams({ id: c.document_id, from: "chat" });
   if (c.page) params.set("page", String(c.page));
-  const snippet = c.quote.replace(/\s+/g, " ").trim().slice(0, 200);
+  const snippet = (c.quote ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
   if (snippet) params.set("q", snippet);
   if (c.heading_path) params.set("h", c.heading_path);
   return `/view/?${params.toString()}`;
 }
 
-/** 把回答正文中的 [N] 编号渲染为可点击的跳转按钮（对应 citations[N-1]，无对应则保留原文）。 */
-function renderWithCitations(content: string, citations?: Citation[]): React.ReactNode {
-  if (!citations || citations.length === 0) return content;
-  return content.split(/(\[\d+\])/g).map((part, i) => {
-    const m = /^\[(\d+)\]$/.exec(part);
-    if (!m) return part;
-    const c = citations[Number(m[1]) - 1];
-    if (!c) return part;
-    return (
-      <Link key={i} className="citation-chip" href={citationHref(c)} title={c.document_name}>
-        {part}
-      </Link>
-    );
+function fmtCitationTime(iso?: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
+}
+
+const CITATION_SCHEME = "citation:";
+
+/** 回答正文按 Markdown 渲染；[N] 编号映射为可点击引用（对应 citations[N-1]，无对应则保留原文）。 */
+function renderAssistant(content: string, citations?: Citation[]): React.ReactNode {
+  const prepared =
+    citations && citations.length > 0
+      ? content.replace(/\[(\d+)\]/g, (full, n: string) =>
+          citations[Number(n) - 1] ? `[${n}](${CITATION_SCHEME}${n})` : full
+        )
+      : content;
+  return (
+    <div className="md">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }) => {
+            if (href?.startsWith(CITATION_SCHEME)) {
+              const citation = citations?.[Number(href.slice(CITATION_SCHEME.length)) - 1];
+              if (citation) {
+                return (
+                  <Link
+                    className="citation-chip"
+                    href={citationHref(citation)}
+                    title={citation.document_name}
+                  >
+                    {children}
+                  </Link>
+                );
+              }
+            }
+            return (
+              <a href={href} target="_blank" rel="noreferrer">
+                {children}
+              </a>
+            );
+          },
+        }}
+      >
+        {prepared}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 function CitationList({
@@ -72,13 +114,16 @@ function CitationList({
     <div className="citation">
       <div className="muted">{label}</div>
       {items.map((c, i) => (
-        <details key={c.chunk_id}>
+        <details key={c.chunk_id ?? `citation-${i}`}>
           <summary>
             【{i + 1}】{c.document_name}
+            {c.source_url
+              ? ` · 网页${c.last_captured_at ? ` · 浏览于 ${fmtCitationTime(c.last_captured_at)}` : ""}`
+              : ""}
             {c.heading_path ? ` · ${c.heading_path}` : ""}
             {c.page ? `（第 ${c.page} 页）` : ""}
           </summary>
-          <blockquote className="muted">“{c.quote}”</blockquote>
+          {c.quote ? <blockquote className="muted">“{c.quote}”</blockquote> : null}
           {showJump && (
             <div style={{ marginTop: 4 }}>
               <Link
@@ -86,8 +131,19 @@ function CitationList({
                 style={{ fontSize: 12, padding: "3px 10px" }}
                 href={citationHref(c)}
               >
-                ↗ 跳到原文位置
+                {c.source_url ? "🖼 查看快照" : "↗ 跳到原文位置"}
               </Link>
+              {c.source_url && (
+                <a
+                  className="btn"
+                  style={{ fontSize: 12, padding: "3px 10px", marginLeft: 8 }}
+                  href={c.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  ↗ 打开原文
+                </a>
+              )}
             </div>
           )}
         </details>
@@ -227,6 +283,7 @@ export default function ChatPage() {
                 source_type: payload.source_type,
                 citations: payload.citations ?? [],
                 related_hints: payload.related_hints ?? [],
+                time_range_label: payload.time_range_label ?? null,
               }),
             );
           } else if (event === "token") {
@@ -310,7 +367,11 @@ export default function ChatPage() {
               className={`bubble ${msg.role === "user" ? "bubble-user" : "bubble-assistant"}`}
             >
               <div>
-                {msg.content ? renderWithCitations(msg.content, msg.citations) : ""}
+                {msg.content
+                  ? msg.role === "assistant"
+                    ? renderAssistant(msg.content, msg.citations)
+                    : msg.content
+                  : ""}
                 {!msg.content && msg.streaming ? "…" : ""}
               </div>
               {msg.role === "assistant" && (msg.source_type || msg.error) && (
@@ -319,6 +380,9 @@ export default function ChatPage() {
                     ? `⚠️ ${msg.error}`
                     : `来源：${SOURCE_LABEL[msg.source_type ?? ""] ?? msg.source_type}`}
                 </div>
+              )}
+              {msg.role === "assistant" && msg.time_range_label && (
+                <div className="bubble-meta">🕐 检索时间范围：{msg.time_range_label}</div>
               )}
               {msg.role === "assistant" && msg.usage && (
                 <div className="bubble-meta">

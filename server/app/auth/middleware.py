@@ -2,14 +2,19 @@
 
 规则：
 - `/api/*` 全部需要有效会话，除 `/api/auth/login`
+- 采集 Bearer 端点（F2：`/api/capture/pages`、`/api/capture/ping`）由路由层
+  `require_capture_token` 校验，不走会话守卫（扩展无 Cookie）
 - 非 /api 路径（静态 PWA、/health）放行
 """
 
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from app.auth.security import COOKIE_NAME, read_session
 
 _ALLOW_PATHS = {"/api/auth/login"}
+
+# 采集端点（F2）：会话守卫豁免，由 require_capture_token 做 Bearer 认证
+_CAPTURE_BEARER_PATHS = {"/api/capture/pages", "/api/capture/ping"}
 
 
 class ApiAuthMiddleware:
@@ -21,7 +26,20 @@ class ApiAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if scope["path"] in _ALLOW_PATHS:
+        if scope["path"] in _ALLOW_PATHS or scope["path"] in _CAPTURE_BEARER_PATHS:
+            # 开发期兜底：扩展 SW 声明 host_permissions 时不会发预检；
+            # 若权限被撤销等导致转为普通跨域，给出最小预检响应（真实请求仍需 Bearer）。
+            if scope["method"] == "OPTIONS" and scope["path"] in _CAPTURE_BEARER_PATHS:
+                response = Response(
+                    status_code=204,
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, GET",
+                        "Access-Control-Allow-Headers": "authorization, content-type",
+                    },
+                )
+                await response(scope, receive, send)
+                return
             await self.app(scope, receive, send)
             return
 

@@ -89,6 +89,15 @@ class OpenAICompatLLM:
                         yield {"type": "token", "text": delta}
 
 
+async def complete_chat(client: LLMClient, messages: list[ChatMessage]) -> str:
+    """收集流式输出为完整文本（时间解析等结构化小任务用；失败抛 LLMError）。"""
+    parts: list[str] = []
+    async for event in client.stream_chat(messages):
+        if event.get("type") == "token":
+            parts.append(event.get("text", ""))
+    return "".join(parts)
+
+
 def estimate_cost_cny(usage: dict) -> float:
     """按配置单价估算费用（.env 可改；默认 deepseek 空闲时段价）。"""
     return (

@@ -16,6 +16,18 @@
 | 8 已删资料引用提示 | ⏭️ 前端手动（view 页 404 分支已实现） | — |
 | 9 备份恢复演练（SC-008） | ✅ | `test_sc008_backup.py` |
 
+## F2 浏览器采集（`test_capture_scenarios.py`）
+
+| 场景 | 自动化 | 位置 |
+|------|--------|------|
+| 采集 → 问答命中且出处含链接/时间（SC-001） | ✅ | `test_sc001_capture_ask_and_replay` |
+| 快照回放（CSP sandbox + gzip 直出，SC-008 原型） | ✅ | 同上 |
+| 恶意 HTML 回放被沙箱隔离（T043 安全复核） | ✅ | `test_sc008_replay_hostile_html_is_contained` |
+| 黑名单域名服务端零行（SC-003 服务端语义） | ✅ | `test_sc003_blocked_domain_zero_rows` |
+| 删除后检索/出处同步消失、快照 404（SC-004） | ✅ | `test_sc004_delete_removes_from_recall` |
+| 时间清单 + 语义×时间组合检索（SC-007，含 meta 时间范围回显） | ✅ | `test_sc007_time_lookup_list_and_search` |
+| 扩展自动触发 / 黑名单源头拦截 / 断网补传 / 无感（SC-005/006） | ⏭️ Windows 真机手动（T045） | quickstart §2–6 |
+
 ## 运行
 
 ```bash

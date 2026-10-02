@@ -1,6 +1,7 @@
 from app.models.base import Base, OwnerMixin, TimestampMixin
 from app.models.entities import (
     AnswerSource,
+    CaptureToken,
     Chunk,
     Conversation,
     Document,
@@ -14,6 +15,7 @@ from app.models.entities import (
 __all__ = [
     "AnswerSource",
     "Base",
+    "CaptureToken",
     "Chunk",
     "Conversation",
     "Document",
