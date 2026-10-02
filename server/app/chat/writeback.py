@@ -73,6 +73,32 @@ async def writeback_exchange(
         logger.info("writeback ok: conv=%s round=%d", conversation_id, round_no + 1)
 
 
+_NO_INFO_MARKERS = (
+    "找不到",
+    "没有找到",
+    "未找到",
+    "无法找到",
+    "没有看到你",
+    "看不到你",
+    "无法看到",
+    "无法确认你",
+    "没有访问你的",
+    "没有你的",
+    "没有您的",
+    "没有关于你",
+    "没有关于您",
+)
+
+
+def is_no_info_answer(answer: str) -> bool:
+    """「找不到 / 无权限」类失败回答——不回写（防自污染，2026-10-02 实测）。
+
+    这类回答一旦回写，会成为同类问题检索的最高分命中
+    （如 jasonL 查询被「没有找到 jasonL」的回答 0.73 顶置，形成闭环误导）。
+    """
+    return any(marker in answer for marker in _NO_INFO_MARKERS)
+
+
 def enqueue_writeback(
     owner_id: uuid.UUID,
     conversation_id: uuid.UUID,

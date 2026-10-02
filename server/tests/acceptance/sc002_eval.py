@@ -92,7 +92,8 @@ def score(entry: dict, result: dict) -> tuple[bool, str]:
             return False, f"回答未含关键词 {kws}"
         return True, "kb ＋ 出处匹配"
     if category == "fallback":
-        if result["source_type"] in {"model_knowledge", "prior_conversation"}:
+        # F4 之后：外部/实时类问题联网作答（web）即预期行为（2026-10-02）
+        if result["source_type"] in {"model_knowledge", "prior_conversation", "web"}:
             return True, f"非库来源（{result['source_type']}）✓"
         return False, f"应为兜底，实为 {result['source_type']}"
     if category == "recall":

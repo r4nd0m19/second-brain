@@ -14,7 +14,7 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 @pytest.mark.acceptance
 async def test_sc002_sample_questions(client):
     """运行样例题集评测；要求命中率 ≥80%（脚本退出码 0）。"""
-    docs = (await client.get("/api/documents")).json()
+    docs = (await client.get("/api/documents", params={"page_size": 100})).json()["items"]
     indexed = [d for d in docs if d["status"] == "indexed"]
     if len(indexed) < 2:
         pytest.skip("库中已入库资料不足 2 份——先导入样本书再跑本题")

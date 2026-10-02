@@ -25,6 +25,27 @@ from app.models import Chunk, Document, SourceType
 
 QUOTE_MAX = 300  # 引用片段长度上限（data-model 约定）
 
+_CJK_RE = re.compile(r"[一-鿿]")
+
+
+def _ascii_word_pattern(term: str) -> str:
+    """ASCII 词项 → 词边界 + 词内弹性分隔（人名连写/分写互通：jasonL ↔ "Jason L." / "jason-l"）。
+
+    2026-10-02 实测：用户「我是jasonL」无法命中资料中的 "Jason L."（空格/点分隔）。
+    词边界（防 face↔interface）保留，仅在词内字符之间允许分隔符；仅作用于候选块，无性能顾虑。
+    """
+    chars = [ch for ch in term if ch.isalnum()]
+    glued = r"[\s.\-–—_]*".join(re.escape(ch) for ch in chars)
+    return rf"\m{glued}\M"
+
+
+def _keyword_condition(term: str):
+    """关键词匹配条件：中文用子串（ILIKE）；ASCII 词用词边界+弹性分隔（2026-10-02）。"""
+    if _CJK_RE.search(term):
+        return or_(Chunk.content.ilike(f"%{term}%"), Document.name.ilike(f"%{term}%"))
+    pattern = _ascii_word_pattern(term)  # ARE 词边界；re.escape 防正则元字符
+    return or_(Chunk.content.op("~*")(pattern), Document.name.op("~*")(pattern))
+
 
 @dataclass
 class RetrievedChunk:
@@ -39,6 +60,8 @@ class RetrievedChunk:
     # 浏览器来源（F2）：出处附链接与浏览时间（FR-003）
     source_url: str | None = None
     last_captured_at: datetime | None = None
+    # 对话回写来源：所属会话（前端「回到原对话」跳转用）
+    conversation_id: uuid.UUID | None = None
 
     def to_citation(self) -> dict:
         """出处三要素（FR-006）：资料名 + 位置 + 原文引用片段；网页来源附加链接与时间。"""
@@ -55,15 +78,19 @@ class RetrievedChunk:
             citation["last_captured_at"] = (
                 self.last_captured_at.isoformat() if self.last_captured_at else None
             )
+        if self.conversation_id is not None:  # 对话回写来源：回到原对话
+            citation["conversation_id"] = str(self.conversation_id)
         return citation
 
 
 _ASCII_TERM_RE = re.compile(r"[A-Za-z][A-Za-z0-9_.\-]{2,}")
+_WORD_CHAR_RE = re.compile(r"[一-鿿A-Za-z]")  # 词项须含中文或字母（纯数字不参与关键词加成）
 
 
 def _terms(query: str, limit: int) -> list[str]:
     parts = re.split(r"[\s，。？！,.?!;；:：、（）()【】\[\]]+", query)
-    terms = [p for p in parts if len(p) >= 2]
+    # 纯数字/符号词项剔除（2026-10-02 实测："37" 词界命中 SVG 坐标 "37.8399" 造成假性加成）
+    terms = [p for p in parts if len(p) >= 2 and _WORD_CHAR_RE.search(p)]
     # 中英混排：英文词单独成项（实测 2026-10-02：'…在upwork上面的资料' 整句成项，
     # 导致 "upwork" 未参与关键词匹配；'Next.js' 这类技术名词同理）
     seen = {t.lower() for t in terms}
@@ -77,9 +104,11 @@ def _terms(query: str, limit: int) -> list[str]:
 _pgvector_iterative: bool | None = None
 
 
-async def _enable_iterative_scan(session: AsyncSession) -> None:
-    """pgvector ≥0.8 时启用迭代扫描（过滤后取 top-k 防 overfiltering；R5）。
+async def _tune_ann_scan(session: AsyncSession, *, filtered: bool) -> None:
+    """pgvector ≥0.8：统一提升 ef_search（召回余量）+ 带过滤时启用迭代扫描（R5）。
 
+    2026-10-02 实测：HNSW 在高删改量下召回退化（默认 ef_search=40 时曾丢失精确最近邻，
+    升高后恢复；彻底恢复需 REINDEX，见 001 research R16）。ef_search 取可配置值。
     版本探测结果进程内缓存；老版本/无扩展时静默跳过（退化为普通过滤）。
     """
     global _pgvector_iterative
@@ -94,8 +123,11 @@ async def _enable_iterative_scan(session: AsyncSession) -> None:
         except ValueError:
             _pgvector_iterative = False
     if _pgvector_iterative:
-        await session.execute(text("SET LOCAL hnsw.iterative_scan = relaxed_order"))
-        await session.execute(text("SET LOCAL hnsw.ef_search = 100"))
+        await session.execute(
+            text(f"SET LOCAL hnsw.ef_search = {int(settings.retrieval_ef_search)}")
+        )
+        if filtered:
+            await session.execute(text("SET LOCAL hnsw.iterative_scan = relaxed_order"))
 
 
 def _time_conditions(
@@ -121,8 +153,7 @@ async def hybrid_search(
     query_vec = (await provider.embed([query]))[0]
     top_k = settings.retrieval_top_k
     time_conditions = _time_conditions(captured_after, captured_before)
-    if time_conditions:
-        await _enable_iterative_scan(session)
+    await _tune_ann_scan(session, filtered=bool(time_conditions))
 
     distance = Chunk.embedding.cosine_distance(query_vec)
     vector_rows = (
@@ -133,18 +164,19 @@ async def hybrid_search(
                 Document.source_type,
                 Document.source_url,
                 Document.last_captured_at,
+                Document.conversation_id,
                 distance.label("distance"),
             )
             .join(Document, Chunk.document_id == Document.id)
             .where(Chunk.owner_user_id == owner_user_id, *time_conditions)
             .order_by(distance)
-            .limit(top_k * 2)
+            .limit(top_k * 3)  # 候选池 ≈3×结果数（融合惯例，R15）
         )
     ).all()
 
     found: dict[uuid.UUID, RetrievedChunk] = {}
     scores: dict[uuid.UUID, float] = {}
-    for chunk, doc_name, doc_source, doc_url, doc_captured, dist in vector_rows:
+    for chunk, doc_name, doc_source, doc_url, doc_captured, doc_conv, dist in vector_rows:
         found[chunk.id] = RetrievedChunk(
             chunk_id=chunk.id,
             document_id=chunk.document_id,
@@ -156,45 +188,27 @@ async def hybrid_search(
             score=0.0,
             source_url=doc_url,
             last_captured_at=doc_captured,
+            conversation_id=doc_conv,
         )
         scores[chunk.id] = 1.0 - float(dist)  # 余弦相似度
 
     terms = _terms(query, settings.retrieval_keyword_terms)
-    if terms:
-        keyword_rows = (
-            await session.execute(
-                select(Chunk, Document.name, Document.source_type, Document.source_url, Document.last_captured_at)
-                .join(Document, Chunk.document_id == Document.id)
-                .where(
-                    Chunk.owner_user_id == owner_user_id,
-                    # 正文或**网页标题（document.name）**命中均计入
-                    # （实测 2026-10-02：SPA 页正文可能只有导航，标题才是最佳信号）
-                    or_(
-                        *[
-                            or_(Chunk.content.ilike(f"%{t}%"), Document.name.ilike(f"%{t}%"))
-                            for t in terms
-                        ]
-                    ),
-                    *time_conditions,
-                )
-                .limit(top_k)
+    if terms and found:
+        # 关键词加成**仅作用于向量候选**（融合加权，R15）：不独立召回——
+        # 此前实现对"以文档名命中"的大文档只随机加成 top_k 个子集（无排序 + LIMIT），
+        # 同等相关块时有时无；纯关键词块得分 ≤boost 远低于弱阈值，独立召回本就无实效。
+        keyword_hit_ids = await session.scalars(
+            select(Chunk.id)
+            .join(Document, Chunk.document_id == Document.id)
+            .where(
+                Chunk.id.in_(list(found.keys())),
+                # 正文或**网页标题（document.name）**命中均计入
+                # （实测 2026-10-02：SPA 页正文可能只有导航，标题才是最佳信号）
+                or_(*[_keyword_condition(t) for t in terms]),
             )
-        ).all()
-        for chunk, doc_name, doc_source, doc_url, doc_captured in keyword_rows:  # 关键词加成
-            scores[chunk.id] = scores.get(chunk.id, 0.0) + settings.retrieval_keyword_boost
-            if chunk.id not in found:
-                found[chunk.id] = RetrievedChunk(
-                    chunk_id=chunk.id,
-                    document_id=chunk.document_id,
-                    document_name=doc_name,
-                    source_type=doc_source,
-                    content=chunk.content,
-                    heading_path=chunk.heading_path,
-                    page=chunk.page,
-                    score=0.0,
-                    source_url=doc_url,
-                    last_captured_at=doc_captured,
-                )
+        )
+        for chunk_id in keyword_hit_ids:  # 关键词加成
+            scores[chunk_id] = scores.get(chunk_id, 0.0) + settings.retrieval_keyword_boost
 
     ranked = sorted(found.values(), key=lambda r: scores[r.chunk_id], reverse=True)[:top_k]
     for item in ranked:

@@ -13,6 +13,7 @@ import uuid
 from collections.abc import Iterator
 
 from sqlalchemy import delete, update
+from sqlalchemy.orm.exc import StaleDataError
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
@@ -147,12 +148,22 @@ async def ingest_document(document_id: uuid.UUID, mode: str = "auto") -> None:
             doc.status_reason = f"embedding 服务失败，可重试：{exc}"
             logger.warning("ingest embedding error: %s", exc)
 
+        except StaleDataError:
+            # 文档在解析/嵌入期间被删除（如会话清理级联）——静默结束（2026-10-02 竞态实测）
+            await session.rollback()
+            logger.info("ingest skipped: 文档已删除 %s", document_id)
+            return
+
         except Exception as exc:  # 未预期错误：保留可重试状态
             logger.exception("ingest unexpected error: %s", document_id)
             doc.status = DocumentStatus.processing
             doc.status_reason = f"未预期错误，可重试：{exc}"
 
-        await session.commit()
+        try:
+            await session.commit()
+        except StaleDataError:  # 状态更新期间文档被删除（同一竞态的收尾窗口）
+            await session.rollback()
+            logger.info("ingest skipped: 文档已删除 %s", document_id)
 
 
 async def mark_interrupted_documents() -> None:
