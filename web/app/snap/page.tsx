@@ -5,11 +5,18 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { api, ApiError, Doc } from "@/lib/api";
+import ThemeToggle from "../_components/theme-toggle";
 
 function SnapInner() {
   const params = useSearchParams();
   const id = params.get("id") ?? "";
-  const fromChat = params.get("from") === "chat";
+  const from = params.get("from");
+  const back =
+    from === "chat"
+      ? { href: "/chat/", label: "返回对话" }
+      : from === "browser"
+        ? { href: "/?source=browser", label: "返回浏览记录" }
+        : { href: "/", label: "返回资料库" };
   const [doc, setDoc] = useState<Doc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,13 +54,10 @@ function SnapInner() {
           )}
         </div>
         <div>
-          <Link
-            className="btn"
-            style={{ marginRight: 8, textDecoration: "none" }}
-            href={fromChat ? "/chat/" : "/"}
-          >
-            {fromChat ? "返回对话" : "返回资料库"}
+          <Link className="btn" style={{ marginRight: 8 }} href={back.href}>
+            {back.label}
           </Link>
+          <ThemeToggle />
         </div>
       </div>
       {error && <p className="error">{error}</p>}

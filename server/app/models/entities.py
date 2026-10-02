@@ -23,6 +23,7 @@ class SourceType(str, enum.Enum):
     upload = "upload"
     conversation = "conversation"
     browser = "browser"
+    note = "note"  # MCP「写入回存」笔记（2026-10-02）：资料级文档，标准入库管线
 
 
 class MessageRole(str, enum.Enum):
@@ -34,6 +35,7 @@ class AnswerSource(str, enum.Enum):
     kb = "kb"
     model_knowledge = "model_knowledge"
     prior_conversation = "prior_conversation"
+    web = "web"  # 联网检索作答（F4，2026-10-02）：依据即时搜索结果
 
 
 def _enum(enum_cls) -> sa.Enum:
@@ -172,6 +174,15 @@ class Message(Base, OwnerMixin, TimestampMixin):
     usage: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # token 用量与费用估算（FR-017）
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+    __table_args__ = (
+        sa.Index(
+            "ix_messages_content_trgm",
+            "content",
+            postgresql_using="gin",
+            postgresql_ops={"content": "gin_trgm_ops"},
+        ),  # 对话全文搜索（2026-10-02；pg_trgm，与 chunks 同机制）
+    )
 
 
 class CaptureToken(Base, TimestampMixin):

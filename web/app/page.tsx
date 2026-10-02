@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { api, ApiError, CaptureToken, Doc, formatSize, StorageStats } from "@/lib/api";
+import { highlight } from "@/lib/highlight";
+import ThemeToggle from "./_components/theme-toggle";
+import { ListToolbar, Pager, SortOption } from "./_components/list-controls";
 
 const STATUS_LABEL: Record<Doc["status"], string> = {
   processing: "处理中",
@@ -12,6 +16,36 @@ const STATUS_LABEL: Record<Doc["status"], string> = {
 };
 
 type Source = "upload" | "browser";
+
+type ListState = { q: string; sort: string; page: number };
+
+/** 排序字段白名单（与后端 /api/documents sort 参数对应；dir = 该字段的自然默认方向） */
+const SORT_OPTIONS: Record<Source, SortOption[]> = {
+  upload: [
+    { value: "created_at", label: "上传时间", dir: "desc" },
+    { value: "name", label: "文件名", dir: "asc" },
+    { value: "size", label: "大小", dir: "desc" },
+  ],
+  browser: [
+    { value: "last_captured_at", label: "最近浏览", dir: "desc" },
+    { value: "first_captured_at", label: "首次采集", dir: "desc" },
+    { value: "visit_count", label: "浏览次数", dir: "desc" },
+    { value: "name", label: "标题", dir: "asc" },
+    { value: "size", label: "大小", dir: "desc" },
+  ],
+};
+
+const DEFAULT_SORT: Record<Source, string> = {
+  upload: "-created_at",
+  browser: "-last_captured_at",
+};
+
+/** 凭据 scope 展示文案（capture=采集写入；read=只读；write=只读+写入回存） */
+const TOKEN_SCOPE_LABEL: Record<string, string> = {
+  capture: "采集",
+  read: "只读",
+  write: "只读+写入",
+};
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
@@ -41,19 +75,50 @@ function fmtTime(iso?: string | null): string {
 }
 
 export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="container">
+          <p className="muted">加载中…</p>
+        </main>
+      }
+    >
+      <HomeInner />
+    </Suspense>
+  );
+}
+
+function HomeInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState<string | null>(null);
-  const [source, setSource] = useState<Source>("upload");
+  const [source, setSource] = useState<Source>(
+    searchParams.get("source") === "browser" ? "browser" : "upload"
+  );
   const [docs, setDocs] = useState<Doc[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<{ name: string; pct: number | null } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const sourceRef = useRef<Source>("upload");
+
+  // 列表查询（分页/搜索/排序）：状态进 URL（?q=&sort=&page=），刷新/后退/从详情页返回都不丢
+  const [qInput, setQInput] = useState(searchParams.get("q") ?? "");
+  const [list, setList] = useState<ListState>(() => ({
+    q: searchParams.get("q") ?? "",
+    sort: searchParams.get("sort") ?? DEFAULT_SORT[source],
+    page: Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1),
+  }));
+  const [pager, setPager] = useState({ total: 0, pageSize: 20 });
+  const [listLoading, setListLoading] = useState(false);
+  const reqSeq = useRef(0);
 
   // 采集凭据（F2）
   const [tokens, setTokens] = useState<CaptureToken[]>([]);
   const [tokenName, setTokenName] = useState("");
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [tokenOpen, setTokenOpen] = useState(false); // 凭据区折叠（日常不占版面；创建时自动展开）
+  const [showRevoked, setShowRevoked] = useState(false); // 已吊销默认隐藏
+  const [tokenScope, setTokenScope] = useState<"capture" | "read" | "write">("capture"); // 新凭据用途
 
   // 按时间清理（F2 FR-007）
   const [cleanupAfter, setCleanupAfter] = useState("");
@@ -62,16 +127,100 @@ export default function HomePage() {
   // 存储占用（试用需求）
   const [storage, setStorage] = useState<StorageStats | null>(null);
 
-  const refresh = useCallback(async (which: Source) => {
+  // 标签状态跟 URL 走（?source=）：切换时重置查询（各来源独立默认排序）
+  function switchSource(next: Source) {
+    if (next === source) return;
     try {
-      const list = await api.listDocs(which);
-      if (sourceRef.current === which) setDocs(list); // 丢弃过期响应
+      sessionStorage.removeItem("sb-lib-scroll"); // 手动切页签不恢复旧列表状态
+    } catch {
+      /* 忽略 */
+    }
+    setSource(next);
+    setQInput("");
+    setList({ q: "", sort: DEFAULT_SORT[next], page: 1 });
+    setDocs([]);
+  }
+
+  function changeSort(value: string) {
+    setList((s) => ({ ...s, sort: value, page: 1 }));
+  }
+
+  function goPage(p: number) {
+    setList((s) => ({ ...s, page: p }));
+    window.scrollTo({ top: 0 });
+  }
+
+  // 列表状态记忆：跳去快照/阅读器再返回时恢复（搜索/排序/页码 + 滚动位置）
+  function rememberListScroll() {
+    try {
+      sessionStorage.setItem(
+        "sb-lib-scroll",
+        JSON.stringify({ source, top: window.scrollY, q: list.q, sort: list.sort, page: list.page }),
+      );
+    } catch {
+      /* 忽略 */
+    }
+  }
+
+  // 从快照/阅读器返回：URL 未显式带查询参数时，恢复离开前的列表状态
+  useEffect(() => {
+    if (searchParams.get("q") || searchParams.get("sort") || searchParams.get("page")) return;
+    try {
+      const saved = sessionStorage.getItem("sb-lib-scroll");
+      if (!saved) return;
+      const rec = JSON.parse(saved) as { source?: Source; q?: string; sort?: string; page?: number };
+      if (rec.source !== source) return;
+      setQInput(rec.q ?? "");
+      setList({ q: rec.q ?? "", sort: rec.sort ?? DEFAULT_SORT[source], page: rec.page ?? 1 });
+    } catch {
+      /* 忽略 */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 列表状态 → URL（replace：不产生历史条目；刷新/返回都还原）
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (source === "browser") params.set("source", "browser");
+    if (list.q) params.set("q", list.q);
+    if (list.sort !== DEFAULT_SORT[source]) params.set("sort", list.sort);
+    if (list.page > 1) params.set("page", String(list.page));
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+  }, [source, list, router]);
+
+  const load = useCallback(async (which: Source, state: ListState, silent = false) => {
+    const seq = ++reqSeq.current;
+    if (!silent) setListLoading(true);
+    try {
+      const res = await api.listDocs(which, { q: state.q, sort: state.sort, page: state.page });
+      if (seq !== reqSeq.current) return; // 竞态：最新请求胜出
+      setDocs(res.items);
+      setPager({ total: res.total, pageSize: res.page_size });
+      if (res.page !== state.page) setList((s) => ({ ...s, page: res.page })); // 服务端钳制（如删空末页）
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         window.location.href = "/login/";
       }
+    } finally {
+      // 最新请求才能清 loading：静默轮询若成为最新（打断了更早的可见加载），也负责收尾
+      if (seq === reqSeq.current) setListLoading(false);
     }
   }, []);
+
+  // 查询变化（切换来源/搜索/排序/翻页）即加载
+  useEffect(() => {
+    void load(source, list);
+  }, [source, list, load]);
+
+  // 搜索防抖 300ms：输入停止后提交，并回到第 1 页
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const q = qInput.trim();
+      setList((s) => (s.q === q ? s : { ...s, q, page: 1 }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [qInput]);
 
   const loadTokens = useCallback(async () => {
     try {
@@ -90,7 +239,6 @@ export default function HomePage() {
         return;
       }
       await Promise.all([
-        refresh("upload"),
         loadTokens(),
         api
           .storageStats()
@@ -98,20 +246,30 @@ export default function HomePage() {
           .catch(() => undefined),
       ]);
     })();
-  }, [refresh, loadTokens]);
+  }, [loadTokens]);
 
+  // 滚动位置记忆消费：数据到位后回到离开时的位置
   useEffect(() => {
-    sourceRef.current = source;
-    void refresh(source);
-  }, [source, refresh]);
+    if (docs.length === 0) return;
+    const saved = sessionStorage.getItem("sb-lib-scroll");
+    if (!saved) return;
+    try {
+      const rec = JSON.parse(saved) as { source: Source; top: number };
+      if (rec.source !== source) return;
+      sessionStorage.removeItem("sb-lib-scroll");
+      window.scrollTo({ top: rec.top });
+    } catch {
+      /* 忽略 */
+    }
+  }, [docs, source]);
 
-  // 有文档处理中时轮询状态（解析入库是后台异步的）
+  // 有文档处理中时轮询状态（解析入库是后台异步的）；静默刷新不打断浏览
   const anyProcessing = docs.some((d) => d.status === "processing");
   useEffect(() => {
     if (!anyProcessing) return;
-    const id = setInterval(() => void refresh(sourceRef.current), 3000);
+    const id = setInterval(() => void load(source, list, true), 3000);
     return () => clearInterval(id);
-  }, [anyProcessing, refresh]);
+  }, [anyProcessing, source, list, load]);
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -128,7 +286,7 @@ export default function HomePage() {
       } else {
         setNotice(`已上传：${file.name}，正在后台解析入库…`);
       }
-      await refresh("upload");
+      await load("upload", list);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "上传失败");
     } finally {
@@ -142,7 +300,7 @@ export default function HomePage() {
     if (!confirm(`确定删除「${doc.name}」？${extra}`)) return;
     try {
       await api.deleteDoc(doc.id);
-      await refresh(sourceRef.current);
+      await load(source, list);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "删除失败");
     }
@@ -151,7 +309,7 @@ export default function HomePage() {
   async function onReprocess(doc: Doc, mode: "auto" | "deep" = "auto") {
     try {
       await api.reprocess(doc.id, mode);
-      await refresh(sourceRef.current);
+      await load(source, list);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "重试失败");
     }
@@ -159,8 +317,9 @@ export default function HomePage() {
 
   async function onCreateToken() {
     if (!tokenName.trim()) return;
+    setTokenOpen(true);
     try {
-      const created = await api.createCaptureToken(tokenName.trim());
+      const created = await api.createCaptureToken(tokenName.trim(), tokenScope);
       setNewToken(created.token);
       setTokenName("");
       await loadTokens();
@@ -179,6 +338,16 @@ export default function HomePage() {
     }
   }
 
+  async function onPurgeToken(token: CaptureToken) {
+    if (!confirm(`彻底删除凭据「${token.name}」（${token.prefix}…）？删除后不可恢复。`)) return;
+    try {
+      await api.purgeCaptureToken(token.id);
+      await loadTokens();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "删除失败");
+    }
+  }
+
   async function onCleanup() {
     if (!cleanupAfter && !cleanupBefore) {
       setError("请至少选择开始或结束日期");
@@ -192,7 +361,7 @@ export default function HomePage() {
         before: cleanupBefore ? new Date(cleanupBefore).toISOString() : undefined,
       });
       setNotice(`已清理 ${result.deleted} 条浏览记录`);
-      await refresh("browser");
+      await load("browser", list);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "清理失败");
     }
@@ -203,6 +372,9 @@ export default function HomePage() {
     window.location.href = "/login/";
   }
 
+  const revokedCount = tokens.filter((t) => t.revoked_at).length;
+  const visibleTokens = showRevoked ? tokens : tokens.filter((t) => !t.revoked_at);
+
   return (
     <main className="container">
       <div className="header">
@@ -211,7 +383,8 @@ export default function HomePage() {
           <span className="muted" style={{ marginRight: 12 }}>
             {username ?? ""}
           </span>
-          <Link className="btn" style={{ marginRight: 8, textDecoration: "none" }} href="/chat/">
+          <ThemeToggle />
+          <Link className="btn" style={{ marginRight: 8 }} href="/chat/">
             对话
           </Link>
           <button className="btn" onClick={onLogout}>
@@ -234,13 +407,13 @@ export default function HomePage() {
       <div className="actions" style={{ marginBottom: 12 }}>
         <button
           className={source === "upload" ? "btn btn-primary" : "btn"}
-          onClick={() => setSource("upload")}
+          onClick={() => switchSource("upload")}
         >
           上传资料
         </button>
         <button
           className={source === "browser" ? "btn btn-primary" : "btn"}
-          onClick={() => setSource("browser")}
+          onClick={() => switchSource("browser")}
         >
           浏览记录
         </button>
@@ -282,80 +455,88 @@ export default function HomePage() {
           </div>
 
           <div className="card">
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>资料</th>
-                    <th>大小</th>
-                    <th>状态</th>
-                    <th style={{ width: 180 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {docs.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="muted">
-                        还没有资料 —— 上传第一本书吧
-                      </td>
-                    </tr>
+            <ListToolbar
+              q={qInput}
+              onQChange={setQInput}
+              sort={list.sort}
+              sortOptions={SORT_OPTIONS.upload}
+              onSortChange={changeSort}
+              total={pager.total}
+              loading={listLoading}
+            />
+            <div
+              className="doc-list"
+              style={{ opacity: listLoading && docs.length > 0 ? 0.6 : 1 }}
+            >
+              {docs.length === 0 && (
+                <p className="muted" style={{ margin: 0 }}>
+                  {listLoading
+                    ? "加载中…"
+                    : list.q
+                      ? `没有匹配「${list.q}」的资料`
+                      : "还没有资料 —— 上传第一本书吧"}
+                </p>
+              )}
+              {docs.map((doc) => (
+                <div key={doc.id} className="doc-item">
+                  <div className="doc-item-top">
+                    <div className="doc-item-main">
+                      <div className="doc-item-name">{highlight(doc.name, list.q)}</div>
+                      <div className="doc-item-meta">大小 {formatSize(doc.size)}</div>
+                      {doc.match?.type === "content" && doc.match.snippet && (
+                        <div className="doc-item-meta">正文命中：{doc.match.snippet}</div>
+                      )}
+                    </div>
+                    <span className={`badge badge-${doc.status}`}>{STATUS_LABEL[doc.status]}</span>
+                  </div>
+                  {doc.status === "processing" && (
+                    <div style={{ maxWidth: 260, marginTop: 6 }}>
+                      {doc.progress ? (
+                        <ProgressBar done={doc.progress.done} total={doc.progress.total} />
+                      ) : (
+                        <IndeterminateBar />
+                      )}
+                    </div>
                   )}
-                  {docs.map((doc) => (
-                    <tr key={doc.id}>
-                      <td>
-                        {doc.name}
-                        {doc.status === "processing" && (
-                          <div style={{ maxWidth: 220, marginTop: 4 }}>
-                            {doc.progress ? (
-                              <ProgressBar done={doc.progress.done} total={doc.progress.total} />
-                            ) : (
-                              <IndeterminateBar />
-                            )}
-                          </div>
-                        )}
-                        {doc.status !== "indexed" && doc.status_reason && (
-                          <div className="muted">{doc.status_reason}</div>
-                        )}
-                        {doc.parse_hint && (
-                          <div className="muted">
-                            {doc.parse_hint}
-                            <button
-                              className="btn"
-                              style={{ marginLeft: 8, fontSize: 12, padding: "2px 10px" }}
-                              onClick={() => onReprocess(doc, "deep")}
-                            >
-                              深度解析
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td className="muted">{formatSize(doc.size)}</td>
-                      <td>
-                        <span className={`badge badge-${doc.status}`}>{STATUS_LABEL[doc.status]}</span>
-                      </td>
-                      <td>
-                        <div className="actions">
-                          <Link className="btn" href={`/view/?id=${doc.id}`}>
-                            浏览
-                          </Link>
-                          {doc.status !== "indexed" && (
-                            <button className="btn" onClick={() => onReprocess(doc)}>
-                              重试
-                            </button>
-                          )}
-                          <a className="btn" href={api.originalUrl(doc.id)} download={doc.name}>
-                            下载
-                          </a>
-                          <button className="btn btn-danger" onClick={() => onDelete(doc)}>
-                            删除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  {doc.status !== "indexed" && doc.status_reason && (
+                    <div className="doc-item-meta">{doc.status_reason}</div>
+                  )}
+                  {doc.parse_hint && (
+                    <div className="doc-item-meta">
+                      {doc.parse_hint}
+                      <button
+                        className="btn"
+                        style={{ marginLeft: 8, fontSize: 12, padding: "2px 10px" }}
+                        onClick={() => onReprocess(doc, "deep")}
+                      >
+                        深度解析
+                      </button>
+                    </div>
+                  )}
+                  <div className="doc-item-actions">
+                    <Link className="btn" href={`/view/?id=${doc.id}`} onClick={rememberListScroll}>
+                      浏览
+                    </Link>
+                    {doc.status !== "indexed" && (
+                      <button className="btn" onClick={() => onReprocess(doc)}>
+                        重试
+                      </button>
+                    )}
+                    <a className="btn" href={api.originalUrl(doc.id)} download={doc.name}>
+                      下载
+                    </a>
+                    <button className="btn btn-danger" onClick={() => onDelete(doc)}>
+                      删除
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
+            <Pager
+              page={list.page}
+              totalPages={Math.max(1, Math.ceil(pager.total / pager.pageSize))}
+              onPage={goPage}
+            />
           </div>
         </>
       )}
@@ -368,75 +549,101 @@ export default function HomePage() {
               在 Chrome / Edge 扩展设置中填入服务器地址与下方凭据，浏览过的网页会
               <b>自动</b>入库（可在扩展弹窗一键暂停、在扩展设置维护黑名单）。凭据仅用于采集写入，可随时吊销。
             </p>
-            {newToken && (
-              <div className="notice">
-                <div>
-                  新凭据（<b>只显示这一次</b>，请立即复制到扩展设置）：
+            <details
+              className="token-details"
+              open={tokenOpen}
+              onToggle={(e) => setTokenOpen((e.target as HTMLDetailsElement).open)}
+            >
+              <summary>
+                采集凭据（
+                {tokens.length === 0
+                  ? "未创建"
+                  : `${tokens.length - revokedCount} 个有效${
+                      revokedCount > 0 ? ` · ${revokedCount} 个已吊销` : ""
+                    }`}
+                ）
+              </summary>
+              {newToken && (
+                <div className="notice">
+                  <div>
+                    新凭据（<b>只显示这一次</b>，请立即复制到扩展设置）：
+                  </div>
+                  <code style={{ wordBreak: "break-all" }}>{newToken}</code>
+                  <div style={{ marginTop: 6 }}>
+                    <button
+                      className="btn"
+                      onClick={() => void navigator.clipboard.writeText(newToken)}
+                    >
+                      复制
+                    </button>
+                    <button className="btn" style={{ marginLeft: 8 }} onClick={() => setNewToken(null)}>
+                      我已保存
+                    </button>
+                  </div>
                 </div>
-                <code style={{ wordBreak: "break-all" }}>{newToken}</code>
-                <div style={{ marginTop: 6 }}>
-                  <button
-                    className="btn"
-                    onClick={() => void navigator.clipboard.writeText(newToken)}
-                  >
-                    复制
-                  </button>
-                  <button className="btn" style={{ marginLeft: 8 }} onClick={() => setNewToken(null)}>
-                    我已保存
-                  </button>
+              )}
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="chat-input"
+                  style={{ maxWidth: 240, minHeight: 34, padding: "6px 10px" }}
+                  placeholder="凭据名称（如 Windows Chrome）"
+                  value={tokenName}
+                  onChange={(e) => setTokenName(e.target.value)}
+                />
+                <select
+                  className="list-sort"
+                  value={tokenScope}
+                  onChange={(e) =>
+                    setTokenScope(e.target.value as "capture" | "read" | "write")
+                  }
+                  title="凭据用途"
+                >
+                  <option value="capture">采集写入（浏览器扩展）</option>
+                  <option value="read">只读（MCP / Claude Code）</option>
+                  <option value="write">只读+写入（MCP 可回存笔记）</option>
+                </select>
+                <button className="btn btn-primary" onClick={() => void onCreateToken()}>
+                  生成凭据
+                </button>
+              </div>
+              {visibleTokens.length > 0 && (
+                <div className="token-list">
+                  {visibleTokens.map((token) => (
+                    <div key={token.id} className="token-item">
+                      <div className="token-item-main">
+                        <div>{token.name}</div>
+                        <div className="doc-item-meta">
+                          {TOKEN_SCOPE_LABEL[token.scope] ?? token.scope} · {token.prefix}… ·
+                          最近使用 {fmtTime(token.last_used_at)}
+                        </div>
+                      </div>
+                      {token.revoked_at ? (
+                        <span className="badge badge-unparseable">已吊销</span>
+                      ) : (
+                        <span className="badge badge-indexed">有效</span>
+                      )}
+                      {token.revoked_at ? (
+                        <button className="btn btn-danger" onClick={() => void onPurgeToken(token)}>
+                          删除
+                        </button>
+                      ) : (
+                        <button className="btn btn-danger" onClick={() => void onRevokeToken(token)}>
+                          吊销
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
-            <div className="actions" style={{ marginTop: 8 }}>
-              <input
-                className="chat-input"
-                style={{ maxWidth: 240, minHeight: 34, padding: "6px 10px" }}
-                placeholder="凭据名称（如 Windows Chrome）"
-                value={tokenName}
-                onChange={(e) => setTokenName(e.target.value)}
-              />
-              <button className="btn btn-primary" onClick={() => void onCreateToken()}>
-                生成凭据
-              </button>
-            </div>
-            {tokens.length > 0 && (
-              <div className="table-wrap" style={{ marginTop: 10 }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>名称</th>
-                      <th>前缀</th>
-                      <th>最近使用</th>
-                      <th>状态</th>
-                      <th style={{ width: 90 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tokens.map((token) => (
-                      <tr key={token.id}>
-                        <td>{token.name}</td>
-                        <td className="muted">{token.prefix}…</td>
-                        <td className="muted">{fmtTime(token.last_used_at)}</td>
-                        <td>
-                          {token.revoked_at ? (
-                            <span className="badge badge-unparseable">已吊销</span>
-                          ) : (
-                            <span className="badge badge-indexed">有效</span>
-                          )}
-                        </td>
-                        <td>
-                          {!token.revoked_at && (
-                            <button className="btn btn-danger" onClick={() => void onRevokeToken(token)}>
-                              吊销
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+              )}
+              {revokedCount > 0 && (
+                <button
+                  className="btn token-toggle-revoked"
+                  onClick={() => setShowRevoked((v) => !v)}
+                >
+                  {showRevoked ? "隐藏已吊销" : `显示已吊销（${revokedCount}）`}
+                </button>
+              )}
+            </details>
           </div>
 
           <div className="card">
@@ -458,81 +665,96 @@ export default function HomePage() {
           </div>
 
           <div className="card">
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>网页</th>
-                    <th>内容</th>
-                    <th>状态</th>
-                    <th style={{ width: 220 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {docs.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="muted">
-                        还没有浏览记录 —— 安装扩展后浏览网页即自动出现
-                      </td>
-                    </tr>
-                  )}
-                  {docs.map((doc) => (
-                    <tr key={doc.id}>
-                      <td>
-                        {doc.name}
-                        <div className="muted">
-                          {doc.site_name} · 浏览于 {fmtTime(doc.last_captured_at)}（共 {doc.visit_count ?? 1} 次）
-                        </div>
-                        {doc.snapshot?.state === "skipped_oversize" && (
-                          <div className="muted">快照未保留（超出体积上限），仅正文可检索</div>
-                        )}
-                        {doc.snapshot?.state === "skipped_error" && (
-                          <div className="muted">快照生成失败，仅正文可检索</div>
-                        )}
-                        {doc.status === "processing" && (
-                          <div style={{ maxWidth: 220, marginTop: 4 }}>
-                            {doc.progress ? (
-                              <ProgressBar done={doc.progress.done} total={doc.progress.total} />
-                            ) : (
-                              <IndeterminateBar />
-                            )}
-                          </div>
-                        )}
-                        {doc.status !== "indexed" && doc.status_reason && (
-                          <div className="muted">{doc.status_reason}</div>
-                        )}
-                      </td>
-                      <td className="muted">
-                        {formatSize(doc.size)}
+            <ListToolbar
+              q={qInput}
+              onQChange={setQInput}
+              sort={list.sort}
+              sortOptions={SORT_OPTIONS.browser}
+              onSortChange={changeSort}
+              total={pager.total}
+              loading={listLoading}
+            />
+            <div
+              className="doc-list"
+              style={{ opacity: listLoading && docs.length > 0 ? 0.6 : 1 }}
+            >
+              {docs.length === 0 && (
+                <p className="muted" style={{ margin: 0 }}>
+                  {listLoading
+                    ? "加载中…"
+                    : list.q
+                      ? `没有匹配「${list.q}」的浏览记录`
+                      : "还没有浏览记录 —— 安装扩展后浏览网页即自动出现"}
+                </p>
+              )}
+              {docs.map((doc) => (
+                <div key={doc.id} className="doc-item">
+                  <div className="doc-item-top">
+                    <div className="doc-item-main">
+                      <div className="doc-item-name">{highlight(doc.name, list.q)}</div>
+                      <div className="doc-item-meta">
+                        {doc.site_name} · 浏览于 {fmtTime(doc.last_captured_at)}（共 {doc.visit_count ?? 1} 次）
+                      </div>
+                      <div className="doc-item-meta">
+                        正文 {formatSize(doc.size)}
                         {doc.snapshot?.state === "kept" && doc.snapshot.bytes
                           ? ` · 快照 ${formatSize(doc.snapshot.bytes)}`
                           : ""}
-                      </td>
-                      <td>
-                        <span className={`badge badge-${doc.status}`}>{STATUS_LABEL[doc.status]}</span>
-                      </td>
-                      <td>
-                        <div className="actions">
-                          {doc.snapshot?.state === "kept" && (
-                            <Link className="btn" href={`/snap/?id=${doc.id}`}>
-                              查看快照
-                            </Link>
-                          )}
-                          {doc.source_url && (
-                            <a className="btn" href={doc.source_url} target="_blank" rel="noreferrer">
-                              打开原文
-                            </a>
-                          )}
-                          <button className="btn btn-danger" onClick={() => onDelete(doc)}>
-                            删除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                      {doc.match?.type === "url" && (
+                        <div className="doc-item-meta">站点/网址命中</div>
+                      )}
+                      {doc.match?.type === "content" && doc.match.snippet && (
+                        <div className="doc-item-meta">正文命中：{doc.match.snippet}</div>
+                      )}
+                    </div>
+                    <span className={`badge badge-${doc.status}`}>{STATUS_LABEL[doc.status]}</span>
+                  </div>
+                  {doc.snapshot?.state === "skipped_oversize" && (
+                    <div className="doc-item-meta">快照未保留（超出体积上限），仅正文可检索</div>
+                  )}
+                  {doc.snapshot?.state === "skipped_error" && (
+                    <div className="doc-item-meta">快照生成失败，仅正文可检索</div>
+                  )}
+                  {doc.status === "processing" && (
+                    <div style={{ maxWidth: 260, marginTop: 6 }}>
+                      {doc.progress ? (
+                        <ProgressBar done={doc.progress.done} total={doc.progress.total} />
+                      ) : (
+                        <IndeterminateBar />
+                      )}
+                    </div>
+                  )}
+                  {doc.status !== "indexed" && doc.status_reason && (
+                    <div className="doc-item-meta">{doc.status_reason}</div>
+                  )}
+                  <div className="doc-item-actions">
+                    {doc.snapshot?.state === "kept" && (
+                      <Link
+                        className="btn"
+                        href={`/snap/?id=${doc.id}&from=browser`}
+                        onClick={rememberListScroll}
+                      >
+                        查看快照
+                      </Link>
+                    )}
+                    {doc.source_url && (
+                      <a className="btn" href={doc.source_url} target="_blank" rel="noreferrer">
+                        打开原文
+                      </a>
+                    )}
+                    <button className="btn btn-danger" onClick={() => onDelete(doc)}>
+                      删除
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
+            <Pager
+              page={list.page}
+              totalPages={Math.max(1, Math.ceil(pager.total / pager.pageSize))}
+              onPage={goPage}
+            />
           </div>
         </>
       )}

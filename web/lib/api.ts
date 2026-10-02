@@ -19,6 +19,15 @@ export type Doc = {
   last_captured_at?: string;
   visit_count?: number;
   snapshot?: { state: "kept" | "skipped_oversize" | "skipped_error" | "none"; bytes: number | null };
+  // 搜索命中信息（?q= 时返回）：name/url 命中无片段；content 命中带正文片段
+  match?: { type: "name" | "url" | "content"; snippet: string | null };
+};
+
+export type DocListResult = {
+  items: Doc[];
+  total: number;
+  page: number;
+  page_size: number;
 };
 
 export type Citation = {
@@ -31,6 +40,12 @@ export type Citation = {
   /** 浏览器来源（F2）：原网页链接与浏览时间 */
   source_url?: string | null;
   last_captured_at?: string | null;
+  /** 对话回写来源（2026-10-02）：回到原对话 + 旧引用标记的继承映射 */
+  conversation_id?: string | null;
+  message_id?: string | null;
+  inherited_citations?: Citation[] | null;
+  /** 联网来源（F4，2026-10-02）：外链直开新标签，无本地文档 */
+  web?: boolean;
 };
 
 export type CaptureToken = {
@@ -64,6 +79,20 @@ export type Conversation = {
   id: string;
   title: string;
   created_at: string | null;
+};
+
+export type ConversationSearchHit = {
+  id: string;
+  title: string;
+  hit_count: number;
+  last_hit_at: string | null;
+  /** 打开会话后的定位目标（该会话最早的命中消息） */
+  hit: {
+    message_id: string;
+    role: "user" | "assistant";
+    snippet: string;
+    created_at: string | null;
+  };
 };
 
 export type StoredMessage = {
@@ -110,8 +139,16 @@ export const api = {
 
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
 
-  listDocs: (source: "upload" | "browser" = "upload") =>
-    request<Doc[]>(`/api/documents?source=${source}`),
+  listDocs: (
+    source: "upload" | "browser" = "upload",
+    opts: { q?: string; sort?: string; page?: number } = {},
+  ) => {
+    const params = new URLSearchParams({ source });
+    if (opts.q) params.set("q", opts.q);
+    if (opts.sort) params.set("sort", opts.sort);
+    if (opts.page && opts.page > 1) params.set("page", String(opts.page));
+    return request<DocListResult>(`/api/documents?${params.toString()}`);
+  },
 
   cleanupBrowserDocs: (range: { before?: string; after?: string }) => {
     const query = new URLSearchParams({ source: "browser" });
@@ -126,15 +163,19 @@ export const api = {
 
   listCaptureTokens: () => request<CaptureToken[]>("/api/capture/tokens"),
 
-  createCaptureToken: (name: string) =>
+  createCaptureToken: (name: string, scope: "capture" | "read" | "write" = "capture") =>
     request<{ id: string; name: string; prefix: string; token: string }>("/api/capture/tokens", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, scope }),
     }),
 
   revokeCaptureToken: (id: string) =>
     request<void>(`/api/capture/tokens/${id}`, { method: "DELETE" }),
+
+  /** 彻底删除（仅限已吊销的凭据；未吊销会 409） */
+  purgeCaptureToken: (id: string) =>
+    request<void>(`/api/capture/tokens/${id}?purge=1`, { method: "DELETE" }),
 
   getDoc: (id: string) => request<Doc>(`/api/documents/${id}`),
 
@@ -187,6 +228,12 @@ export const api = {
   originalUrl: (id: string) => `/api/documents/${id}/original`,
 
   listConversations: () => request<Conversation[]>("/api/conversations"),
+
+  /** 对话全文搜索（消息正文；会话级结果） */
+  searchConversations: (q: string, limit = 20) =>
+    request<{ items: ConversationSearchHit[]; total: number }>(
+      `/api/conversations/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+    ),
 
   conversationMessages: (id: string) =>
     request<StoredMessage[]>(`/api/conversations/${id}/messages`),

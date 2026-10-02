@@ -2,7 +2,7 @@
 
 契约见 specs/001-core-qa/contracts/api.md：
 - POST   /api/documents            上传（sha256 判重 → 200 duplicate；无法解析仍 201）
-- GET    /api/documents            列表（**仅 source_type=upload**，FR-009）
+- GET    /api/documents            列表：分页 + 搜索 + 排序（source=upload|browser，FR-009）
 - GET    /api/documents/{id}/original  原文件下载（字节级保真，FR-013）
 - POST   /api/documents/{id}/reprocess 重试解析
 - DELETE /api/documents/{id}       级联删除 chunks + 原文件（FR-003/011）
@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
@@ -26,8 +27,9 @@ from app.auth.deps import get_current_user
 from app.config import settings
 from app.db import get_session
 from app.ingestion.tasks import enqueue_ingestion
-from app.models import Document, DocumentStatus, SourceType, User
+from app.models import Chunk, Document, DocumentStatus, SourceType, User
 from app.storage import get_blob_store
+from app.textmatch import like_pattern, make_snippet
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -139,27 +141,144 @@ async def upload(
     return {"id": str(doc.id), "status": doc.status.value}
 
 
+# ── 列表：分页 + 搜索 + 排序（2026-10-02 列表增强）──
+# 排序白名单：字段名 → 表达式（防注入；前缀 `-` 表示倒序）
+_UPLOAD_SORTS: dict[str, object] = {
+    "created_at": Document.created_at,
+    "name": sa.func.lower(Document.name),
+    "size": Document.size_bytes,
+}
+_BROWSER_SORTS: dict[str, object] = {
+    "last_captured_at": Document.last_captured_at,
+    "first_captured_at": Document.first_captured_at,
+    "visit_count": Document.visit_count,
+    "name": sa.func.lower(Document.name),
+    "size": Document.size_bytes,
+}
+_DEFAULT_SORT = {"upload": "-created_at", "browser": "-last_captured_at"}
+_MAX_PAGE_SIZE = 100
+
+
 @router.get("")
 async def list_documents(
     source: str = "upload",
+    q: str = "",
+    sort: str = "",
+    page: int = 1,
+    page_size: int = 20,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
-) -> list[dict]:
-    """source=upload（缺省，F1 行为不变）| browser（F2 浏览器来源；conversation 不列表）。"""
+) -> dict:
+    """source=upload（缺省，F1）| browser（F2；conversation 不列表）。
+
+    - q：标题/站点/网址 + 正文分块子串匹配（chunks.content ILIKE，pg_trgm GIN 加速）；
+      命中正文时返回 match={"type":"content","snippet":"…"}，标题/网址命中 type 为 name/url。
+    - sort：白名单字段，`-` 前缀倒序；默认 上传=上传时间↓ / 浏览=最近浏览时间↓。
+    - 返回 {items,total,page,page_size}；page/page_size 越界钳制到有效范围。
+    """
     if source not in {"upload", "browser"}:
         raise HTTPException(status_code=400, detail="source 仅支持 upload / browser")
     source_type = SourceType.browser if source == "browser" else SourceType.upload
+    sorts = _BROWSER_SORTS if source_type is SourceType.browser else _UPLOAD_SORTS
+
+    sort = sort or _DEFAULT_SORT[source]
+    desc = sort.startswith("-")
+    field = sort[1:] if desc else sort
+    if field not in sorts:
+        raise HTTPException(
+            status_code=400,
+            detail=f"sort 仅支持 {' / '.join(sorts)}（前缀 - 表示倒序）",
+        )
+
+    conditions: list = [
+        Document.owner_user_id == user.id,
+        Document.source_type == source_type,
+    ]
+    q = q.strip()
+    pattern = like_pattern(q) if q else None
+    if pattern:
+        text_conds = [Document.name.ilike(pattern, escape="\\")]
+        if source_type is SourceType.browser:
+            text_conds.append(Document.source_url.ilike(pattern, escape="\\"))
+            text_conds.append(Document.site_name.ilike(pattern, escape="\\"))
+        text_conds.append(
+            select(Chunk.id)
+            .where(
+                Chunk.document_id == Document.id,
+                Chunk.content.ilike(pattern, escape="\\"),
+            )
+            .exists()
+        )
+        conditions.append(sa.or_(*text_conds))
+
+    page_size = max(1, min(page_size, _MAX_PAGE_SIZE))
+    total = int(
+        await session.scalar(
+            select(sa.func.count()).select_from(Document).where(*conditions)
+        )
+        or 0
+    )
+    total_pages = max(1, -(-total // page_size))
+    page = min(max(page, 1), total_pages)
+
+    column = sorts[field]
+    primary = sa.nulls_last(column.desc() if desc else column.asc())
+    tie = Document.id.desc() if desc else Document.id.asc()
     rows = (
         await session.scalars(
             select(Document)
-            .where(
-                Document.owner_user_id == user.id,
-                Document.source_type == source_type,
-            )
-            .order_by(Document.created_at.desc())
+            .where(*conditions)
+            .order_by(primary, tie)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
         )
     ).all()
-    return [_doc_dict(doc) for doc in rows]
+
+    if not pattern:
+        items = [_doc_dict(doc) for doc in rows]
+    else:
+        q_lower = q.lower()
+        flagged: list[tuple] = []
+        content_need: list[uuid.UUID] = []
+        for doc in rows:
+            name_hit = q_lower in doc.name.lower()
+            url_hit = source_type is SourceType.browser and (
+                q_lower in (doc.source_url or "").lower()
+                or q_lower in (doc.site_name or "").lower()
+            )
+            flagged.append((doc, name_hit, url_hit))
+            if not name_hit and not url_hit:
+                content_need.append(doc.id)
+        snippets: dict[uuid.UUID, str] = {}
+        if content_need:
+            chunk_rows = (
+                await session.execute(
+                    select(Chunk.document_id, Chunk.content)
+                    .where(
+                        Chunk.document_id.in_(content_need),
+                        Chunk.content.ilike(pattern, escape="\\"),
+                    )
+                    .order_by(Chunk.created_at)
+                )
+            ).all()
+            for doc_id, content in chunk_rows:
+                snippets.setdefault(doc_id, content)
+        items = []
+        for doc, name_hit, url_hit in flagged:
+            data = _doc_dict(doc)
+            if name_hit:
+                data["match"] = {"type": "name", "snippet": None}
+            elif url_hit:
+                data["match"] = {"type": "url", "snippet": None}
+            else:
+                content = snippets.get(doc.id)
+                data["match"] = {
+                    "type": "content",
+                    "snippet": make_snippet(content, q) if content else None,
+                }
+            items.append(data)
+
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/{document_id}")

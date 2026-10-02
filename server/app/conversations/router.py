@@ -1,6 +1,7 @@
-"""对话历史端点（T027 / FR-009/011）：列表 / 消息 / 删除。
+"""对话历史端点（T027 / FR-009/011）：列表 / 全文搜索 / 消息 / 删除。
 
 删除会话 = 级联删除其消息 + 回写资料（含内容块）—— 删除在检索中同步生效。
+搜索（2026-10-02 增强）：核心逻辑在 app/conversations/search.py（HTTP 与 MCP 共用）。
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user
+from app.chat.inherit import enrich_citations
+from app.conversations.search import search_conversation_hits
 from app.db import get_session
 from app.models import Conversation, Document, Message, User
 
@@ -66,6 +69,22 @@ async def list_conversations(
     ]
 
 
+@router.get("/search")
+async def search_conversations(
+    q: str = "",
+    limit: int = 20,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """对话全文搜索：会话级结果（核心逻辑见 app/conversations/search.py，与 MCP 工具共用）。
+
+    - 命中范围：全部消息正文（user/assistant 双方角色），中文子串走 pg_trgm GIN 索引。
+    - 排序：按各会话"最近一次命中"倒序；`hit` = 该会话最早的命中消息（打开后滚动定位）。
+    - q 为空 → 空结果；limit 钳制 [1,50]。
+    """
+    return await search_conversation_hits(session, user.id, q, limit)
+
+
 @router.get("/{conversation_id}/messages")
 async def conversation_messages(
     conversation_id: uuid.UUID,
@@ -80,7 +99,13 @@ async def conversation_messages(
             .order_by(Message.created_at)
         )
     ).all()
-    return [_message_dict(m) for m in rows]
+    result = []
+    for message in rows:
+        data = _message_dict(message)
+        if data["citations"]:  # 存量数据兜底：读取时补对话引用的继承映射（2026-10-02）
+            await enrich_citations(session, data["citations"])
+        result.append(data)
+    return result
 
 
 @router.delete("/{conversation_id}", status_code=204)

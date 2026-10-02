@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, Doc, api } from "@/lib/api";
+import ThemeToggle from "../_components/theme-toggle";
 
 type ViewState =
   | { kind: "loading" }
@@ -441,6 +442,7 @@ export default function ViewPage() {
           <Link className="btn" href={fromChat ? "/chat/" : "/"}>
             {fromChat ? "返回对话" : "返回"}
           </Link>
+          <ThemeToggle />
         </div>
       </div>
 
