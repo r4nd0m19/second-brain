@@ -4,11 +4,11 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: secondbrain
-      POSTGRES_PASSWORD: secondbrain
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secondbrain}  # 服务器上务必在 deploy/.env 覆盖为强密码（T035）
       POSTGRES_DB: secondbrain
     ports:
-      # 本机 WSL 已有系统 Postgres 占用 5432，故映射到 5433（仅影响本机开发）
-      - "5433:5432"
+      # 仅绑定 127.0.0.1（数据库不对公网；本机 WSL 已有系统 Postgres 占 5432，故映射 5433）
+      - "127.0.0.1:5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:

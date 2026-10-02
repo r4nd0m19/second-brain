@@ -1,6 +1,7 @@
-"""混合检索（T019）：pgvector 向量检索 + 关键词加成；接口可替换（constitution VII）。
+"""混合检索（T019 + T033）：pgvector 向量检索 + 关键词加成；接口可替换（constitution VII）。
 
-v1 说明：中文全文检索（zhparser/pg_trgm）在 T033 接入；当前为"向量为主 + ILIKE 关键词加成"。
+中文关键词检索（T033）：pg_trgm GIN 索引加速 ILIKE 子串匹配（zhparser 不在官方镜像，见 research R9）；
+混合权重（加成值/拆词上限）经 settings 可配置。
 
 阈值语义（spec FR-007）：
 - score ≥ hit_threshold          → 命中：基于库内容作答（kb），带出处
@@ -47,9 +48,9 @@ class RetrievedChunk:
         }
 
 
-def _terms(query: str) -> list[str]:
+def _terms(query: str, limit: int) -> list[str]:
     parts = re.split(r"[\s，。？！,.?!;；:：、（）()【】\[\]]+", query)
-    return [p for p in parts if len(p) >= 2][:4]
+    return [p for p in parts if len(p) >= 2][:limit]
 
 
 async def hybrid_search(
@@ -85,7 +86,7 @@ async def hybrid_search(
         )
         scores[chunk.id] = 1.0 - float(dist)  # 余弦相似度
 
-    terms = _terms(query)
+    terms = _terms(query, settings.retrieval_keyword_terms)
     if terms:
         keyword_rows = (
             await session.execute(
@@ -99,7 +100,7 @@ async def hybrid_search(
             )
         ).all()
         for chunk, doc_name, doc_source in keyword_rows:  # 关键词加成
-            scores[chunk.id] = scores.get(chunk.id, 0.0) + 0.05
+            scores[chunk.id] = scores.get(chunk.id, 0.0) + settings.retrieval_keyword_boost
             if chunk.id not in found:
                 found[chunk.id] = RetrievedChunk(
                     chunk_id=chunk.id,

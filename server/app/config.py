@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     # 会话签名
     secret_key: str = "change-me-random-string"
 
+    # 认证安全（T034；spec NFR Security）
+    login_rate_limit: int = 5  # 登录失败限速：窗口内最大失败次数
+    login_rate_window_min: int = 15  # 限速窗口（分钟）
+    cookie_secure: bool = False  # HTTPS 部署后置 AUTH_COOKIE_SECURE=true（T035）
+
     # 存储与限额
     storage_dir: str = "./data/storage"
     max_upload_mb: int = 200
@@ -46,6 +51,8 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
     retrieval_hit_threshold: float = 0.60
     retrieval_weak_threshold: float = 0.50
+    retrieval_keyword_boost: float = 0.05  # 关键词命中的分数加成（T033：混合检索权重可配置）
+    retrieval_keyword_terms: int = 4  # 查询拆词上限（T033）
     chat_history_limit: int = 10
 
     # 模型计价（¥/百万 tokens；默认 deepseek-chat 空闲时段价，用于用量估算 FR-017）

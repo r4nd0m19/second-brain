@@ -1,0 +1,24 @@
+# second-brain systemd 单元（T035）
+# 安装：sudo cp deploy/second-brain.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now second-brain
+[Unit]
+Description=second-brain (FastAPI single-process: API + PWA static hosting)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/second-brain/server
+# 反代（Caddy）之后运行：启用代理头，让登录限速/日志按真实访客 IP 统计
+ExecStart=/opt/second-brain/server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=3
+
+# 加固（最小权限）
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/second-brain/server/data
+
+[Install]
+WantedBy=multi-user.target

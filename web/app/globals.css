@@ -272,7 +272,7 @@ body {
   left: 0;
   right: 0;
   background: linear-gradient(transparent, var(--bg) 30%);
-  padding: 12px 20px 20px;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
 }
 
 .input-inner {
@@ -296,9 +296,31 @@ textarea.chat-input {
 }
 
 /* ── 对话历史侧栏 ── */
+.chat-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
 .sidebar {
   width: 240px;
   flex-shrink: 0;
+}
+
+.sidebar-new {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .sidebar-item {
@@ -344,8 +366,68 @@ textarea.chat-input {
   color: var(--danger);
 }
 
+/* ── 移动端适配（T030）── */
 @media (max-width: 720px) {
+  .container {
+    padding: 16px 12px 64px;
+  }
+
+  .header {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .input-row {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* 对话页：侧栏 → 顶部横向会话条（不再隐藏，保证可切换/新建） */
+  .chat-layout {
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .sidebar {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .sidebar-new {
+    width: auto;
+    margin-bottom: 0;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-item {
+    flex: 0 0 auto;
+    max-width: 180px;
+    margin-bottom: 0;
+  }
+
+  /* 资料页：表格横向滚动而非挤压 */
+  .table {
+    min-width: 560px;
+  }
+
+  .chat-area {
+    padding-bottom: 160px;
+  }
+
+  .bubble {
+    max-width: 92%;
+  }
+
+  /* 阅读器：工具栏换行；键盘提示（移动端无意义）隐藏 */
+  .view-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .view-kbd-hint {
     display: none;
   }
 }

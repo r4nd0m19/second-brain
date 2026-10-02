@@ -164,6 +164,7 @@ export default function HomePage() {
       </div>
 
       <div className="card">
+        <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
@@ -236,6 +237,7 @@ export default function HomePage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </main>
   );

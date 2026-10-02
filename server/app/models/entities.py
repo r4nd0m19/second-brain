@@ -113,6 +113,12 @@ class Chunk(Base, OwnerMixin, TimestampMixin):
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        sa.Index(
+            "ix_chunks_content_trgm",
+            "content",
+            postgresql_using="gin",
+            postgresql_ops={"content": "gin_trgm_ops"},
+        ),  # 中文关键词检索（T033；pg_trgm，见 research R9）
     )
 
 

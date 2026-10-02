@@ -87,9 +87,20 @@
 - **本地阶段说明**: 本地无第三方，DB dump 仍做客户端加密（防介质泄密）；原文件镜像保持增量明文（与源数据同信任域，远程阶段由密文快照覆盖）
 - **Sources**: [rclone crypt 零知识加密指南](https://rcloneview.com/support/zh-Hans/blog/encrypt-cloud-backups-crypt-remote-guide-rcloneview)、[OSS/COS 价格对比](https://www.net8.com.cn/article/129886.html)、[2026 对象存储深度评测](https://zhuanlan.zhihu.com/p/2071058527653729112)、[rclone 对象存储备份实战](https://www.zz1984.com/1080.html)
 
+## R9 中文检索：pg_trgm 落地与压测（2026-10-02）
+
+- **Decision**: 中文关键词检索用 **pg_trgm**（GIN 索引 + ILIKE 子串匹配）；不引入 zhparser——官方 pgvector 镜像无此扩展（需自编译自定义镜像），pg_trgm 1.6 内置可用（research「装包环境决定」落定）
+- **实现**: `ix_chunks_content_trgm`（chunks.content gin_trgm_ops，迁移 `9d2b7c1e4f88`）；混合检索权重配置化（`retrieval_keyword_boost` / `retrieval_keyword_terms`，config.py）
+- **压测记录**（本机 WSL，2026-10-02；10 万条合成 chunks / 表 640MB / trgm 索引 9.3MB；复跑：`server/tests/perf/pg_keyword_bench.sh`）:
+  - ≥3 字中文模式（含不存在的词）：**0.06–0.37ms**（Bitmap Index Scan）
+  - 真·最差：2 字短词且不匹配 → 全表扫描 **626ms**（LIKE 优化要求模式 ≥3 字符；626ms 仍低于 NFR P95≤2s）
+  - 真实语料端到端：hybrid_search（含云 embedding 调用）**244–467ms**；SSE 检索+首字 **0.82s**（NFR：<10s，余量 12 倍）
+- **边界与升级路径**: 更大规模下 2 字短词若超限 → 引入 zhparser（自建镜像）或 pg_bigm；检索接口不变（constitution VII 可替换）
+
 ## 未决项（留给实现阶段）
 
 - 云 embedding 默认提供商最终拍板（硅基流动 vs 百炼，凭实际测试效果）
 - 异地对象存储厂商：部署阶段与服务器同厂选定（候选 OSS/COS；R8）
-- 中文 FTS 扩展选型（zhparser vs pg_trgm，装包环境决定）
+- 跨语言检索调优：SC-002 评测发现 2 例中文问/英文书查询未达命中阈值（环境映射、OpenAL 类）；候选：hit 阈值微调 / 查询双语扩展 / bge-m3 提示性改写（T040 记录）
+- ~~中文 FTS 扩展选型~~ ✅ 已定：pg_trgm（2026-10-02，见 R9）
 - 首个可用模型默认（DeepSeek，成本优先）在 .env 可切换

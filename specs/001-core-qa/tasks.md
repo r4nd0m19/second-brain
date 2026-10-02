@@ -215,21 +215,26 @@
   - Deps: T007, T009
   - DoD（本地部分）：定时产出加密备份；恢复演练 1 次通过（**含解密链路**）；删除的内容不再进入后续备份（验收含抽查）；异地副本随 T035 一并验收（SC-008 完整判定在部署后）
   - 完成记录（2026-10-02）：cron 两条已装并经核验（每日 03:17 + @reboot，STALE_ONLY 实跑跳过 ✓）；演练多轮全绿（最新 db-20261002-0004，行数/消息指纹/文件 sha256 三项一致）；密钥已交接用户离线保管；删除同步经核验（rsync --delete 生效）
-- [ ] T040 [US1] SC-002 样例题集与通过率评测（2026-10-01 analyze 补）：`server/tests/acceptance/questions.yaml`（≥20 题：问题 + 标准答案要点 + 出处对照）+ 评测脚本输出通过率
+- [x] T040 [US1] SC-002 样例题集与通过率评测（2026-10-01 analyze 补）：`server/tests/acceptance/questions.yaml`（≥20 题：问题 + 标准答案要点 + 出处对照）+ 评测脚本输出通过率
   - Deps: T019, T020
   - DoD: 题集 ≥20 题（含中文/英文、命中/兜底/二次命中三类）；评测脚本一键跑批，输出"库内作答率与出处正确率 ≥80%"报告
-- [ ] T032 [P] 验收脚本：`server/tests/acceptance/`（quickstart 场景 1-9 自动化）
+  - 完成记录（2026-10-02）：题集 22 题（命中 15 / 兜底 5 / 二次命中 2，含 2 道英文）；实测 **命中 13/15=87%（PASS）**、兜底 5/5、二次命中 2/2；报告落盘 `tests/acceptance/sc002_report.json`；脚本带**自清理**（跑完删除评测对话及其回写，防语料污染）；遗留观察：2 例跨语言查询未达命中阈值（g05/g06）→ 列入检索调优（R9 未决项）
+- [x] T032 [P] 验收脚本：`server/tests/acceptance/`（quickstart 场景 1-9 自动化）
   - Deps: T022, T027, T029, T031
   - DoD: `pytest tests/acceptance/` 全绿（覆盖 SC-001~008；SC-002 样例题集与评分见 T040）
-- [ ] T033 [P] 中文 FTS 落地与检索调优：`server/alembic/` + `server/app/retrieval/`（zhparser 或 pg_trgm）
+  - 完成记录（2026-10-02）：**6 过 1 跳 101 秒全绿**（场景 1/3/4/6/7 自动化 + SC-002 包裹评测 + SC-008 包裹演练；场景 7 安装为手动 skip）；HTTP 端到端打真实服务、服务不可达整套 skip、用例自清理；**顺带修复演练设计缺陷**（drill 现在先做新鲜备份再对照，避免正常写入导致误报失败）；覆盖映射见 `tests/acceptance/README.md`
+- [x] T033 [P] 中文 FTS 落地与检索调优：`server/alembic/` + `server/app/retrieval/`（pg_trgm——zhparser 不可用于官方镜像，R9）
   - Deps: T019
   - DoD: 中文关键词检索可用；混合检索权重可配置；性能抽测记录（10 万级检索响应、回答首字 <10s）
-- [ ] T034 [P] 安全加固：`deploy/` + `server/app/auth/`（登录限速、HTTPS/Caddy 部署说明、密钥清单）
+  - 完成记录（2026-10-02）：trgm GIN 索引 + 权重配置化；压测 10 万级 ≥3字 0.06–0.37ms / 真·最差（2字扫描）626ms；端到端首字 0.82s；复跑脚本 `server/tests/perf/pg_keyword_bench.sh`（R9）
+- [x] T034 [P] 安全加固：`deploy/` + `server/app/auth/`（登录限速、HTTPS/Caddy 部署说明、密钥清单）
   - Deps: T008
   - DoD: 登录限速生效；部署文档含 HTTPS 完整步骤
+  - 完成记录（2026-10-02）：登录限速（5 次/15 分钟，实测 5×401→429+Retry-After，按 IP+用户名隔离，可配置）；`deploy/SECURITY.md`（密钥清单 + HTTPS 完整步骤 + 部署核对清单）；Cookie `secure` 配置化（AUTH_COOKIE_SECURE）
 - [ ] T035 部署上线：`deploy/`（生产 compose + 服务器初始化文档，2C4G + Caddy + 自启）
   - Deps: T031
   - DoD: 一台全新服务器按文档 30 分钟内跑起可访问的 PWA（对照 quickstart 逐项）
+  - 进度（2026-10-02）：**部署工件就绪**——`deploy/deploy.md`（30 分钟初始化手册，venv+systemd+Caddy 形态）、`second-brain.service`（自启/崩溃重拉/最小权限）、`Caddyfile`（自动 HTTPS）；compose 加固（DB 仅绑 127.0.0.1、密码走 deploy/.env）。**实机验收待服务器租用后执行**（用户决定延后，届时跑 `pytest tests/acceptance/` 核对）
 
 ---
 

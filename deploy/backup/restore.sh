@@ -39,6 +39,14 @@ restore_files() { # $1=目标目录（镜像 → 目录，镜像语义：目标�
 
 drill() {
   local dump target=secondbrain_restore tmp="$ROOT/server/data/restore-drill"
+
+  # 先做一次新鲜备份：保证"备份时间点"与"当前数据"一致——
+  # 否则备份之后产生的正常写入（新对话/新资料等）会让对照误报失败。
+  echo "[drill] 先做一次新鲜备份 …"
+  if ! bash "$ROOT/deploy/backup/backup.sh" >/dev/null; then
+    echo "[drill] 备份失败，终止"; exit 1
+  fi
+
   dump="$(latest db)"
   if [ -z "$dump" ]; then echo "[drill] 未找到数据库备份"; exit 1; fi
   if [ ! -d "$BK_DIR/storage-mirror" ]; then echo "[drill] 未找到原文件镜像"; exit 1; fi

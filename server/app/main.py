@@ -1,5 +1,6 @@
 """second-brain 后端入口：API + 静态 PWA 托管（单进程，T012）。"""
 
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from app.documents.router import router as documents_router
 from app.ingestion.pipeline import mark_interrupted_documents
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web" / "out"
+
+mimetypes.add_type("application/manifest+json", ".webmanifest")  # PWA manifest（T029）
 
 
 @asynccontextmanager

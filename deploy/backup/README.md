@@ -10,7 +10,7 @@
 | 文件 | 作用 |
 |------|------|
 | `backup.sh` | 数据库（pg_dump -Fc → gpg AES-256 加密）+ 原文件增量镜像（rsync，删除同步生效 FR-011）→ `server/data/backups/`；自动清理 14 天前的旧 db 备份 |
-| `restore.sh` | 恢复数据库/原文件；`restore.sh drill` 一键完整演练（恢复库 + 行数/内容指纹/文件 sha256 全量对照） |
+| `restore.sh` | 恢复数据库/原文件；`restore.sh drill` 一键完整演练（**先自动做一次新鲜备份**，再恢复对照：行数/内容指纹/文件 sha256 全量一致） |
 | `~/.config/second-brain/backup.key` | 数据库备份的加密密钥文件（仅本机 root 可读） |
 
 ## 初始化（新机器/换机时）

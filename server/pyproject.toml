@@ -40,3 +40,6 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.File"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
+markers = [
+    "acceptance: 端到端验收（需运行中的服务；`pytest -m acceptance` 仅跑验收，`-m 'not acceptance'` 跳过）",
+]

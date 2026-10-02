@@ -1,0 +1,7 @@
+# second-brain Caddy 配置（T035）：自动申请/续期 Let's Encrypt 证书并反代到本机 uvicorn
+# 使用：把 your-domain.example 换成你的域名（A 记录须已指向本机），然后：
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+your-domain.example {
+	encode gzip
+	reverse_proxy 127.0.0.1:8000
+}

@@ -47,7 +47,7 @@
 | embedding | vector(1024) | 维度按 provider（bge-m3=1024）；换 provider 需重建（配置化） |
 | created_at | timestamptz | |
 
-**索引**: HNSW（embedding, cosine）；FTS（content；中文方案 zhparser/pg_trgm 实现阶段定）。
+**索引**: HNSW（embedding, cosine）；pg_trgm GIN（content，中文关键词检索，T033/R9）。
 
 ## conversations（对话）
 

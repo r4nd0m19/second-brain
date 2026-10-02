@@ -1,0 +1,116 @@
+# SC-002 样例题集（T040，2026-10-02）
+#
+# 分类：
+#   hit      —— 命中类：期望 source_type=kb，且 citations 指向 expected_document
+#   fallback —— 兜底类：期望 source_type≠kb（首轮 model_knowledge；重复评测时 prior_conversation 亦算通过）
+#   recall   —— 对 recall_of 指定题的"抬二次"，期望 source_type=prior_conversation
+# 判定（由 sc002_eval.py 执行）：
+#   hit 通过 = source_type=kb ＋ 出处文档名匹配 ＋ （expected_keywords 任一命中回答，若提供）
+#   SC-002 口径：hit 通过率 ≥80% 为通过
+version: 1
+questions:
+  # ── 命中类：《Fundamentals of Software Architecture》──
+  - id: f01
+    category: hit
+    question: 书里把“大泥球”（Big Ball of Mud）这种架构描述成什么？给出的建议是什么？
+    expected_document: Fundamentals
+    expected_keywords: ["泥球"]
+  - id: f02
+    category: hit
+    question: 分层架构中的“隔离层”（layers of isolation）是什么意思？
+    expected_document: Fundamentals
+    expected_keywords: ["隔离"]
+  - id: f03
+    category: hit
+    question: 管道（pipeline）架构适合处理什么样的系统？
+    expected_document: Fundamentals
+    expected_keywords: ["单向", "有序", "确定性"]
+  - id: f04
+    category: hit
+    question: 书中引用康威定律（Conway's Law）想说明什么道理？
+    expected_document: Fundamentals
+    expected_keywords: ["沟通", "组织", "康威"]
+  - id: f05
+    category: hit
+    question: 为什么说软件架构里的决策本质上是权衡（trade-off）？
+    expected_document: Fundamentals
+    expected_keywords: ["权衡"]
+  - id: f06
+    category: hit
+    question: Why does the book recommend a “database per service” data topology for microservices?
+    expected_document: Fundamentals
+    expected_keywords: ["上下文", "变更", "解耦"]
+  - id: f07
+    category: hit
+    question: 风险风暴（risk storming）是一次性活动吗？书里怎么说的？
+    expected_document: Fundamentals
+    expected_keywords: ["持续", "生命周期"]
+  - id: f08
+    category: hit
+    question: 事件驱动架构里，为了避免事件丢失可以采用什么办法？
+    expected_document: Fundamentals
+    expected_keywords: ["持久化", "队列", "确认"]
+
+  # ── 命中类：《Game Engine Architecture》──
+  - id: g01
+    category: hit
+    question: 游戏引擎的运行时架构大致由哪些部分构成？
+    expected_document: Game Engine
+    expected_keywords: ["工具", "运行时", "子系统", "组件"]
+  - id: g02
+    category: hit
+    question: 游戏循环（game loop）如果实现得不好，会产生什么副作用？
+    expected_document: Game Engine
+    expected_keywords: ["冻结", "帧", "时间"]
+  - id: g03
+    category: hit
+    question: 为什么游戏引擎要专门处理字符串（string）？直接用一个 std::string 不行吗？
+    expected_document: Game Engine
+    expected_keywords: ["性能", "内存", "复制", "分配"]
+  - id: g04
+    category: hit
+    question: What does the rendering pipeline define for how a single full-frame image should be rendered?
+    expected_document: Game Engine
+    expected_keywords: ["着色器", "shader", "顶点", "像素"]
+  - id: g05
+    category: hit
+    question: 环境映射（environment mapping）里，怎么找到某个表面点对应的贴图纹素？
+    expected_document: Game Engine
+    expected_keywords: ["反射", "光线", "视线"]
+  - id: g06
+    category: hit
+    question: OpenAL 在书里被提到时的许可状况是怎样的？
+    expected_document: Game Engine
+    expected_keywords: ["开源", "许可"]
+  - id: g07
+    category: hit
+    question: 当动画的时间缩放（time scale）设为 0.5 时，播放会发生什么变化？
+    expected_document: Game Engine
+    expected_keywords: ["慢", "一半", "0.5"]
+
+  # ── 兜底类：刻意选取两本书都未涉及的问题 ──
+  - id: b01
+    category: fallback
+    question: 量子计算里表面码（surface code）的纠错阈值大约是多少？
+  - id: b02
+    category: fallback
+    question: 2026 年世界杯在哪些城市举办？
+  - id: b03
+    category: fallback
+    question: 如何用 Rust 实现一个无锁队列？
+  - id: b04
+    category: fallback
+    question: 正宗的法式可颂怎么做？
+  - id: b05
+    category: fallback
+    question: 太阳系里木星目前有多少颗已确认的卫星？
+
+  # ── 二次命中类（对 b01 / b03 的重复提问；评测脚本会在兜底轮之后延迟重问）──
+  - id: r01
+    category: recall
+    recall_of: b01
+    question: 量子计算里表面码（surface code）的纠错阈值大约是多少？
+  - id: r02
+    category: recall
+    recall_of: b03
+    question: 如何用 Rust 实现一个无锁队列？

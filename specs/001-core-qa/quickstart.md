@@ -46,4 +46,4 @@ cd web && npm install && npm run build
 ## 自动化
 
 - 单元/集成：`cd server && pytest`
-- 验收（tasks 阶段生成）：`pytest tests/acceptance/` —— 场景 1-9 脚本化
+- 验收：`pytest tests/acceptance/` —— 场景 1/3/4/6/7 自动化 + SC-002 评测 + SC-008 演练（场景 7 安装与场景 8 前端提示为手动项，覆盖映射见 `server/tests/acceptance/README.md`）

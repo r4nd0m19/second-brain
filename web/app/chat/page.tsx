@@ -270,13 +270,9 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+      <div className="chat-layout">
         <aside className="sidebar">
-          <button
-            className="btn btn-primary"
-            style={{ width: "100%", marginBottom: 10 }}
-            onClick={newChat}
-          >
+          <button className="btn btn-primary sidebar-new" onClick={newChat}>
             ＋ 新对话
           </button>
           {convs.map((c) => (

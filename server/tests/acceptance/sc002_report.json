@@ -1,0 +1,226 @@
+{
+  "verdict": "PASS",
+  "hit_rate": 0.8666666666666667,
+  "results": [
+    {
+      "id": "f01",
+      "category": "hit",
+      "question": "书里把“大泥球”（Big Ball of Mud）这种架构描述成什么？给出的建议是什么？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 1.6,
+      "answer_head": "**书里对\"大泥球\"的描述**：它是一种架构反模式（antipattern），源于架构的缺失（the absence of architecture）[2]。具"
+    },
+    {
+      "id": "f02",
+      "category": "hit",
+      "question": "分层架构中的“隔离层”（layers of isolation）是什么意思？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 1.9,
+      "answer_head": "**\"隔离层\"（layers of isolation）的含义**：它指的是这样一个概念——只要各层之间的契约（contracts）保持不变，在架构的某一层所做"
+    },
+    {
+      "id": "f03",
+      "category": "hit",
+      "question": "管道（pipeline）架构适合处理什么样的系统？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 1.4,
+      "answer_head": "管道架构适合以下系统：\n\n1. **具有清晰、有序且确定性的单向处理步骤的系统**，且适用于任何复杂度的系统[2]。其简单性也使它很适合工期紧、预算受限的情形["
+    },
+    {
+      "id": "f04",
+      "category": "hit",
+      "question": "书中引用康威定律（Conway's Law）想说明什么道理？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 2.1,
+      "answer_head": "根据资料，书中引用康威定律想说明的核心道理是：**软件架构会（不可避免地）映照出构建它的组织的沟通结构**。\n\n康威定律的经典表述是：\"设计系统的组织……会被约"
+    },
+    {
+      "id": "f05",
+      "category": "hit",
+      "question": "为什么说软件架构里的决策本质上是权衡（trade-off）？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 3.6,
+      "answer_head": "根据资料，软件架构决策本质上是权衡，原因可以归纳为以下几点：\n\n1. **这是软件架构的第一定律**：书中明确提出\"软件架构中的一切都是权衡\"（Everythi"
+    },
+    {
+      "id": "f06",
+      "category": "hit",
+      "question": "Why does the book recommend a “database per service” data topology for microservices?",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 2.6,
+      "answer_head": "根据资料，书中推荐微服务采用\"database-per-service\"（每服务一库）数据拓扑，原因和要点如下：\n\n**1. 这是微服务的标准数据库拓扑**\n书"
+    },
+    {
+      "id": "f07",
+      "category": "hit",
+      "question": "风险风暴（risk storming）是一次性活动吗？书里怎么说的？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 1.7,
+      "answer_head": "**风险风暴不是一次性活动**（Risk storming is not a one-time process）[4]。\n\n书中的具体说明：\n\n1. **贯穿系"
+    },
+    {
+      "id": "f08",
+      "category": "hit",
+      "question": "事件驱动架构里，为了避免事件丢失可以采用什么办法？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 2.3,
+      "answer_head": "根据资料，事件驱动架构中避免事件丢失可采用以下办法：\n\n**总体思路：用事件转发（Event Forwarding）模式**\n图 15-20 中每一处可能发生数"
+    },
+    {
+      "id": "g01",
+      "category": "hit",
+      "question": "游戏引擎的运行时架构大致由哪些部分构成？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 2.8,
+      "answer_head": "根据资料，游戏引擎的运行时游戏玩法基础系统（runtime gameplay foundation system）通常由以下主要子系统构成：\n\n书中提到，虽然每"
+    },
+    {
+      "id": "g02",
+      "category": "hit",
+      "question": "游戏循环（game loop）如果实现得不好，会产生什么副作用？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 1.6,
+      "answer_head": "根据资料，游戏循环实现方式不当会产生以下副作用：\n\n**以让 Windows 消息优先于渲染和模拟的循环实现为例**：这样实现游戏循环的一个副作用是，**Win"
+    },
+    {
+      "id": "g03",
+      "category": "hit",
+      "question": "为什么游戏引擎要专门处理字符串（string）？直接用一个 std::string 不行吗？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 3.8,
+      "answer_head": "根据资料，游戏引擎要专门处理字符串、而不直接依赖通用字符串类型（如 C++ 的 std::string 一类），主要有以下原因：\n\n**1. 字符串表面简单，实"
+    },
+    {
+      "id": "g04",
+      "category": "hit",
+      "question": "What does the rendering pipeline define for how a single full-frame image should be rendered?",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 1.7,
+      "answer_head": "根据资料1，对于**单个完整帧图像**应如何渲染，渲染管线通常定义/包含以下内容：\n\n- 一个对**顶点着色器、几何着色器和/或像素着色器程序的 \"main\" "
+    },
+    {
+      "id": "g05",
+      "category": "hit",
+      "question": "环境映射（environment mapping）里，怎么找到某个表面点对应的贴图纹素？",
+      "passed": false,
+      "note": "来源应为 kb，实为 model_knowledge",
+      "source_type": "model_knowledge",
+      "seconds": 2.5,
+      "answer_head": "根据资料，环境映射（environment mapping）里找到某个表面点对应贴图纹素的方法是：\n\n**基本思路**：给定某个表面为点的位置和法线，先计算**"
+    },
+    {
+      "id": "g06",
+      "category": "hit",
+      "question": "OpenAL 在书里被提到时的许可状况是怎样的？",
+      "passed": false,
+      "note": "来源应为 kb，实为 model_knowledge",
+      "source_type": "model_knowledge",
+      "seconds": 1.8,
+      "answer_head": "根据资料，OpenAL 在书中被“顺带一提”时，作者提到其许可状况**有些令人困惑（is somewhat confusing）**[3]。\n\n另外，资料还提到"
+    },
+    {
+      "id": "g07",
+      "category": "hit",
+      "question": "当动画的时间缩放（time scale）设为 0.5 时，播放会发生什么变化？",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
+      "source_type": "kb",
+      "seconds": 2.3,
+      "answer_head": "当动画的时间缩放（time scale）设为 0.5 时，播放会发生的变化是：**动画看起来播放得比原速更慢**——以原速的一半回放。\n\n**原因与机制**：\n"
+    },
+    {
+      "id": "b01",
+      "category": "fallback",
+      "question": "量子计算里表面码（surface code）的纠错阈值大约是多少？",
+      "passed": true,
+      "note": "非库来源（model_knowledge）✓",
+      "source_type": "model_knowledge",
+      "seconds": 2.3,
+      "answer_head": "基于通用知识（资料中未涉及量子计算，以下回答来自我的一般知识）：\n\n表面码（surface code）的纠错阈值取决于具体的噪声模型和译码算法，通常给出的是**"
+    },
+    {
+      "id": "b02",
+      "category": "fallback",
+      "question": "2026 年世界杯在哪些城市举办？",
+      "passed": true,
+      "note": "非库来源（prior_conversation）✓",
+      "source_type": "prior_conversation",
+      "seconds": 2.0,
+      "answer_head": "你提供的【资料1】内容是关于**表面码纠错阈值**的，以及标题提到\"大泥球\"（Big Ball of Mud）相关内容，**并未涉及 2026 年世界杯的举办城"
+    },
+    {
+      "id": "b03",
+      "category": "fallback",
+      "question": "如何用 Rust 实现一个无锁队列？",
+      "passed": true,
+      "note": "非库来源（model_knowledge）✓",
+      "source_type": "model_knowledge",
+      "seconds": 5.9,
+      "answer_head": "基于通用知识回答（资料中未涉及 Rust 或无锁队列）。\n\n# Rust 无锁队列实现思路\n\nRust 实现无锁（lock-free）队列，**核心难点是内存回"
+    },
+    {
+      "id": "b04",
+      "category": "fallback",
+      "question": "正宗的法式可颂怎么做？",
+      "passed": true,
+      "note": "非库来源（prior_conversation）✓",
+      "source_type": "prior_conversation",
+      "seconds": 5.4,
+      "answer_head": "你提供的【资料1】内容是关于 **Rust 无锁队列实现**的，**并未涉及法式可颂（croissant）的做法**，因此我无法依据该资料回答。\n\n以下基于通用"
+    },
+    {
+      "id": "b05",
+      "category": "fallback",
+      "question": "太阳系里木星目前有多少颗已确认的卫星？",
+      "passed": true,
+      "note": "非库来源（model_knowledge）✓",
+      "source_type": "model_knowledge",
+      "seconds": 2.6,
+      "answer_head": "你提供的【资料1】内容是关于**法式可颂做法**的，以及标题提到\"大泥球\"（Big Ball of Mud）相关内容，**并未涉及木星卫星数量**，因此我无法依"
+    },
+    {
+      "id": "r01",
+      "category": "recall",
+      "question": "量子计算里表面码（surface code）的纠错阈值大约是多少？",
+      "passed": true,
+      "note": "二次命中 prior_conversation ✓",
+      "source_type": "prior_conversation",
+      "seconds": 1.5,
+      "answer_head": "**表面码（surface code）的纠错阈值约为 1% 这一量级** [1]。\n\n具体依噪声模型不同：\n- **电路级噪声（circuit-level no"
+    },
+    {
+      "id": "r02",
+      "category": "recall",
+      "question": "如何用 Rust 实现一个无锁队列？",
+      "passed": true,
+      "note": "二次命中 prior_conversation ✓",
+      "source_type": "prior_conversation",
+      "seconds": 4.3,
+      "answer_head": "**问的是如何用 Rust 实现无锁队列**，这在【资料1】中有完整回答，【资料2】无关。以下依据资料整理：\n\n## Rust 无锁队列实现思路\n\n核心难点是*"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/auth/login` | `{username, password}` → 204 + Set-Cookie |
+| POST | `/api/auth/login` | `{username, password}` → 204 + Set-Cookie；失败限速（默认 5 次/15 分钟）→ 429 + `Retry-After`（T034） |
 | POST | `/api/auth/logout` | 清会话 |
 | GET | `/api/me` | → `{username}` |
 

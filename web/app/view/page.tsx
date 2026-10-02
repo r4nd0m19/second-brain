@@ -468,7 +468,7 @@ export default function ViewPage() {
       {state.kind === "text" && <TextBody content={state.content} q={jumpQuote} />}
       {state.kind === "epub" && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div className="view-toolbar">
             <button className="btn" onClick={() => void renditionRef.current?.prev()}>
               ← 上一页
             </button>
@@ -477,7 +477,7 @@ export default function ViewPage() {
             </button>
             <span className="muted">{epubProgress}</span>
             {jumpStatus && <span className="muted">· {jumpStatus}</span>}
-            <span className="muted" style={{ marginLeft: "auto" }}>
+            <span className="muted view-kbd-hint" style={{ marginLeft: "auto" }}>
               （也可用键盘 ← →）
             </span>
           </div>
