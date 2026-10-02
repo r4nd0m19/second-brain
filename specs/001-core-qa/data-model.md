@@ -26,7 +26,7 @@
 | status | enum | `processing` / `indexed` / `unparseable`（FR-002/014） |
 | status_reason | text NULL | 无法解析原因（扫描版/格式不支持/损坏）；解析中为进度文案 |
 | parse_hint | text NULL | 解析质量提示（表格较多→建议深度解析；R7） |
-| source_type | enum | `upload` / `conversation`（FR-008 回写；对话来源不进资料列表，FR-009） |
+| source_type | enum | `upload` / `conversation`（FR-008 回写；对话来源不进资料列表，FR-009）/ `browser`（F2）/ `note`（MCP 写入回存，2026-10-02；不进资料列表，同对话回写管理边界） |
 | conversation_id | uuid FK NULL | 回写会话 ↔ 文档链接（FR-008；仅 conversation 来源有值） |
 | original_path | text | 原文件存储位置（字节级保真，FR-013） |
 | created_at / updated_at | timestamptz | |
@@ -72,6 +72,8 @@
 | related_hints | jsonb NULL | 弱相关提示列表（FR-007） |
 | usage | jsonb NULL | 模型 token 用量 + 估算费用（FR-017；含 cost_cny） |
 | created_at | timestamptz | |
+
+**索引**: pg_trgm GIN（content，对话全文搜索，2026-10-02；`ix_messages_content_trgm`，迁移 `d51a9c73e2b4`，与 R9 同机制）。
 
 ## 多用户留路自检
 

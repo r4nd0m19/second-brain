@@ -54,6 +54,17 @@
 - **出处跳转（FR-016）**: `/view/?id=&page=&q=&h=&from=` 参数协议；PDF `#page=`、文本高亮、EPUB CFI 精确定位 + 引文高亮（实现要点与踩坑记录见 research.md R6）；从对话进入可返回对话
 - **用量记录（FR-017）**: LLM 请求 `include_usage` → messages.usage 落库 + done 事件携带 + 回答下方小字展示
 
+### 增量设计（2026-10-02 试用增强）
+- **检索融合修正（R15）**: 关键词加成限定向量候选（消除大文档"随机子集加成"）；`retrieval_keyword_boost` 0.05→0.12；候选池 top_k×3
+- **既往对话引用的来源追溯（FR-020）**: `app/chat/inherit.py`——回写块内容定位原始回答消息（全文/前缀匹配）→ 继承其 citations；复制型回答向前找"引用条数 ≥ 文本最大标记"的最近助手消息；生成时（orchestrator）与读取时（conversation_messages，存量兜底）共用 `enrich_citations`；前端 [N] 映射 + 「回到原对话」深链（`/chat/?conv=&msg=`，复用滚动高亮）
+- **存储占用展示**: `GET /api/stats/storage`（数据库/文件/快照分项 + 各来源计数）→ 资料页顶部小字展示
+- **列表分页/搜索/排序（FR-018）**: `GET /api/documents` 信封化（`{items,total,page,page_size}`）+ `q/sort/page/page_size`；正文子串走既有 `ix_chunks_content_trgm`；前端工具条 + 页码条，查询状态进 URL（复用 `?source=` 模式）
+- **对话搜索 + 侧栏收起（FR-019）**: `GET /api/conversations/search`（会话级聚合）+ `messages.content` trgm 索引（迁移 `d51a9c73e2b4`）；侧栏搜索防抖 + 点击定位高亮；收起状态 localStorage + 首屏脚本防闪跳（research R10）
+- **深浅双模式**: `light-dark()` CSS + `:root[data-theme]` 手动覆盖 + 首屏内联脚本（跟随系统为缺省）
+- **对话页可视化重做（as-built）**: 对齐 ChatGPT 风格——助手平铺正文/用户右侧灰气泡/组合式输入框/空状态（research R11）；引用 chip 的 `citation:` 协议在 react-markdown v10 下需自定义 `urlTransform`（research R12）
+- **导航状态保真**: 列表/对话滚动位置与输入草稿 sessionStorage 记忆；返回链路（快照/阅读器→来源页）
+- **检索稳健性修补（R16-R19，2026-10-02）**: `retrieval_ef_search`（默认 200）对全部检索查询生效（HNSW 删改 churn 召回退化兜底；维护流程 REINDEX+VACUUM 见 R16）；`_terms` 剔除纯数字词项（SVG 坐标假性加成，R17）；回写守卫过滤失败回答（R18）；**低置信多查询重试**（R19：无强命中时改写扇出扩检，`app/retrieval/rewrite.py`）
+
 ### 解析策略（R7，2026-10-01 事故复盘后调整）
 - **PDF 快通道（默认）**: `pdf_fast.py`（pypdfium2 直抽 + 段落/断词/页眉页脚/字号标题启发式）；实测 1240 页 49 秒、内存 <500MB —— 大文件不再有 OOM 风险（原 Docling 全量 ~14GB 曾致宿主崩溃）
 - **深度解析（按需）**: `reprocess?mode=deep` → Docling 分页批处理（120 页/批、默认关 OCR），表格/版面更完整、约 20 分钟

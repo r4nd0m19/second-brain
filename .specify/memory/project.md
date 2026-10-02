@@ -37,6 +37,8 @@
 - 客户端形态：**PWA** —— 浏览器访问，可"安装"到 Windows 与 Android，形似原生应用
 - 采集范围：**双端全自动采集**（2026-10-01 决策）—— Windows：Chrome/Edge 扩展；Android：Firefox 安卓 + 扩展（前提：手机浏览改用 Firefox；扩展手动更新）
 - 分期构建：F1 核心问答 → F2 Windows 采集 → F3 Android 采集（先后顺序，不是砍范围）
+- **已交付增强（2026-10-02）**：MCP 接入 —— Claude Code 等 agent harness 经 `/mcp` 检索/回存第二大脑（独立 feature：`specs/003-mcp-access/`；超出 F1–F3 路线图的首个 harness 集成）
+- **已交付增强（2026-10-02）**：联网检索（库外兜底，F4）—— 本地库无相关内容时可联网搜索作答（智谱 Web Search；未配 key 静默关闭；成本护栏 30 次/天）：`specs/004-web-search/`（真实 key 核验 + quickstart 全量演练通过；显式联网指令 FR-011 与裸指令引导式回应同日增补——用户反馈驱动）
 - v1 数据源：上传文件 + 浏览器数据 + 与第二大脑的对话（ChatGPT 历史暂缓）
 
 **仍开放**：技术栈（留待 plan 阶段对比）；采集黑名单的具体站点/类别（spec/plan 阶段细化）

@@ -23,3 +23,4 @@
 
 - 本机服务：手动拉起（`cd server && .venv/bin/uvicorn app.main:app --port 8000 --host 0.0.0.0`）；**不做持久化**（2026-10-01 决定，测试期；上线时随 T035 配 systemd）
 - 备份：`deploy/backup/`（本地加密备份 + 恢复脚本 + 演练；异地对象存储同步延后至部署阶段，见 research R8）
+- 索引维护：删除量大或出现"库里有的检索不到"时，`REINDEX INDEX ix_chunks_embedding_hnsw` + `VACUUM chunks`（HNSW 删改 churn 召回退化，见 001 research R16；检索已配 `retrieval_ef_search=200` 兜底）
