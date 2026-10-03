@@ -15,7 +15,25 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Asia/Shanghai")
 
-_LIST_HINTS = ("哪些", "哪几", "看过什么", "都有什么", "都看了什么")
+_LIST_HINTS = (
+    "哪些",
+    "哪几",
+    "看过什么",
+    "看过些什么",
+    "看过啥",
+    "看了什么",
+    "看了些什么",
+    "看了啥",
+    "都看了什么",
+    "都有什么",
+    "浏览了什么",
+    "浏览了些什么",
+    "浏览过什么",
+    "浏览了啥",
+    "浏览过啥",
+    "读过什么",
+    "读了什么",
+)
 
 _CN_DIGITS = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
 
@@ -151,7 +169,7 @@ async def llm_parse_time_range(client, text: str, now: datetime | None = None) -
         '{"start_iso": "YYYY-MM-DDTHH:MM:SS+08:00" 或 null, "end_iso": "同上 或 null", '
         '"granularity": "day|week|month|year|custom", "confidence": 0到1的小数, '
         '"intent": "list|search|none"}\n'
-        "intent：问『看过哪些/哪几篇』→ list；找『某时间段看过的某主题内容』→ search；与时间无关 → none。\n"
+        "intent：问『看过/浏览了哪些、什么内容』（要清单）→ list；找『某时间段看过的某主题内容』→ search；与时间无关 → none。\n"
         "start 必须早于 end；无法确定时间时 start_iso/end_iso 置 null。\n"
         f"用户问题：{text}"
     )

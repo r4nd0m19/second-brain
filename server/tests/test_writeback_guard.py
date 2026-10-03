@@ -15,6 +15,8 @@ def test_no_info_answers_are_skipped() -> None:
     assert is_no_info_answer("我目前没有看到你提供的【资料】")
     assert is_no_info_answer("我这边看不到你的技术栈信息。")  # 2026-10-02 实测新增变体
     assert is_no_info_answer("我目前没有关于你技术栈的记录。")  # 2026-10-02 实测新增变体
+    assert is_no_info_answer("我这边没有收到你今天的【资料】。")  # 2026-10-03 实测新增变体
+    assert is_no_info_answer("我查看了资料，没有查到相关记录。")  # 2026-10-03 实测新增变体
 
 
 def test_knowledge_answers_are_written_back() -> None:

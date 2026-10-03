@@ -97,6 +97,10 @@ def test_intent_list_vs_search_vs_none() -> None:
     assert parse_time_range("我上周看过哪些网页？", now).intent == "list"
     assert parse_time_range("上周看过的文章里关于中间件的部分", now).intent == "search"
     assert parse_time_range("什么是 RAG？", now) is None
+    # 2026-10-03 实测补齐：「浏览了什么内容」类问句此前误判 search → 答"没有资料"（应走清单直达）
+    assert parse_time_range("我昨天浏览了什么内容", now).intent == "list"
+    assert parse_time_range("昨天看了什么", now).intent == "list"
+    assert parse_time_range("我昨天读了什么", now).intent == "list"
 
 
 def test_naive_now_is_localized() -> None:
