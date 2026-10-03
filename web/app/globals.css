@@ -663,6 +663,75 @@ textarea.chat-input {
   padding: 6px 0;
 }
 
+/* EPUB 目录（2026-10-03）：折叠面板 + 递归列表（ghost 行悬停） */
+.view-toc {
+  margin-bottom: 8px;
+}
+
+.view-toc summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.toc-box {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+.toc-list .toc-list {
+  padding-left: 14px;
+}
+
+.toc-item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toc-item:hover {
+  background: var(--code-bg);
+}
+
+/* 跳至 N 页（2026-10-03） */
+.page-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-jump-input {
+  width: 64px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.page-jump-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
 .sidebar-item {
   display: flex;
   align-items: center;

@@ -45,13 +45,25 @@ type EpubRendition = {
       styles?: Record<string, string>,
     ) => void;
   };
+  /** 章内容钩子：每章 iframe 文档注册（键盘监听等，2026-10-03） */
+  hooks?: {
+    content?: { register?: (cb: (contents: { document?: Document }) => void) => void };
+  };
 };
-type EpubLocation = { start?: { percentage?: number } };
+type EpubLocation = { start?: { percentage?: number; cfi?: string } };
+/** 目录条目（book.loaded.navigation.toc） */
+type EpubTocItem = { label?: string; href?: string; subitems?: EpubTocItem[] };
 type EpubBook = {
   ready?: Promise<unknown>;
   spine?: { length: number; get: (index: number) => EpubSection | null };
   load: (url: string) => Promise<{ documentElement?: EpubElement } | undefined>;
-  locations?: { generate: (chars?: number) => Promise<unknown> };
+  locations?: {
+    generate: (chars?: number) => Promise<unknown>;
+    length?: () => number;
+    locationFromCfi?: (cfi: string) => number;
+    cfiFromLocation?: (loc: number) => string;
+  };
+  loaded?: { navigation?: Promise<{ toc?: EpubTocItem[] }> };
   renderTo: (el: HTMLElement, opts: Record<string, string>) => EpubRendition;
   destroy?: () => void;
 };
@@ -256,6 +268,10 @@ export default function ViewPage() {
   const [jumpHeading, setJumpHeading] = useState<string | null>(null);
   const [jumpStatus, setJumpStatus] = useState("");
   const [epubProgress, setEpubProgress] = useState("");
+  const [epubPage, setEpubPage] = useState<{ cur: number; total: number } | null>(null); // 页码（按位置索引估算）
+  const [epubToc, setEpubToc] = useState<EpubTocItem[] | null>(null);
+  const [epubTotal, setEpubTotal] = useState<number | null>(null); // 位置索引总页数（跳页用）
+  const [jumpTo, setJumpTo] = useState(""); // 「跳至 N 页」输入
   const [fromChat, setFromChat] = useState(false);
   const epubRef = useRef<HTMLDivElement>(null);
   const epubBookRef = useRef<EpubBook | null>(null);
@@ -314,6 +330,9 @@ export default function ViewPage() {
     if (state.kind !== "epub" || !doc || !epubRef.current) return;
     const container = epubRef.current;
     let cancelled = false;
+    setEpubPage(null);
+    setEpubToc(null);
+    setEpubTotal(null);
 
     (async () => {
       try {
@@ -332,11 +351,35 @@ export default function ViewPage() {
         epubBookRef.current = book;
         await book.ready;
 
+        // 目录（2026-10-03）：读取导航结构；无目录的书不阻塞
+        try {
+          const nav = await book.loaded?.navigation;
+          if (!cancelled && nav?.toc?.length) setEpubToc(nav.toc);
+        } catch {
+          /* 无目录 */
+        }
+
         const rendition = book.renderTo(container, { width: "100%", height: "100%" });
         renditionRef.current = rendition;
         rendition.on?.("relocated", (loc) => {
           const pct = loc?.start?.percentage;
           setEpubProgress(typeof pct === "number" ? `${Math.round(pct * 100)}%` : "");
+          // 页码：locations 索引（generate 完成前 length 为 0 → 不显示）
+          const cfi = loc?.start?.cfi;
+          const total = book.locations?.length?.() ?? 0;
+          const cur = cfi && total > 0 ? book.locations?.locationFromCfi?.(cfi) : undefined;
+          if (typeof cur === "number" && cur >= 0) {
+            setEpubPage({ cur: cur + 1, total });
+          }
+        });
+        // 键盘 ←→：章节为独立 iframe，window 监听收不到章内焦点按键（2026-10-03 修复）——
+        // 注册到每章 content hooks；窗口级监听保留为焦点在工具栏时的兜底
+        rendition.hooks?.content?.register?.((contents) => {
+          contents.document?.addEventListener("keydown", (e) => {
+            const ke = e as KeyboardEvent;
+            if (ke.key === "ArrowLeft") void rendition.prev();
+            if (ke.key === "ArrowRight") void rendition.next();
+          });
         });
 
         await rendition.display();
@@ -345,7 +388,10 @@ export default function ViewPage() {
         // 完成后主动刷新一次当前位置，让进度显示立即修正。
         void book.locations
           ?.generate(1200)
-          .then(() => renditionRef.current?.reportLocation?.());
+          .then(() => {
+            if (!cancelled) setEpubTotal(book.locations?.length?.() ?? null);
+            renditionRef.current?.reportLocation?.();
+          });
 
         if (jumpQuote) {
           const jump = await findEpubLocation(book, jumpQuote, jumpHeading);
@@ -398,16 +444,29 @@ export default function ViewPage() {
     };
   }, [state.kind, doc, jumpQuote, jumpHeading]);
 
-  // EPUB 阅读快捷键：← →
+  // EPUB 阅读快捷键：← →（输入框/文本域聚焦时不触发，避免与光标移动冲突）
   useEffect(() => {
     if (state.kind !== "epub") return;
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
       if (e.key === "ArrowLeft") void renditionRef.current?.prev();
       if (e.key === "ArrowRight") void renditionRef.current?.next();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [state.kind]);
+
+  /** 按页跳转（2026-10-03）：页码 = locations 索引 + 1（与工具栏显示口径一致），越界钳制。 */
+  function jumpToLocation() {
+    const n = Math.floor(Number(jumpTo));
+    const book = epubBookRef.current;
+    if (!n || !epubTotal || !book?.locations?.cfiFromLocation) return;
+    const target = Math.min(Math.max(n, 1), epubTotal);
+    const cfi = book.locations.cfiFromLocation(target - 1);
+    if (cfi) void renditionRef.current?.display(cfi);
+    setJumpTo("");
+  }
 
   const pdfSrc =
     state.kind === "pdf"
@@ -472,12 +531,52 @@ export default function ViewPage() {
             <button className="btn" onClick={() => void renditionRef.current?.next()}>
               下一页 →
             </button>
-            <span className="muted">{epubProgress}</span>
+            <span className="muted">
+              {epubPage ? `第 ${epubPage.cur}/${epubPage.total} 页 · ` : ""}
+              {epubProgress}
+            </span>
             {jumpStatus && <span className="muted">· {jumpStatus}</span>}
+            {epubTotal ? (
+              <span className="muted page-jump">
+                跳至
+                <input
+                  className="page-jump-input"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={epubTotal}
+                  value={jumpTo}
+                  placeholder={`1-${epubTotal}`}
+                  title="输入页码后回车跳转"
+                  onChange={(e) => setJumpTo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      jumpToLocation();
+                    }
+                  }}
+                />
+                页
+                <button className="btn page-jump-btn" onClick={jumpToLocation}>
+                  跳转
+                </button>
+              </span>
+            ) : null}
             <span className="muted view-kbd-hint" style={{ marginLeft: "auto" }}>
               （也可用键盘 ← →）
             </span>
           </div>
+          {epubToc && epubToc.length > 0 && (
+            <details className="view-toc">
+              <summary>目录</summary>
+              <div className="toc-box">
+                <TocList
+                  items={epubToc}
+                  onPick={(href) => void renditionRef.current?.display(href)}
+                />
+              </div>
+            </details>
+          )}
           <div
             ref={epubRef}
             style={{
@@ -491,5 +590,23 @@ export default function ViewPage() {
         </>
       )}
     </main>
+  );
+}
+
+/** EPUB 目录树（递归渲染，2026-10-03）：点击条目跳转到对应章节。 */
+function TocList({ items, onPick }: { items: EpubTocItem[]; onPick: (href: string) => void }) {
+  return (
+    <ul className="toc-list">
+      {items.map((item, i) => (
+        <li key={`${item.href ?? "toc"}-${i}`}>
+          <button className="toc-item" onClick={() => item.href && onPick(item.href)}>
+            {item.label ?? "（未命名）"}
+          </button>
+          {item.subitems && item.subitems.length > 0 && (
+            <TocList items={item.subitems} onPick={onPick} />
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
