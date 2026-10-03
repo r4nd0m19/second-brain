@@ -195,12 +195,11 @@ async def test_plan_web_failure_degrades(monkeypatch) -> None:
 
 async def test_plan_weak_search_triggers_expansion(monkeypatch) -> None:
     strong = _chunk(0.8, "正解")
-    calls = {"expanded": 0}
+    expanded: list[str] = []
 
     async def expand(query: str) -> list[str]:
-        calls["expanded"] += 1
-        assert query == "q"
-        return ["变体一"]
+        expanded.append(query)
+        return ["变体一"] if query == "q" else []
 
     async def fake_search(_session, _owner, query, captured_after=None, captured_before=None):
         return [strong] if query == "变体一" else [_chunk(0.55)]
@@ -209,7 +208,8 @@ async def test_plan_weak_search_triggers_expansion(monkeypatch) -> None:
     monkeypatch.setattr(orch, "hybrid_search", fake_search)
 
     plan = await orch.prepare_reply(_NullSession(), OWNER, "找找看", [])
-    assert calls["expanded"] == 1
+    # 规划查询弱检索 → 触发扇出；原问题通道（MultiQuery 惯例）同样参与、同样可能触发
+    assert "q" in expanded
     assert plan.source_type is AnswerSource.kb
     assert [c["document_name"] for c in plan.citations] == ["正解"]
 

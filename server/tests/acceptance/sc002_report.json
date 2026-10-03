@@ -9,8 +9,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 8.3,
-      "answer_head": "书里对「大泥球」的描述和给出的建议/警示如下：\n\n**定义与命名来源**\n- 建筑师把「没有任何可辨认的架构结构」这种情况称为 *Big Ball of Mud"
+      "seconds": 7.7,
+      "answer_head": "书里对「大泥球」（Big Ball of Mud）的描述和建议如下：\n\n**它是什么**\n\n- 指「缺乏任何可辨识的架构结构」的反模式，名字源自 Brian F"
     },
     {
       "id": "f02",
@@ -19,8 +19,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 5.2,
-      "answer_head": "分层架构中的「隔离层」（layers of isolation）指的是一种设计原则：只要各层之间的契约（contracts）保持不变，对某一层所做的变更通常不会"
+      "seconds": 5.1,
+      "answer_head": "分层架构中的「隔离层」（layers of isolation）指的是：**某一层所做的改动通常不会影响或波及其他层的组件，前提是层与层之间的契约保持不变**。"
     },
     {
       "id": "f03",
@@ -29,8 +29,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 5.5,
-      "answer_head": "根据书中的内容，管道（pipeline）架构适合处理的系统可以归纳为以下几点：\n\n**核心适用场景**\n- 适合任何复杂度、但具有清晰、有序、确定性的单向处理步"
+      "seconds": 5.2,
+      "answer_head": "管道（pipeline）架构适合处理下面这几类系统：\n\n**处理流程本身**\n\n- 适合任何复杂度、但处理步骤**清晰、有序、确定性、单向**的系统；这种风格的"
     },
     {
       "id": "f04",
@@ -39,8 +39,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.5,
-      "answer_head": "在这段资料里，书引用康威定律是想说明：**由于消息总线构成了该架构的核心（heart of the architecture），负责这个引擎的集成架构师团队往往"
+      "seconds": 4.6,
+      "answer_head": "资料中明确用康威定律说明的是：[1]\n\n- 因为**消息总线构成了该架构的核心**，康威定律正确地**预言**：负责这个引擎的集成架构师团队，往往会成为组织内部"
     },
     {
       "id": "f05",
@@ -49,8 +49,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 5.1,
-      "answer_head": "软件架构里的决策之所以本质上是权衡，可以从资料中找到这样一条逻辑链：\n\n**1. 架构决策本身就意味着每个选项都有显著取舍**\n- 一个软件架构决策，是指其中每"
+      "seconds": 5.4,
+      "answer_head": "资料给出的核心逻辑是：**架构决策的每个选项都带有显著的权衡，所以做决策本质上就是在做权衡分析。**\n\n具体可以从三层来看：\n\n**1. 定义层面：有显著权衡的"
     },
     {
       "id": "f06",
@@ -59,8 +59,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 5.4,
-      "answer_head": "书里推荐微服务采用「每服务一数据库」（database-per-service）拓扑，主要理由如下：\n\n**1. 数据库拓扑必须与架构对齐，否则会出问题**\n数"
+      "seconds": 5.9,
+      "answer_head": "书的推荐理由可以分成三层：**对齐架构、控制变更、以及获得运维特性**。\n\n**1. 数据库拓扑必须与架构对齐**\n\n> The database topolo"
     },
     {
       "id": "f07",
@@ -69,8 +69,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.4,
-      "answer_head": "不是一次性活动。书里明确说：风险风暴（risk storming）**不是一次性的过程**，它贯穿系统的整个生命周期，团队在其中持续识别并缓解风险区域，尽量让问"
+      "seconds": 3.9,
+      "answer_head": "不是一次性活动。书里明确说：**风险风暴不是一个一次性的过程（not a one-time process）**，它会贯穿系统的整个生命周期持续进行，团队要在风"
     },
     {
       "id": "f08",
@@ -79,8 +79,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.3,
-      "answer_head": "根据资料，在事件驱动架构里避免数据丢失可以采用 **事件转发（Event Forwarding）模式**。\n\n资料中提到，大多数事件驱动架构使用 **AMQP*"
+      "seconds": 4.5,
+      "answer_head": "资料中提到的办法是 **Event Forwarding（事件转发）模式**：\n\n> AMQP brokers can also leverage what i"
     },
     {
       "id": "g01",
@@ -89,8 +89,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 6.1,
-      "answer_head": "根据资料，游戏引擎的运行时架构可以从以下几个层面来理解：\n\n**1. 整体上分为工具套件 + 运行时两部分**\n一个游戏引擎通常由一个工具套件（tool sui"
+      "seconds": 5.2,
+      "answer_head": "根据资料，游戏引擎一般由**工具套件（tool suite）**和**运行时组件（runtime component）**两大部分组成，其中运行时是资料首先展开"
     },
     {
       "id": "g02",
@@ -100,7 +100,7 @@
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
       "seconds": 4.5,
-      "answer_head": "根据资料，游戏循环实现方式不当会产生这样的副作用：如果采用「每次「真实」游戏循环迭代前先泵（pump）Windows 消息」的写法，其副作用之一是 **Wind"
+      "answer_head": "根据资料，一个具体的副作用是：**Windows 消息会优先于渲染和游戏模拟，导致游戏短暂冻结（freeze）。**\n\n原文是：\n\n> One of the s"
     },
     {
       "id": "g03",
@@ -109,8 +109,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 5.1,
-      "answer_head": "根据资料，游戏引擎之所以要专门处理字符串、不能简单依赖 `std::string` 这类字符串类，主要有两方面原因：\n\n**1. 字符串类有隐藏成本，难以察觉直"
+      "seconds": 7.1,
+      "answer_head": "基于资料，游戏引擎专门处理字符串的核心原因是**字符串在运行时本质上很昂贵，而且这种成本往往是隐藏的、直到做性能剖析（profiling）才会暴露**。直接用 "
     },
     {
       "id": "g04",
@@ -119,8 +119,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.0,
-      "answer_head": "根据资料，渲染管线（rendering pipeline）定义了单帧完整图像应如何渲染，它通常包括以下内容 [1]：\n\n- 对**顶点着色器（vertex sh"
+      "seconds": 4.5,
+      "answer_head": "资料中说：渲染管线所定义的，正是**一帧完整图像（a single full-frame image）应当如何被渲染**。\n\n原文 [1]：\n\n> how a "
     },
     {
       "id": "g05",
@@ -129,8 +129,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.4,
-      "answer_head": "根据资料，在环境映射中，要找到物体表面某一点 P 对应的环境贴图纹素，方法是 [1]：\n\n1. 取一条从**摄像机到点 P** 的射线（ray）；\n2. 将这条"
+      "seconds": 4.2,
+      "answer_head": "根据资料，做法是**从相机到该表面点 P 的视线射线，围绕 P 处的表面法线做反射，然后让反射射线延伸，直到它与环境贴图的那个球体或立方体相交**，交点处的纹素"
     },
     {
       "id": "g06",
@@ -139,8 +139,8 @@
       "passed": false,
       "note": "来源应为 kb，实为 model_knowledge",
       "source_type": "model_knowledge",
-      "seconds": 8.9,
-      "answer_head": "根据资料，书里提到 **OpenAL 时，其许可状况表述为「OpenAL is free and open-source, released under the"
+      "seconds": 8.4,
+      "answer_head": "根据资料，OpenAL 采用**双许可（dual-licensed）**：**商业许可**和 **LGPL**。\n\n原文 [1]：\n\n> OpenAL is d"
     },
     {
       "id": "g07",
@@ -149,8 +149,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.2,
-      "answer_head": "根据资料，当动画的时间缩放（time scale）设为 **0.5** 时，播放速度会**变慢**——也就是动画以**半速**播放 [1]。\n\n资料中的具体说明"
+      "seconds": 4.7,
+      "answer_head": "根据资料，当时**间缩放（time scale）为 0.5 时，播放会变慢，因此玩家实际看到的帧不再是每帧依次经过的 1、2、3……，而可能是 1.1、1.4、"
     },
     {
       "id": "b01",
@@ -159,8 +159,8 @@
       "passed": true,
       "note": "非库来源（model_knowledge）✓",
       "source_type": "model_knowledge",
-      "seconds": 16.5,
-      "answer_head": "根据资料，表面码（surface code，属于量子纠错码 quantum error-correcting code 的一种）的容错阈值大约在 **0.1% "
+      "seconds": 13.2,
+      "answer_head": "资料中没有提到表面码（surface code）的纠错阈值。本次提供的资料（涉及渲染管线、环境映射、OpenAL 许可、动画时间缩放等图形与游戏引擎内容）与量子"
     },
     {
       "id": "b02",
@@ -169,8 +169,8 @@
       "passed": true,
       "note": "非库来源（web）✓",
       "source_type": "web",
-      "seconds": 5.2,
-      "answer_head": "依据来自网络（联网搜索结果）[1][2][4][5]：\n\n2026 年世界杯由**美国、墨西哥、加拿大**三国联合举办，共 **16 座举办城市** [1][2"
+      "seconds": 3.4,
+      "answer_head": "已为你完成联网检索，依据网络来源，2026 年世界杯由**加拿大、墨西哥、美国三国联合举办**，共 16 座城市承办比赛 [3][4][5]。\n\n具体城市列表 "
     },
     {
       "id": "b03",
@@ -179,8 +179,8 @@
       "passed": false,
       "note": "应为兜底，实为 kb",
       "source_type": "kb",
-      "seconds": 16.9,
-      "answer_head": "根据资料，书中讲的是**无锁编程（lock-free concurrency）的通用的“事务”式思路**，并没有给出具体语言（如 Rust）的实现代码 [1]。"
+      "seconds": 8.8,
+      "answer_head": "根据资料 [1]，无锁编程的通用做法是：**把每个临界操作当成一个「事务」（transaction），它要么整体成功、要么整体失败；失败就简单重试直到成功**。"
     },
     {
       "id": "b04",
@@ -189,8 +189,8 @@
       "passed": true,
       "note": "非库来源（prior_conversation）✓",
       "source_type": "prior_conversation",
-      "seconds": 6.4,
-      "answer_head": "这是我之前给你的一份答复，**仅供你参考**——它来自我此前的回答，可能过时或有误，不是权威依据。当时我给的要点是：\n\n**核心原理**：法式可颂靠**千层酥皮"
+      "seconds": 6.9,
+      "answer_head": "本次没有可用资料。你给的是「既往对话」——也就是我**此前给你的那条可颂做法答复**，按规则它**仅供参考、可能过时或有误，不作为事实依据**，而本次也没有提供"
     },
     {
       "id": "b05",
@@ -199,8 +199,8 @@
       "passed": true,
       "note": "非库来源（web）✓",
       "source_type": "web",
-      "seconds": 5.2,
-      "answer_head": "依据来自网络 [1][2][4][5]：\n\n木星目前有 **92 颗**已确认的卫星，是太阳系中卫星数量最多的行星 [1][2][4][5]。\n\n几点补充：\n-"
+      "seconds": 3.8,
+      "answer_head": "已为你完成联网检索，依据网络来源，木星的已确认卫星数量在不同时间的报道中并不一致：\n\n**最新的一条**：木星已知有 **95 颗**卫星 [3]。\n\n其它来源"
     },
     {
       "id": "r01",
@@ -209,18 +209,18 @@
       "passed": true,
       "note": "二次命中 prior_conversation ✓",
       "source_type": "prior_conversation",
-      "seconds": 5.2,
-      "answer_head": "表面码（surface code）的纠错阈值通常约为 **1%**（即每个物理操作错误率约 10⁻² 量级）——这是目前最常引用的量级。\n\n需要说明的是：本次给"
+      "seconds": 4.4,
+      "answer_head": "你这次提供的【资料1】是我**此前给你的那条答复**，按规则它**仅供参考、可能过时或有误，不作为事实依据**——而且那条答复本身也没给出确定的阈值来源。本次*"
     },
     {
       "id": "r02",
       "category": "recall",
       "question": "如何用 Rust 实现一个无锁队列？",
       "passed": false,
-      "note": "应为 prior_conversation，实为 kb",
-      "source_type": "kb",
-      "seconds": 10.8,
-      "answer_head": "根据资料，书中讲的是**无锁编程的通用“事务”式思路**，并没有给出具体语言（如 Rust）的实现代码 [1]。可以按资料里的原则来落实你的 Rust 无锁队列"
+      "note": "应为 prior_conversation，实为 model_knowledge",
+      "source_type": "model_knowledge",
+      "seconds": 8.3,
+      "answer_head": "根据资料 [1]，无锁编程的通用做法是：**把每个临界操作当成一个「事务」（transaction），它要么整体成功、要么整体失败；失败就简单重试直到成功**。"
     }
   ]
 }

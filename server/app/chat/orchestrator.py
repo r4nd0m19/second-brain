@@ -327,8 +327,17 @@ async def _execute_plan(
         return None
 
     # ---- 本地检索：多查询合并、按块去重取最高分；低置信扇出（FR-021）；总量上限 2×top_k ----
+    # 原问题始终参与召回（MultiQuery 惯例：改写是增量通道、原问题永远保留）——2026-10-03 实测：
+    # 规划器改写质量有波动（g05 原句重排 0.775、某轮改写词袋跌至 0.32；g06 部分轮次池外漏召），
+    # 原问题通道是最稳的兜底；时间范围沿用规划器第一个时间窗（问题被判定为时间限定时同样受限）
+    channels: list[tuple[str, TimeRange | None]] = []
+    if search_queries:
+        raw_tr = next((tr for _, tr in search_queries if tr is not None), None)
+        channels.append((user_text, raw_tr))
+    channels.extend(search_queries)
+
     merged: dict[uuid.UUID, RetrievedChunk] = {}
-    for query, tr in search_queries:
+    for query, tr in channels:
         hits = await hybrid_search(
             session,
             owner_user_id,
