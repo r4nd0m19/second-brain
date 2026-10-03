@@ -5,48 +5,55 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { api, ApiError, Doc } from "@/lib/api";
+import { useLang } from "@/lib/i18n";
 import ThemeToggle from "../_components/theme-toggle";
+import LangToggle from "../_components/lang-toggle";
 
 function SnapInner() {
+  const { t, lang } = useLang();
   const params = useSearchParams();
   const id = params.get("id") ?? "";
   const from = params.get("from");
   const back =
     from === "chat"
-      ? { href: "/chat/", label: "返回对话" }
+      ? { href: "/chat/", label: t("snap.backToChat") }
       : from === "browser"
-        ? { href: "/?source=browser", label: "返回浏览记录" }
-        : { href: "/", label: "返回资料库" };
+        ? { href: "/?source=browser", label: t("snap.backToBrowsing") }
+        : { href: "/", label: t("snap.backToLibrary") };
   const [doc, setDoc] = useState<Doc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
-      setError("缺少条目参数");
+      setError(t("snap.missingParam"));
       return;
     }
     api
       .getDoc(id)
       .then(setDoc)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "加载失败"));
-  }, [id]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("snap.loadFailed")));
+  }, [id, t]);
 
   return (
     <main className="container" style={{ maxWidth: 1200 }}>
       <div className="header">
         <div>
-          <h1 style={{ fontSize: 20, marginBottom: 4 }}>{doc?.name ?? "页面快照"}</h1>
+          <h1 style={{ fontSize: 20, marginBottom: 4 }}>{doc?.name ?? t("snap.title")}</h1>
           {doc && (
             <div className="muted">
               {doc.site_name}
               {doc.last_captured_at
-                ? ` · 浏览于 ${new Date(doc.last_captured_at).toLocaleString("zh-CN")}`
+                ? t("snap.visitedAt", {
+                    time: new Date(doc.last_captured_at).toLocaleString(
+                      lang === "zh" ? "zh-CN" : "en-US",
+                    ),
+                  })
                 : ""}
               {doc.source_url && (
                 <>
                   {" · "}
                   <a href={doc.source_url} target="_blank" rel="noreferrer">
-                    打开原文 ↗
+                    {t("snap.openOriginal")}
                   </a>
                 </>
               )}
@@ -58,6 +65,7 @@ function SnapInner() {
             {back.label}
           </Link>
           <ThemeToggle />
+          <LangToggle />
         </div>
       </div>
       {error && <p className="error">{error}</p>}
@@ -68,7 +76,7 @@ function SnapInner() {
             sandbox=""
             src={`/api/documents/${doc.id}/snapshot`}
             style={{ width: "100%", height: "78vh", border: "0", background: "#fff", display: "block" }}
-            title="页面快照"
+            title={t("snap.title")}
           />
         </div>
       )}
@@ -77,11 +85,12 @@ function SnapInner() {
 }
 
 export default function SnapPage() {
+  const { t } = useLang();
   return (
     <Suspense
       fallback={
         <main className="container">
-          <p className="muted">加载中…</p>
+          <p className="muted">{t("snap.loading")}</p>
         </main>
       }
     >

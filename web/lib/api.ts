@@ -1,5 +1,7 @@
 // 同源 API 客户端：会话 Cookie 自动携带（credentials: include）
 
+import { translate } from "@/lib/i18n";
+
 export type DocStatus = "processing" | "indexed" | "unparseable";
 
 export type Doc = {
@@ -120,7 +122,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const message: string =
-      body?.error?.message ?? body?.detail ?? `请求失败（${res.status}）`;
+      body?.error?.message ??
+      body?.detail ??
+      translate("common.requestFailed", { status: res.status });
     throw new ApiError(res.status, message);
   }
   if (res.status === 204) return undefined as T;
@@ -198,12 +202,12 @@ export const api = {
           try {
             resolve(JSON.parse(xhr.responseText));
           } catch {
-            reject(new ApiError(xhr.status, "上传响应解析失败"));
+            reject(new ApiError(xhr.status, translate("common.uploadParseFailed")));
           }
         } else if (xhr.status === 401) {
-          reject(new ApiError(401, "未登录"));
+          reject(new ApiError(401, translate("common.unauthorized")));
         } else {
-          let message = `上传失败（${xhr.status}）`;
+          let message = translate("common.uploadFailed", { status: xhr.status });
           try {
             const body = JSON.parse(xhr.responseText) as { detail?: string };
             if (body.detail) message = body.detail;
@@ -213,7 +217,7 @@ export const api = {
           reject(new ApiError(xhr.status, message));
         }
       };
-      xhr.onerror = () => reject(new ApiError(0, "上传网络错误"));
+      xhr.onerror = () => reject(new ApiError(0, translate("common.uploadNetworkError")));
       const form = new FormData();
       form.append("file", file);
       xhr.send(form);

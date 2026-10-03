@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, Doc, api } from "@/lib/api";
+import { useLang } from "@/lib/i18n";
 import ThemeToggle from "../_components/theme-toggle";
+import LangToggle from "../_components/lang-toggle";
 
 type ViewState =
   | { kind: "loading" }
@@ -261,6 +263,12 @@ function TextBody({ content, q }: { content: string; q: string | null }) {
 }
 
 export default function ViewPage() {
+  const { t } = useLang();
+  // effects 内取最新 t，但不把 t 放进依赖：语言切换不应重跑加载（否则重取文档、丢失 EPUB 阅读位置）
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [doc, setDoc] = useState<Doc | null>(null);
   const [state, setState] = useState<ViewState>({ kind: "loading" });
   const [jumpPage, setJumpPage] = useState<string | null>(null);
@@ -288,7 +296,7 @@ export default function ViewPage() {
     setJumpQuote(q);
     setJumpHeading(h);
     if (!id) {
-      setState({ kind: "error", message: "缺少文件参数（?id=）" });
+      setState({ kind: "error", message: tRef.current("view.missingId") });
       return;
     }
     (async () => {
@@ -301,14 +309,14 @@ export default function ViewPage() {
           const res = await fetch(`/api/documents/${id}/original?inline=1`, {
             credentials: "include",
           });
-          if (!res.ok) throw new Error(`读取失败（${res.status}）`);
+          if (!res.ok) throw new Error(tRef.current("view.readFailed", { status: res.status }));
           setState({ kind: "text", content: await res.text() });
         } else if (info.format === "epub") {
           setState({ kind: "epub" });
         } else {
           setState({
             kind: "unsupported",
-            reason: `暂不支持在线浏览 .${info.format} 格式`,
+            reason: tRef.current("view.unsupported", { format: info.format }),
           });
         }
       } catch (err) {
@@ -317,10 +325,13 @@ export default function ViewPage() {
           return;
         }
         if (err instanceof ApiError && err.status === 404) {
-          setState({ kind: "error", message: "该资料不存在或已被删除（来源已删除）" });
+          setState({ kind: "error", message: tRef.current("view.deleted") });
           return;
         }
-        setState({ kind: "error", message: err instanceof Error ? err.message : "加载失败" });
+        setState({
+          kind: "error",
+          message: err instanceof Error ? err.message : tRef.current("view.loadFailed"),
+        });
       }
     })();
   }, []);
@@ -339,7 +350,7 @@ export default function ViewPage() {
         const res = await fetch(`/api/documents/${doc.id}/original?inline=1`, {
           credentials: "include",
         });
-        if (!res.ok) throw new Error(`读取失败（${res.status}）`);
+        if (!res.ok) throw new Error(tRef.current("view.readFailed", { status: res.status }));
         const data = await res.arrayBuffer();
         const mod = (await import("epubjs")) as unknown as {
           default?: EpubFactory;
@@ -397,7 +408,7 @@ export default function ViewPage() {
           const jump = await findEpubLocation(book, jumpQuote, jumpHeading);
           if (!cancelled) {
             if (!jump) {
-              setJumpStatus("未在正文中匹配到引文，已打开文档开头");
+              setJumpStatus(tRef.current("view.quoteNoMatch"));
             } else {
               let cfi: string | null = null;
               if (jump.cfi) {
@@ -422,7 +433,7 @@ export default function ViewPage() {
                 }
               }
               if (!displayed) await rendition.display(jump.href);
-              setJumpStatus(cfi ? "已定位并高亮引文" : "已定位到引文所在章节");
+              setJumpStatus(cfi ? tRef.current("view.quoteLocated") : tRef.current("view.quoteSection"));
             }
           }
         }
@@ -430,7 +441,7 @@ export default function ViewPage() {
         if (!cancelled) {
           setState({
             kind: "error",
-            message: err instanceof Error ? err.message : "EPUB 渲染失败",
+            message: err instanceof Error ? err.message : tRef.current("view.epubFailed"),
           });
         }
       }
@@ -485,33 +496,34 @@ export default function ViewPage() {
             maxWidth: "60%",
           }}
         >
-          {doc ? doc.name : "浏览"}
+          {doc ? doc.name : t("view.title")}
         </h1>
         <div className="hdr-actions">
           {doc && (
             <a className="btn" href={api.originalUrl(doc.id)} download={doc.name}>
-              下载
+              {t("docs.download")}
             </a>
           )}
           <Link className="btn" href={fromChat ? "/chat/" : "/"}>
-            {fromChat ? "返回对话" : "返回"}
+            {fromChat ? t("snap.backToChat") : t("view.back")}
           </Link>
           <ThemeToggle />
+          <LangToggle />
         </div>
       </div>
 
-      {state.kind === "loading" && <p className="muted">加载中…</p>}
+      {state.kind === "loading" && <p className="muted">{t("docs.loading")}</p>}
       {state.kind === "error" && <p className="error">{state.message}</p>}
       {state.kind === "unsupported" && (
         <div className="card">
           <p>{state.reason}</p>
-          <p className="muted">可用右上角「下载」在本地打开。</p>
+          <p className="muted">{t("view.unsupportedHint")}</p>
         </div>
       )}
       {state.kind === "pdf" && (
         <iframe
           src={pdfSrc}
-          title="PDF 预览"
+          title={t("view.pdfPreview")}
           style={{
             width: "100%",
             height: "80vh",
@@ -526,19 +538,21 @@ export default function ViewPage() {
         <>
           <div className="view-toolbar">
             <button className="btn" onClick={() => void renditionRef.current?.prev()}>
-              ← 上一页
+              {t("view.prevPage")}
             </button>
             <button className="btn" onClick={() => void renditionRef.current?.next()}>
-              下一页 →
+              {t("view.nextPage")}
             </button>
             <span className="muted">
-              {epubPage ? `第 ${epubPage.cur}/${epubPage.total} 页 · ` : ""}
+              {epubPage
+                ? `${t("view.pageOf", { cur: epubPage.cur, total: epubPage.total })} · `
+                : ""}
               {epubProgress}
             </span>
             {jumpStatus && <span className="muted">· {jumpStatus}</span>}
             {epubTotal ? (
               <span className="muted page-jump">
-                跳至
+                {t("view.jumpTo")}
                 <input
                   className="page-jump-input"
                   type="number"
@@ -547,7 +561,7 @@ export default function ViewPage() {
                   max={epubTotal}
                   value={jumpTo}
                   placeholder={`1-${epubTotal}`}
-                  title="输入页码后回车跳转"
+                  title={t("view.jumpTitle")}
                   onChange={(e) => setJumpTo(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -556,19 +570,19 @@ export default function ViewPage() {
                     }
                   }}
                 />
-                页
+                {t("view.page")}
                 <button className="btn page-jump-btn" onClick={jumpToLocation}>
-                  跳转
+                  {t("view.jump")}
                 </button>
               </span>
             ) : null}
             <span className="muted view-kbd-hint" style={{ marginLeft: "auto" }}>
-              （也可用键盘 ← →）
+              {t("view.kbdHint")}
             </span>
           </div>
           {epubToc && epubToc.length > 0 && (
             <details className="view-toc">
-              <summary>目录</summary>
+              <summary>{t("view.toc")}</summary>
               <div className="toc-box">
                 <TocList
                   items={epubToc}
@@ -595,12 +609,13 @@ export default function ViewPage() {
 
 /** EPUB 目录树（递归渲染，2026-10-03）：点击条目跳转到对应章节。 */
 function TocList({ items, onPick }: { items: EpubTocItem[]; onPick: (href: string) => void }) {
+  const { t } = useLang();
   return (
     <ul className="toc-list">
       {items.map((item, i) => (
         <li key={`${item.href ?? "toc"}-${i}`}>
           <button className="toc-item" onClick={() => item.href && onPick(item.href)}>
-            {item.label ?? "（未命名）"}
+            {item.label ?? t("view.untitled")}
           </button>
           {item.subitems && item.subitems.length > 0 && (
             <TocList items={item.subitems} onPick={onPick} />

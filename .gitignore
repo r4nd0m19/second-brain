@@ -25,6 +25,7 @@ venv/
 dist/
 build/
 *.log
+*.tsbuildinfo
 .next/
 web/out/
 data/

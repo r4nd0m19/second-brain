@@ -1,5 +1,7 @@
 "use client";
 
+import { useLang } from "@/lib/i18n";
+
 export type SortOption = {
   value: string;
   label: string;
@@ -26,6 +28,7 @@ export function ListToolbar({
   total: number;
   loading: boolean;
 }) {
+  const { t } = useLang();
   const desc = sort.startsWith("-");
   const field = desc ? sort.slice(1) : sort;
   return (
@@ -33,7 +36,7 @@ export function ListToolbar({
       <input
         className="list-search"
         type="search"
-        placeholder="搜索标题 / 站点 / 正文…"
+        placeholder={t("list.searchPlaceholder")}
         value={q}
         onChange={(e) => onQChange(e.target.value)}
       />
@@ -53,13 +56,15 @@ export function ListToolbar({
       </select>
       <button
         className="btn list-dir"
-        title={desc ? "当前：降序（点击切升序）" : "当前：升序（点击切降序）"}
-        aria-label={desc ? "切换为升序" : "切换为降序"}
+        title={desc ? t("list.sortDescTitle") : t("list.sortAscTitle")}
+        aria-label={desc ? t("list.toAsc") : t("list.toDesc")}
         onClick={() => onSortChange((desc ? "" : "-") + field)}
       >
         {desc ? "↓" : "↑"}
       </button>
-      <span className="muted list-count">{loading ? "更新中…" : `共 ${total} 条`}</span>
+      <span className="muted list-count">
+        {loading ? t("list.updating") : t("list.count", { total })}
+      </span>
     </div>
   );
 }
@@ -90,11 +95,12 @@ export function Pager({
   totalPages: number;
   onPage: (p: number) => void;
 }) {
+  const { t } = useLang();
   if (totalPages <= 1) return null;
   return (
     <div className="pager">
       <button className="btn pager-btn" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-        ‹ 上一页
+        {t("list.prev")}
       </button>
       {pageNumbers(page, totalPages).map((n, i) =>
         n === "…" ? (
@@ -117,10 +123,10 @@ export function Pager({
         disabled={page >= totalPages}
         onClick={() => onPage(page + 1)}
       >
-        下一页 ›
+        {t("list.next")}
       </button>
       <span className="muted pager-info">
-        第 {page}/{totalPages} 页
+        {t("list.pageOf", { page, totalPages })}
       </span>
     </div>
   );

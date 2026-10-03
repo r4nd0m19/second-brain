@@ -170,6 +170,7 @@
 - [X] T035 [US2] 清理 UI web/app/page.tsx：时间范围选择 + 二次确认 + 结果计数
   - Deps: T034
   - DoD: 手测：删除后列表 / 检索 / 出处同步消失、快照 404
+  - 追记（2026-10-03）：起止日期控件由原生 `<input type="date">` 换为日历弹层（react-day-picker，`web/app/_components/date-field.tsx`）——原生控件格式随浏览器语言、无法随界面中英切换；参数契约不变。见 001 research R26 / T067
 - [X] T036 [P] [US2] acceptance：SC-003（断言服务端无黑名单域名任何行——配合扩展手测记录）、SC-004（删除后问答不再引用 + snapshot 404）
   - Deps: T031, T034
   - DoD: 新用例通过

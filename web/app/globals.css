@@ -102,6 +102,14 @@ body {
   gap: 6px;
 }
 
+/* 中英切换（2026-10-03）：与主题钮同规格的方形按钮 */
+.header .lang-toggle {
+  width: 36px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .muted {
   color: var(--muted);
   font-size: 14px;
@@ -1034,3 +1042,45 @@ html[data-sidebar="off"] .sidebar {
 .bubble-assistant .md th,
 .bubble-assistant .md td { border: 1px solid #e5e7eb; padding: 4px 8px; }
 .bubble-assistant .md a { color: inherit; }
+
+/* ── 日期选择（DateField：react-day-picker 弹层，2026-10-03）── */
+.cleanup-date { display: inline-flex; align-items: center; gap: 6px; }
+.date-field { position: relative; display: inline-block; }
+.date-field-empty { color: var(--muted); }
+.date-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+}
+.date-pop .rdp-root {
+  --rdp-accent-color: var(--accent);
+  --rdp-accent-background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+  --rdp-day_button-border-radius: 8px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-nav_button-height: 28px;
+  --rdp-nav_button-width: 28px;
+  --rdp-nav-height: 2.1rem;
+  font-size: 13px;
+}
+.date-pop .rdp-selected { font-size: inherit; }
+.date-pop .rdp-selected .rdp-day_button {
+  background: var(--rdp-accent-background-color);
+}
+.date-pop-foot {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.date-pop-foot .btn { padding: 3px 12px; font-size: 13px; }

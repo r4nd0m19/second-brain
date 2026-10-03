@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+import { LangProvider } from "@/lib/i18n";
 import ServiceWorkerRegister from "./_components/sw-register";
 import HeaderOffset from "./_components/header-offset";
 
@@ -38,9 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               'try{var t=localStorage.getItem("sb-theme"),m=t==="light"||t==="dark"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;var e=document.querySelector(\'meta[name="theme-color"]\');if(e)e.setAttribute("content",m==="dark"?"#0f1115":"#f6f7f9");if(localStorage.getItem("sb-sidebar")==="0")document.documentElement.dataset.sidebar="off"}catch(e){}',
           }}
         />
-        <ServiceWorkerRegister />
-        <HeaderOffset />
-        {children}
+        <LangProvider>
+          <ServiceWorkerRegister />
+          <HeaderOffset />
+          {children}
+        </LangProvider>
       </body>
     </html>
   );

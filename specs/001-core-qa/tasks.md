@@ -349,6 +349,11 @@ Task: "T022 前端-对话页 web/app/chat/"
   - DoD: 单测 +2（重复跳过/不同内容正常写入）✓；114 单测全过 ✓
 - [x] **T065 检索二段式重排（R24/A 方案，2026-10-03）**：新增检索评测工具 `tests/acceptance/retrieval_eval.py`（20 题 × 5 方案：hit@6/MRR/分离间隔，报告落盘）与基线；`hybrid_search` 接入 cross-encoder（bge-reranker-v2-m3 @ 硅基流动，与 embedding 同源 key）复评候选池——重排分即最终分、失败静默降级余弦+加成、`rerank_enabled` 可开关；0.60/0.50 阈值沿用（实测落于 0.377–0.77 分离间隔内）；单测不触外部 API（conftest 总开关）
   - DoD: 评测分离间隔 −0.05 → **+0.39** ✓；单测 +3（替换/降级/禁用）✓；117 单测全过 ✓；真机冒烟：书内问题 kb 命中（6 出处）+ 库外问题正常兜底 ✓；SC-002 回归 PASS（命中 15/15，无回退、r01 修复）✓
+- [x] **T066 界面中英切换（FR-023/R25，2026-10-03 用户需求）**：轻量自实现 i18n（零依赖）——`web/lib/i18n.tsx`（LangProvider/`useLang`/`t()` + 非 React 模块 `translate()`；zh/en 双字典，键不一致编译期报错）；顶栏主题钮旁 `LangToggle`（显示目标语言 EN/中）；localStorage 记忆（`sb-lang`）+ 首次跟随浏览器语言；静态导出首帧中文（与 HTML 一致，hydration 安全）、挂载后同步；`<html lang>` 同步更新。覆盖全部界面：资料库（存储行/排序项/采集凭据/清理区）、对话页、阅读器（目录/跳页/引文定位提示）、快照、登录 + 通用组件（分页/工具条/主题钮）+ `lib/api.ts` 客户端错误兜底（经 `translate()` 读取同一记忆）。view 页 effects 经 `tRef` 取文案——语言切换不重跑加载、不丢 EPUB 阅读位置
+  - DoD: `tsc --noEmit` 0 错 ✓；`eslint` 0 问题 ✓；`npm run build` 静态导出通过 ✓；全量 grep 核查无未翻译的用户可见中文（i18n 字典/代码注释除外）✓；真机复核（用户）
+  - 范围排除（按批准）：回答内容（模型按提问语言作答）、后端错误消息、layout 静态 metadata description（保持中文）
+- [x] **T067 日期控件替换（R26 追补，2026-10-03 用户实测）**：原生 `<input type="date">` 显示格式随浏览器语言、无法随界面切换（Chrome 官方 FAQ 确认无作者接口）→ 新增 `web/app/_components/date-field.tsx`（业界组件 react-day-picker v10：触发钮按界面语言格式化显示所选日期、弹层日历跟随 zh/en locale、外部点击/Escape 关闭、有值时提供「清除」）；接入 `docs` 页清理区两处（value 契约保持 "YYYY-MM-DD"，后端参数与 UTC 语义不变）；组件与中文 locale 经 `next/dynamic` 按需加载，不进页面首包
+  - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过、`/` 首包 122 kB（与改造前持平）✓；rdp 样式已入导出 CSS ✓；真机复核（用户）
 
 ## Notes
 

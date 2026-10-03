@@ -7,7 +7,9 @@ import remarkGfm from "remark-gfm";
 
 import { api, Citation, Conversation, ConversationSearchHit, UsageInfo } from "@/lib/api";
 import { highlight } from "@/lib/highlight";
+import { useLang, type MsgKey } from "@/lib/i18n";
 import ThemeToggle from "../_components/theme-toggle";
+import LangToggle from "../_components/lang-toggle";
 
 type ChatMsg = {
   id?: string;
@@ -22,19 +24,16 @@ type ChatMsg = {
   streaming?: boolean;
 };
 
-const SOURCE_LABEL: Record<string, string> = {
-  kb: "来自你的资料",
-  model_knowledge: "来自模型知识",
-  prior_conversation: "来自既往对话",
-  web: "来自网络",
+/** 来源标签 → 文案键（中英文案表见 lib/i18n） */
+const SOURCE_LABEL_KEY: Record<string, MsgKey> = {
+  kb: "chat.sourceKb",
+  model_knowledge: "chat.sourceModel",
+  prior_conversation: "chat.sourcePrior",
+  web: "chat.sourceWeb",
 };
 
-/** 空状态示例问题（点击填入输入框） */
-const EMPTY_SUGGESTIONS = [
-  "我的资料里是如何定义「架构决策」的？",
-  "我最近 3 天看过哪些网页？",
-  "上周看过的文章里关于 AI 的内容有哪些？",
-];
+/** 空状态示例问题（点击填入输入框；文案键见 lib/i18n） */
+const EMPTY_SUGGESTION_KEYS: MsgKey[] = ["chat.suggest1", "chat.suggest2", "chat.suggest3"];
 
 function patchLast(messages: ChatMsg[], patch: Partial<ChatMsg>): ChatMsg[] {
   if (messages.length === 0) return messages;
@@ -76,9 +75,9 @@ function inheritedCitations(msg: ChatMsg): Citation[] {
   return found?.inherited_citations ?? [];
 }
 
-function fmtCitationTime(iso?: string | null): string {
+function fmtCitationTime(iso: string | null | undefined, lang: "zh" | "en"): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleString("zh-CN", {
+  return new Date(iso).toLocaleString(lang === "zh" ? "zh-CN" : "en-US", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -173,14 +172,15 @@ function CitationList({
   onNavigate?: () => void;
   splitBySource?: boolean; // 分「网络来源 / 出处」两组（编号保持与正文 [N] 角标一致）
 }) {
+  const { t, lang } = useLang();
   if (items.length === 0) return null;
   const numbered = items.map((c, i) => ({ c, n: i + 1 }));
   const groups: { label: string; entries: { c: Citation; n: number }[] }[] = splitBySource
     ? [
-        { label: "网络来源", entries: numbered.filter((e) => e.c.web) },
-        { label: "出处", entries: numbered.filter((e) => !e.c.web) },
+        { label: t("chat.citationsWeb"), entries: numbered.filter((e) => e.c.web) },
+        { label: t("chat.citationsLocal"), entries: numbered.filter((e) => !e.c.web) },
       ]
-    : [{ label: label ?? "来源", entries: numbered }];
+    : [{ label: label ?? t("chat.citationsDefault"), entries: numbered }];
   return (
     <div className="citation">
       {/* 按类别分组折叠（2026-10-03）：每组摘要行显示「类别 + 条数」，点开才列条目 */}
@@ -189,7 +189,7 @@ function CitationList({
         .map((g) => (
           <details key={g.label}>
             <summary>
-              {g.label}：{g.entries.length} 条
+              {t("chat.citationCount", { label: g.label, count: g.entries.length })}
             </summary>
             {g.entries.map(({ c, n }) => (
               <details key={c.chunk_id ?? `citation-${n}`}>
@@ -209,10 +209,16 @@ function CitationList({
                     c.document_name
                   )}
                   {c.source_url
-                    ? ` · 网页${c.last_captured_at ? ` · 浏览于 ${fmtCitationTime(c.last_captured_at)}` : ""}`
+                    ? `${t("chat.inlineWebTag")}${
+                        c.last_captured_at
+                          ? t("chat.inlineVisitedAt", {
+                              time: fmtCitationTime(c.last_captured_at, lang),
+                            })
+                          : ""
+                      }`
                     : ""}
                   {c.heading_path ? ` · ${c.heading_path}` : ""}
-                  {c.page ? `（第 ${c.page} 页）` : ""}
+                  {c.page ? t("common.page", { page: c.page }) : ""}
                 </summary>
                 {c.quote ? <blockquote className="muted">“{c.quote}”</blockquote> : null}
                 {showJump && (
@@ -225,7 +231,7 @@ function CitationList({
                         target="_blank"
                         rel="noreferrer"
                       >
-                        ↗ 打开网页
+                        {t("chat.openWeb")}
                       </a>
                     ) : (
                       <>
@@ -235,7 +241,11 @@ function CitationList({
                           href={citationHref(c)}
                           onClick={onNavigate}
                         >
-                          {c.source_url ? "🖼 查看快照" : c.conversation_id ? "↩ 回到原对话" : "↗ 跳到原文位置"}
+                          {c.source_url
+                            ? t("chat.viewSnapshot")
+                            : c.conversation_id
+                              ? t("chat.backToConv")
+                              : t("chat.jumpToSource")}
                         </Link>
                         {c.source_url && (
                           <a
@@ -245,7 +255,7 @@ function CitationList({
                             target="_blank"
                             rel="noreferrer"
                           >
-                            ↗ 打开原文
+                            {t("chat.openOriginal")}
                           </a>
                         )}
                       </>
@@ -261,6 +271,7 @@ function CitationList({
 }
 
 export default function ChatPage() {
+  const { t, lang } = useLang();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -472,7 +483,7 @@ export default function ChatPage() {
 
   async function deleteConv(id: string, event: React.MouseEvent) {
     event.stopPropagation();
-    if (!confirm("删除这个对话？（连同其回写入库的内容，不可恢复）")) return;
+    if (!confirm(t("chat.deleteConvConfirm"))) return;
     try {
       await api.deleteConversation(id);
       if (convRef.current === id) newChat();
@@ -505,7 +516,7 @@ export default function ChatPage() {
         window.location.href = "/login/";
         return;
       }
-      if (!res.ok || !res.body) throw new Error(`请求失败（${res.status}）`);
+      if (!res.ok || !res.body) throw new Error(t("chat.requestFailed", { status: res.status }));
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -566,7 +577,7 @@ export default function ChatPage() {
     } catch (err) {
       setMessages((m) =>
         patchLast(m, {
-          error: err instanceof Error ? err.message : "发送失败",
+          error: err instanceof Error ? err.message : t("chat.sendFailed"),
           streaming: false,
         }),
       );
@@ -583,21 +594,22 @@ export default function ChatPage() {
           {!sidebarOpen && (
             <button
               className="btn sidebar-toggle"
-              aria-label="展开对话列表"
+              aria-label={t("chat.toggleExpand")}
               aria-expanded={sidebarOpen}
-              title="展开对话列表（Ctrl+B）"
+              title={t("chat.toggleTitle")}
               onClick={toggleSidebar}
             >
               ▶
             </button>
           )}
-          <h1 style={{ fontSize: 16, color: "var(--muted)" }}>second-brain · 对话</h1>
+          <h1 style={{ fontSize: 16, color: "var(--muted)" }}>{t("chat.title")}</h1>
         </div>
         <div className="hdr-actions">
           <Link className="btn" href="/">
-            资料
+            {t("chat.navLibrary")}
           </Link>
           <ThemeToggle />
+          <LangToggle />
         </div>
       </div>
 
@@ -606,28 +618,28 @@ export default function ChatPage() {
           <div className="sidebar-top">
             <button
               className="btn sidebar-toggle"
-              aria-label="收起对话列表"
+              aria-label={t("chat.toggleCollapse")}
               aria-expanded={sidebarOpen}
-              title="收起 / 展开对话列表（Ctrl+B）"
+              title={t("chat.toggleTitle")}
               onClick={toggleSidebar}
             >
               ◀
             </button>
             <button className="btn sidebar-new" onClick={newChat}>
-              ＋ 新对话
+              {t("chat.newChat")}
             </button>
           </div>
           <input
             className="sidebar-search"
             type="search"
-            placeholder="搜索对话（全文）…"
+            placeholder={t("chat.searchPlaceholder")}
             value={convQuery}
             onChange={(e) => setConvQuery(e.target.value)}
           />
           {convQuery.trim() ? (
             <>
               <div className="muted conv-search-status">
-                {searching ? "搜索中…" : convHits ? `${convTotal} 个会话命中` : ""}
+                {searching ? t("chat.searching") : convHits ? t("chat.searchHits", { total: convTotal }) : ""}
               </div>
               {(convHits ?? []).map((hit) => (
                 <div
@@ -638,14 +650,14 @@ export default function ChatPage() {
                   <div className="conv-hit-title">{highlight(hit.title, convQuery)}</div>
                   <div className="conv-hit-snippet">{highlight(hit.hit.snippet, convQuery)}</div>
                   <div className="conv-hit-meta">
-                    {hit.hit_count > 1 ? `${hit.hit_count} 处命中 · ` : ""}
-                    {fmtCitationTime(hit.last_hit_at)}
+                    {hit.hit_count > 1 ? t("chat.hitCount", { n: hit.hit_count }) : ""}
+                    {fmtCitationTime(hit.last_hit_at, lang)}
                   </div>
                 </div>
               ))}
               {convHits && convHits.length === 0 && !searching && (
                 <p className="muted" style={{ fontSize: 13 }}>
-                  没有匹配的对话
+                  {t("chat.noMatch")}
                 </p>
               )}
             </>
@@ -660,7 +672,7 @@ export default function ChatPage() {
                   <span className="sidebar-title">{c.title}</span>
                   <button
                     className="sidebar-del"
-                    title="删除对话"
+                    title={t("chat.deleteConvTitle")}
                     onClick={(e) => void deleteConv(c.id, e)}
                   >
                     ×
@@ -669,7 +681,7 @@ export default function ChatPage() {
               ))}
               {convs.length === 0 && (
                 <p className="muted" style={{ fontSize: 13 }}>
-                  暂无历史对话
+                  {t("chat.noConversations")}
                 </p>
               )}
             </>
@@ -680,21 +692,24 @@ export default function ChatPage() {
         <div className="chat-area" ref={scrollRef}>
           {messages.length === 0 && (
             <div className="chat-empty">
-              <h2>向你的第二大脑提问吧</h2>
-              <p className="muted">你的资料、浏览过的网页与历史对话都会被检索并引用</p>
+              <h2>{t("chat.emptyTitle")}</h2>
+              <p className="muted">{t("chat.emptyHint")}</p>
               <div className="chat-empty-suggestions">
-                {EMPTY_SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    className="btn"
-                    onClick={() => {
-                      setInput(s);
-                      textareaRef.current?.focus();
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
+                {EMPTY_SUGGESTION_KEYS.map((key) => {
+                  const suggestion = t(key);
+                  return (
+                    <button
+                      key={key}
+                      className="btn"
+                      onClick={() => {
+                        setInput(suggestion);
+                        textareaRef.current?.focus();
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -724,11 +739,18 @@ export default function ChatPage() {
                 <div className="bubble-meta">
                   {msg.error
                     ? `⚠️ ${msg.error}`
-                    : `来源：${SOURCE_LABEL[msg.source_type ?? ""] ?? msg.source_type}`}
+                    : t("chat.sourcePrefix", {
+                        label:
+                          msg.source_type && SOURCE_LABEL_KEY[msg.source_type]
+                            ? t(SOURCE_LABEL_KEY[msg.source_type])
+                            : (msg.source_type ?? ""),
+                      })}
                 </div>
               )}
               {msg.role === "assistant" && msg.time_range_label && (
-                <div className="bubble-meta">🕐 检索时间范围：{msg.time_range_label}</div>
+                <div className="bubble-meta">
+                  {t("chat.timeRange", { label: msg.time_range_label })}
+                </div>
               )}
               {msg.role === "assistant" && msg.usage && (
                 <div className="bubble-meta">
@@ -736,7 +758,7 @@ export default function ChatPage() {
                   {typeof msg.usage.cost_cny === "number" &&
                     ` · ≈¥${msg.usage.cost_cny.toFixed(4)}`}
                   {msg.usage.prompt_cache_hit_tokens
-                    ? ` · 缓存命中 ${msg.usage.prompt_cache_hit_tokens}`
+                    ? t("chat.cacheHit", { n: msg.usage.prompt_cache_hit_tokens })
                     : ""}
                 </div>
               )}
@@ -751,14 +773,14 @@ export default function ChatPage() {
               {msg.related_hints && msg.related_hints.length > 0 && (
                 <CitationList
                   items={msg.related_hints}
-                  label="库中可能相关"
+                  label={t("chat.related")}
                   onNavigate={rememberScroll}
                 />
               )}
               {msg.role === "assistant" && (
                 <CitationList
                   items={inheritedCitations(msg)}
-                  label="原文出处"
+                  label={t("chat.inherited")}
                   onNavigate={rememberScroll}
                 />
               )}
@@ -775,7 +797,7 @@ export default function ChatPage() {
                       );
                     }}
                   >
-                    {copiedIdx === i ? "✓ 已复制" : "⧉ 复制"}
+                    {copiedIdx === i ? t("chat.copied") : t("chat.copy")}
                   </button>
                 </div>
               )}
@@ -789,7 +811,7 @@ export default function ChatPage() {
             <textarea
               ref={textareaRef}
               className="chat-input"
-              placeholder="给第二大脑发消息…"
+              placeholder={t("chat.inputPlaceholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -803,13 +825,13 @@ export default function ChatPage() {
               className="send-btn"
               onClick={() => void send()}
               disabled={busy || !input.trim()}
-              title={busy ? "回答中…" : "发送（Enter）"}
-              aria-label="发送"
+              title={busy ? t("chat.answering") : t("chat.sendTitle")}
+              aria-label={t("chat.send")}
             >
               {busy ? "…" : "↑"}
             </button>
           </div>
-          <div className="composer-hint">回答可能有误，请以出处为准 · Enter 发送，Shift+Enter 换行</div>
+          <div className="composer-hint">{t("chat.composerHint")}</div>
         </div>
       </div>
         </div>
