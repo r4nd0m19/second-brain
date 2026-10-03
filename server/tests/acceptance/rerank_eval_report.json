@@ -1,0 +1,760 @@
+{
+ "candidates": [
+  "BAAI/bge-reranker-v2-m3",
+  "Qwen/Qwen3-Reranker-8B",
+  "Qwen/Qwen3-Reranker-4B",
+  "Qwen/Qwen3-Reranker-0.6B"
+ ],
+ "metrics": {
+  "BAAI/bge-reranker-v2-m3": {
+   "hit@6": "15/15",
+   "MRR": 1.0,
+   "correct_min": 0.077,
+   "fallback_max": 0.375,
+   "separation": -0.298,
+   "latency_avg_s": 0.499,
+   "records": {
+    "f01": {
+     "top1": 0.9488116502761841,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9488116502761841
+    },
+    "f02": {
+     "top1": 0.9881154298782349,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9881154298782349
+    },
+    "f03": {
+     "top1": 0.9982727766036987,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9982727766036987
+    },
+    "f04": {
+     "top1": 0.7870829701423645,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.7870829701423645
+    },
+    "f05": {
+     "top1": 0.9750987887382507,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9750987887382507
+    },
+    "f06": {
+     "top1": 0.9481639266014099,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9481639266014099
+    },
+    "f07": {
+     "top1": 0.9855115413665771,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9855115413665771
+    },
+    "f08": {
+     "top1": 0.9672109484672546,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9672109484672546
+    },
+    "g01": {
+     "top1": 0.991926372051239,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.991926372051239
+    },
+    "g02": {
+     "top1": 0.9159272909164429,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9159272909164429
+    },
+    "g03": {
+     "top1": 0.7934409379959106,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.7934409379959106
+    },
+    "g04": {
+     "top1": 0.9834747910499573,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9834747910499573
+    },
+    "g05": {
+     "top1": 0.7817240953445435,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.7817240953445435
+    },
+    "g06": {
+     "top1": 0.07747289538383484,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.07747289538383484
+    },
+    "g07": {
+     "top1": 0.7668137550354004,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.7668137550354004
+    },
+    "b01": {
+     "top1": 0.08726231753826141,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b02": {
+     "top1": 0.3751516342163086,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b03": {
+     "top1": 0.08774838596582413,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b04": {
+     "top1": 0.012970886193215847,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b05": {
+     "top1": 0.012422281317412853,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    }
+   }
+  },
+  "Qwen/Qwen3-Reranker-8B": {
+   "hit@6": "15/15",
+   "MRR": 1.0,
+   "correct_min": 0.977,
+   "fallback_max": 0.165,
+   "separation": 0.812,
+   "latency_avg_s": 1.461,
+   "records": {
+    "f01": {
+     "top1": 0.9783122539520264,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9783122539520264
+    },
+    "f02": {
+     "top1": 0.9996672868728638,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9996672868728638
+    },
+    "f03": {
+     "top1": 0.9996175765991211,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9996175765991211
+    },
+    "f04": {
+     "top1": 0.9777814745903015,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9777814745903015
+    },
+    "f05": {
+     "top1": 0.9988454580307007,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9988454580307007
+    },
+    "f06": {
+     "top1": 0.9954944849014282,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9954944849014282
+    },
+    "f07": {
+     "top1": 0.9994938373565674,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9994938373565674
+    },
+    "f08": {
+     "top1": 0.9958512783050537,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9958512783050537
+    },
+    "g01": {
+     "top1": 0.9997145533561707,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9997145533561707
+    },
+    "g02": {
+     "top1": 0.9995102882385254,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9995102882385254
+    },
+    "g03": {
+     "top1": 0.9894148111343384,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9894148111343384
+    },
+    "g04": {
+     "top1": 0.9853516221046448,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9853516221046448
+    },
+    "g05": {
+     "top1": 0.9989425539970398,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9989425539970398
+    },
+    "g06": {
+     "top1": 0.9770873785018921,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9770873785018921
+    },
+    "g07": {
+     "top1": 0.9992088675498962,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9992088675498962
+    },
+    "b01": {
+     "top1": 0.0002061545819742605,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b02": {
+     "top1": 0.16540326178073883,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b03": {
+     "top1": 0.08683721721172333,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b04": {
+     "top1": 0.004841265734285116,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b05": {
+     "top1": 5.557508848141879e-05,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    }
+   }
+  },
+  "Qwen/Qwen3-Reranker-4B": {
+   "hit@6": "15/15",
+   "MRR": 1.0,
+   "correct_min": 0.994,
+   "fallback_max": 0.351,
+   "separation": 0.643,
+   "latency_avg_s": 0.904,
+   "records": {
+    "f01": {
+     "top1": 0.9993680119514465,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9993680119514465
+    },
+    "f02": {
+     "top1": 0.9999260902404785,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9999260902404785
+    },
+    "f03": {
+     "top1": 0.9998841285705566,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9998841285705566
+    },
+    "f04": {
+     "top1": 0.9939783811569214,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9939783811569214
+    },
+    "f05": {
+     "top1": 0.9997970461845398,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9997970461845398
+    },
+    "f06": {
+     "top1": 0.9998472929000854,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9998472929000854
+    },
+    "f07": {
+     "top1": 0.9997512698173523,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9997512698173523
+    },
+    "f08": {
+     "top1": 0.9995207786560059,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9995207786560059
+    },
+    "g01": {
+     "top1": 0.9992324113845825,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9992324113845825
+    },
+    "g02": {
+     "top1": 0.9996297359466553,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9996297359466553
+    },
+    "g03": {
+     "top1": 0.9988003969192505,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9988003969192505
+    },
+    "g04": {
+     "top1": 0.9941490888595581,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9941490888595581
+    },
+    "g05": {
+     "top1": 0.9996517896652222,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9996517896652222
+    },
+    "g06": {
+     "top1": 0.9979256391525269,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9979256391525269
+    },
+    "g07": {
+     "top1": 0.9993394017219543,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9993394017219543
+    },
+    "b01": {
+     "top1": 0.00040310766780748963,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b02": {
+     "top1": 0.0366474986076355,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b03": {
+     "top1": 0.35093364119529724,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b04": {
+     "top1": 0.04713542014360428,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b05": {
+     "top1": 2.4384762582485564e-05,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    }
+   }
+  },
+  "Qwen/Qwen3-Reranker-0.6B": {
+   "hit@6": "15/15",
+   "MRR": 1.0,
+   "correct_min": 0.994,
+   "fallback_max": 0.967,
+   "separation": 0.028,
+   "latency_avg_s": 0.519,
+   "records": {
+    "f01": {
+     "top1": 0.9999648332595825,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9999648332595825
+    },
+    "f02": {
+     "top1": 0.9998617172241211,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9998617172241211
+    },
+    "f03": {
+     "top1": 0.9999262094497681,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9999262094497681
+    },
+    "f04": {
+     "top1": 0.9995940327644348,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9995940327644348
+    },
+    "f05": {
+     "top1": 0.9999516010284424,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9999516010284424
+    },
+    "f06": {
+     "top1": 0.9999657869338989,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9999657869338989
+    },
+    "f07": {
+     "top1": 0.9998264908790588,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9998264908790588
+    },
+    "f08": {
+     "top1": 0.999603807926178,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.999603807926178
+    },
+    "g01": {
+     "top1": 0.99989914894104,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.99989914894104
+    },
+    "g02": {
+     "top1": 0.9993768334388733,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9993768334388733
+    },
+    "g03": {
+     "top1": 0.998782217502594,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.998782217502594
+    },
+    "g04": {
+     "top1": 0.9998606443405151,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9998606443405151
+    },
+    "g05": {
+     "top1": 0.9998719692230225,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9998719692230225
+    },
+    "g06": {
+     "top1": 0.9944690465927124,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9944690465927124
+    },
+    "g07": {
+     "top1": 0.9997090697288513,
+     "hit": true,
+     "rank": 1,
+     "expected_best": 0.9997090697288513
+    },
+    "b01": {
+     "top1": 0.00029094339697621763,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b02": {
+     "top1": 0.06149175763130188,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b03": {
+     "top1": 0.9666876196861267,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b04": {
+     "top1": 0.0003789448528550565,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    },
+    "b05": {
+     "top1": 0.0007510880241170526,
+     "hit": false,
+     "rank": null,
+     "expected_best": null
+    }
+   }
+  }
+ },
+ "stability": {
+  "BAAI/bge-reranker-v2-m3": {
+   "g05": {
+    "min": 0.036,
+    "max": 0.94,
+    "span": 0.904,
+    "values": [
+     0.775,
+     0.233,
+     0.766,
+     0.06,
+     0.314,
+     0.036,
+     0.94,
+     0.237
+    ]
+   },
+   "g06": {
+    "min": 0.078,
+    "max": 0.919,
+    "span": 0.841,
+    "values": [
+     0.078,
+     0.234,
+     0.419,
+     0.919,
+     0.628,
+     0.269,
+     0.327,
+     0.287
+    ]
+   },
+   "f01": {
+    "min": 0.71,
+    "max": 0.992,
+    "span": 0.282,
+    "values": [
+     0.949,
+     0.965,
+     0.992,
+     0.792,
+     0.988,
+     0.71
+    ]
+   },
+   "g02": {
+    "min": 0.252,
+    "max": 0.982,
+    "span": 0.73,
+    "values": [
+     0.916,
+     0.427,
+     0.982,
+     0.406,
+     0.252
+    ]
+   }
+  },
+  "Qwen/Qwen3-Reranker-8B": {
+   "g05": {
+    "min": 0.902,
+    "max": 0.999,
+    "span": 0.097,
+    "values": [
+     0.999,
+     0.999,
+     0.998,
+     0.992,
+     0.959,
+     0.902,
+     0.999,
+     0.999
+    ]
+   },
+   "g06": {
+    "min": 0.76,
+    "max": 0.993,
+    "span": 0.233,
+    "values": [
+     0.978,
+     0.949,
+     0.91,
+     0.993,
+     0.981,
+     0.76,
+     0.987,
+     0.884
+    ]
+   },
+   "f01": {
+    "min": 0.975,
+    "max": 0.998,
+    "span": 0.023,
+    "values": [
+     0.979,
+     0.994,
+     0.998,
+     0.975,
+     0.997,
+     0.992
+    ]
+   },
+   "g02": {
+    "min": 0.778,
+    "max": 0.999,
+    "span": 0.221,
+    "values": [
+     0.999,
+     0.99,
+     0.997,
+     0.98,
+     0.778
+    ]
+   }
+  },
+  "Qwen/Qwen3-Reranker-4B": {
+   "g05": {
+    "min": 0.787,
+    "max": 1.0,
+    "span": 0.213,
+    "values": [
+     1.0,
+     1.0,
+     1.0,
+     0.997,
+     0.993,
+     0.787,
+     1.0,
+     1.0
+    ]
+   },
+   "g06": {
+    "min": 0.912,
+    "max": 0.998,
+    "span": 0.086,
+    "values": [
+     0.998,
+     0.912,
+     0.935,
+     0.991,
+     0.991,
+     0.991,
+     0.987,
+     0.971
+    ]
+   },
+   "f01": {
+    "min": 0.996,
+    "max": 1.0,
+    "span": 0.004,
+    "values": [
+     0.999,
+     1.0,
+     0.999,
+     0.996,
+     0.999,
+     0.998
+    ]
+   },
+   "g02": {
+    "min": 0.932,
+    "max": 1.0,
+    "span": 0.068,
+    "values": [
+     1.0,
+     0.993,
+     0.996,
+     0.976,
+     0.932
+    ]
+   }
+  },
+  "Qwen/Qwen3-Reranker-0.6B": {
+   "g05": {
+    "min": 0.338,
+    "max": 1.0,
+    "span": 0.662,
+    "values": [
+     1.0,
+     1.0,
+     1.0,
+     0.983,
+     1.0,
+     0.338,
+     1.0,
+     1.0
+    ]
+   },
+   "g06": {
+    "min": 0.988,
+    "max": 0.994,
+    "span": 0.006,
+    "values": [
+     0.994,
+     0.988,
+     0.994,
+     0.994,
+     0.993,
+     0.993,
+     0.994,
+     0.99
+    ]
+   },
+   "f01": {
+    "min": 0.998,
+    "max": 1.0,
+    "span": 0.002,
+    "values": [
+     1.0,
+     1.0,
+     1.0,
+     0.999,
+     0.999,
+     0.998
+    ]
+   },
+   "g02": {
+    "min": 0.995,
+    "max": 0.999,
+    "span": 0.004,
+    "values": [
+     0.999,
+     0.999,
+     0.995,
+     0.998,
+     0.996
+    ]
+   }
+  }
+ }
+}

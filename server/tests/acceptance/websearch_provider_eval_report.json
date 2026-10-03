@@ -1,0 +1,290 @@
+[
+  {
+    "provider": "searxng",
+    "query": "Upwork 2026 年需求量最大的软件项目类型",
+    "latency_s": 0.33,
+    "count": 10,
+    "cost_cny": 0.0,
+    "top_score": 0.993,
+    "error": null,
+    "top": [
+      {
+        "title": "Upwork | Hire Top Freelance Talent with Confidence",
+        "url": "https://www.upwork.com/",
+        "site": "bing"
+      },
+      {
+        "title": "Sign up for Upwork",
+        "url": "https://www.upwork.com/nx/signup/",
+        "site": "bing"
+      },
+      {
+        "title": "说说在Upwork接单的经历 - 知乎",
+        "url": "https://zhuanlan.zhihu.com/p/682257969",
+        "site": "bing"
+      },
+      {
+        "title": "upwork怎样入门呢太难了这玩意。? - 知乎",
+        "url": "https://www.zhihu.com/question/446169218/answers/updated",
+        "site": "bing"
+      },
+      {
+        "title": "Upwork 手册，从入门到专家（3） —— 如何在 Upwork 上 ...",
+        "url": "https://zhuanlan.zhihu.com/p/17550082192",
+        "site": "bing"
+      }
+    ]
+  },
+  {
+    "provider": "searxng",
+    "query": "FastAPI 后台任务 最佳实践",
+    "latency_s": 0.2,
+    "count": 10,
+    "cost_cny": 0.0,
+    "top_score": 0.948,
+    "error": null,
+    "top": [
+      {
+        "title": "FastAPI - FastAPI",
+        "url": "https://fastapi.tiangolo.com/zh/",
+        "site": "bing"
+      },
+      {
+        "title": "FastAPI - FastAPI - FastAPI 框架",
+        "url": "https://fastapi.org.cn/",
+        "site": "bing"
+      },
+      {
+        "title": "FastAPI - FastAPI",
+        "url": "https://fastapi.tiangolo.com/",
+        "site": "bing"
+      },
+      {
+        "title": "FastAPI 教程 | 菜鸟教程",
+        "url": "https://www.runoob.com/fastapi/fastapi-tutorial.html",
+        "site": "bing"
+      },
+      {
+        "title": "FastAPI 从入门到精通，一篇就够（超详细实战教程）",
+        "url": "https://blog.csdn.net/inuex/article/details/159203950",
+        "site": "bing"
+      }
+    ]
+  },
+  {
+    "provider": "searxng",
+    "query": "httpx 连接池配置注意事项",
+    "latency_s": 0.2,
+    "count": 10,
+    "cost_cny": 0.0,
+    "top_score": 0.98,
+    "error": null,
+    "top": [
+      {
+        "title": "GitHub - projectdiscovery/httpx: httpx is a fast and multi …",
+        "url": "https://github.com/projectdiscovery/httpx",
+        "site": "bing"
+      },
+      {
+        "title": "HTTPX",
+        "url": "https://www.python-httpx.org/",
+        "site": "bing"
+      },
+      {
+        "title": "Python3 新一代Http请求库Httpx使用（详情版） - 知乎",
+        "url": "https://zhuanlan.zhihu.com/p/677133483",
+        "site": "bing"
+      },
+      {
+        "title": "信息收集与资产探活工具 httpx 保姆级使用教程-CSDN博客",
+        "url": "https://blog.csdn.net/2301_79518550/article/details/146611456",
+        "site": "bing"
+      },
+      {
+        "title": "httpx · PyPI",
+        "url": "https://pypi.org/project/httpx/",
+        "site": "bing"
+      }
+    ]
+  },
+  {
+    "provider": "searxng",
+    "query": "美联储 最新 利率决议",
+    "latency_s": 0.44,
+    "count": 9,
+    "cost_cny": 0.0,
+    "top_score": 0.923,
+    "error": null,
+    "top": [
+      {
+        "title": "Federal Reserve Board - Home",
+        "url": "https://www.federalreserve.gov/",
+        "site": "bing"
+      },
+      {
+        "title": "美国联邦储备系统_百度百科",
+        "url": "https://baike.baidu.com/item/%E7%BE%8E%E5%9B%BD%E8%81%94%E9%82%A6%E5%82%A8%E5%A4%87%E7%B3%BB%E7%BB%9F/2297802",
+        "site": "bing"
+      },
+      {
+        "title": "美联储动态 - CLS.CN",
+        "url": "https://www.cls.cn/subject/3140",
+        "site": "bing"
+      },
+      {
+        "title": "美国联邦储备委员会_百度百科",
+        "url": "https://baike.baidu.com/item/%E7%BE%8E%E5%9B%BD%E8%81%94%E9%82%A6%E5%82%A8%E5%A4%87%E5%A7%94%E5%91%98%E4%BC%9A/10479629",
+        "site": "bing"
+      },
+      {
+        "title": "北美观察丨三年多来首次加息 美联储为何突然转向_新闻频道 ...",
+        "url": "https://news.cctv.com/2026/09/17/ARTIjq5MhLdAce1gxCgig8zD260917.shtml",
+        "site": "bing"
+      }
+    ]
+  },
+  {
+    "provider": "deepseek",
+    "query": "Upwork 2026 年需求量最大的软件项目类型",
+    "latency_s": 3.58,
+    "count": 13,
+    "cost_cny": 0.015575,
+    "top_score": 0.999,
+    "error": null,
+    "top": [
+      {
+        "title": "Upwork",
+        "url": "https://investors.upwork.com/node/12681/pdf#1#1",
+        "site": "investors.upwork.com"
+      },
+      {
+        "title": "Upwork Monthly Hiring Report",
+        "url": "https://www.upwork.com/monthly-hiring-report#1",
+        "site": "www.upwork.com"
+      },
+      {
+        "title": "Fastest-growing work categories include coding and web development",
+        "url": "https://www.staffingindustry.com/news/global-daily-news/fastest-growing-work-categories-include-coding-and-web-development",
+        "site": "www.staffingindustry.com"
+      },
+      {
+        "title": "AI已進入就業市場，美國多個專業領域仍持續成長",
+        "url": "https://teric.naer.edu.tw/wSite/PDFReader?xmlId=2069637&fileName=1774953312466&format=pdf#1#1",
+        "site": "teric.naer.edu.tw"
+      },
+      {
+        "title": "Validate SaaS Demand With Upwork Jobs (2026 Method)",
+        "url": "https://bigideasdb.com/validate-saas-demand-with-upwork-jobs",
+        "site": "bigideasdb.com"
+      }
+    ]
+  },
+  {
+    "provider": "deepseek",
+    "query": "FastAPI 后台任务 最佳实践",
+    "latency_s": 3.12,
+    "count": 10,
+    "cost_cny": 0.010977,
+    "top_score": 0.999,
+    "error": null,
+    "top": [
+      {
+        "title": "bizone-cloud-helpers - bizone-cloud-helpers",
+        "url": "https://pypi.org/project/bizone-cloud-helpers/#1",
+        "site": "pypi.org"
+      },
+      {
+        "title": "Background Tasks - FastAPI",
+        "url": "https://mintlify.wiki/fastapi/fastapi/tutorial/background-tasks",
+        "site": "mintlify.wiki"
+      },
+      {
+        "title": "FastAPI BackgroundTasks 阻塞的问题处理",
+        "url": "https://apifox.com/apiskills/fastapi-backgroundtasks-answer/#1",
+        "site": "apifox.com"
+      },
+      {
+        "title": "nano-queue - nano-queue",
+        "url": "https://pypi.org/project/nano-queue/#1",
+        "site": "pypi.org"
+      },
+      {
+        "title": "logseq-encode-garden/pages/FastAPI___Docs___Tutorial___Background Tasks.md at 3df06644da69",
+        "url": "https://github.com/codekiln/logseq-encode-garden/blob/3df06644/pages/FastAPI___Docs___Tutorial___Background%20Tasks.md?plain=1#L21-L25#1",
+        "site": "github.com"
+      }
+    ]
+  },
+  {
+    "provider": "deepseek",
+    "query": "httpx 连接池配置注意事项",
+    "latency_s": 3.41,
+    "count": 16,
+    "cost_cny": 0.014816,
+    "top_score": 0.998,
+    "error": null,
+    "top": [
+      {
+        "title": "[Perf] 审查全栈 HTTP 客户端的连接池配置，确保 httpx.AsyncClient 单例复用 · Issue #102 · liujuanjuan1984/a2a-cl",
+        "url": "https://github.com/liujuanjuan1984/a2a-client-hub/issues/102",
+        "site": "github.com"
+      },
+      {
+        "title": "Configure HTTP clients - Baseten",
+        "url": "https://docs.baseten.co/inference/http-client-configuration",
+        "site": "docs.baseten.co"
+      },
+      {
+        "title": "Configure HTTP clients - Baseten - Skip to main content",
+        "url": "https://docs.baseten.co/inference/http-client-configuration#1",
+        "site": "docs.baseten.co"
+      },
+      {
+        "title": "src/http_pool.py · MCP-1st-Birthday/Medium-MCP-Agent at main",
+        "url": "https://huggingface.co/spaces/MCP-1st-Birthday/Medium-MCP-Agent/blob/main/src/http_pool.py#1",
+        "site": "huggingface.co"
+      },
+      {
+        "title": "Resource Limits",
+        "url": "https://www.python-httpx.org/advanced/resource-limits/",
+        "site": "www.python-httpx.org"
+      }
+    ]
+  },
+  {
+    "provider": "deepseek",
+    "query": "美联储 最新 利率决议",
+    "latency_s": 3.11,
+    "count": 10,
+    "cost_cny": 0.008507,
+    "top_score": 0.952,
+    "error": null,
+    "top": [
+      {
+        "title": "美联储今年连续第三次宣布维持利率不变",
+        "url": "https://news.cnr.cn/sq/20260430/t20260430_527605866.shtml",
+        "site": "news.cnr.cn"
+      },
+      {
+        "title": "美联储决议深度观察：滞胀阴影下的“双向撕裂” 与央行独立性防御战",
+        "url": "https://m.cnfin.com/wx/share?url=//m.cnfin.com/hs-lb//zixun/20260430/4407038_1.html#1",
+        "site": "m.cnfin.com"
+      },
+      {
+        "title": "美联储新判断：通胀处于高位",
+        "url": "https://stcn.com/article/detail/3891113.html#1",
+        "site": "stcn.com"
+      },
+      {
+        "title": "美联储决议现34年来最大分歧 鲍威尔留任理事捍卫央行独立性",
+        "url": "https://m.cnfin.com/yw-lb//zixun/20260430/4406950_1.html",
+        "site": "m.cnfin.com"
+      },
+      {
+        "title": "降息大消息！美联储现34年来最大分歧 - 降息大消息！美联储现34年来最大分歧",
+        "url": "https://www.sohu.com/a/1016536029_120988576?scm=10008.1476_13-1476_13-88_88.0-0.0-1-0-0-0.0&spm=smpc.content.pic-group.1.1777515992573o006zBz#1",
+        "site": "www.sohu.com"
+      }
+    ]
+  }
+]

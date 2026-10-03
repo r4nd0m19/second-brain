@@ -1,7 +1,8 @@
-"""对话端点（T020）：SSE 流式（meta/token/done/error），契约见 contracts/api.md。"""
+"""对话端点（T020）：SSE 流式（status/meta/token/done/error），契约见 contracts/api.md。"""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -17,6 +18,7 @@ from app.chat.llm import LLMError, estimate_cost_cny, get_llm_client
 from app.chat.orchestrator import prepare_reply
 from app.chat.writeback import enqueue_writeback
 from app.config import settings
+from app.costing import add_llm, start_turn
 from app.db import SessionLocal, get_session
 from app.models import AnswerSource, Conversation, Message, MessageRole, User
 
@@ -91,7 +93,34 @@ async def _stream(
             {"role": m.role.value, "content": m.content} for m in rows[::-1][:-1]
         ]
 
-        plan = await prepare_reply(session, owner_id, text, history)
+        # 本回合全成本累加器（T079）：流水线中的 LLM/联网/检索费用都记到它上面
+        turn_cost = start_turn()
+
+        # 阶段进度（2026-10-03）：规划/检索/扩检/联网都发生在首 token 之前——
+        # 经队列把各阶段 status 事件即时转发给客户端（否则该段时间前端只见"…"）
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+        async def on_status(phase: str) -> None:
+            queue.put_nowait(phase)
+
+        async def _pipeline():
+            try:
+                return await prepare_reply(session, owner_id, text, history, on_status)
+            finally:
+                queue.put_nowait(None)
+
+        task = asyncio.create_task(_pipeline())
+        try:
+            while True:
+                phase = await queue.get()
+                if phase is None:
+                    break
+                yield _sse("status", {"phase": phase})
+            plan = await task  # 流水线异常沿用原有传播语义（流中断，前端有断流提示）
+        except BaseException:
+            task.cancel()
+            raise
+
         yield _sse(
             "meta",
             {
@@ -100,8 +129,11 @@ async def _stream(
                 "citations": plan.citations,
                 "related_hints": plan.related_hints,
                 "time_range_label": plan.time_range_label,  # F2 US3：时间解析回显
+                "web_failed": plan.web_failed,  # T083：联网未取得结果 → 前端显式提示
+                "web_error": plan.web_error,  # 失败原因码（balance/ratelimit/quota/unavailable）
             },
         )
+        yield _sse("status", {"phase": "generating"})
 
         parts: list[str] = []
         usage: dict | None = None
@@ -117,7 +149,16 @@ async def _stream(
             yield _sse("error", {"code": "llm_error", "message": str(exc)})
             return
 
-        cost_cny = estimate_cost_cny(usage) if usage else None  # FR-017
+        # 全成本（T079）：回答调用按分档定价（R22）计入累加器；流水线期间规划/扩检、
+        # 联网按次、embedding/重排在各自调用点已累计 → 快照为 total + 分类明细
+        if usage:
+            add_llm(estimate_cost_cny(usage))
+        total_cny = round(turn_cost.total_cny, 6)
+        stored_usage = {
+            **(usage or {}),
+            "cost_cny": total_cny,
+            "cost_breakdown": turn_cost.breakdown(),
+        }
         answer_text = "".join(parts)
         assistant = Message(
             conversation_id=conversation_id,
@@ -127,7 +168,7 @@ async def _stream(
             source_type=plan.source_type,
             citations=plan.citations or None,
             related_hints=plan.related_hints or None,
-            usage=({**usage, "cost_cny": cost_cny} if usage else None),
+            usage=stored_usage,
         )
         session.add(assistant)
         await session.commit()
@@ -141,5 +182,5 @@ async def _stream(
 
         yield _sse(
             "done",
-            {"message_id": str(assistant.id), "usage": usage, "cost_cny": cost_cny},
+            {"message_id": str(assistant.id), "usage": stored_usage, "cost_cny": total_cny},
         )

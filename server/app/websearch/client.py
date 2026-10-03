@@ -13,6 +13,7 @@ from typing import Protocol
 import httpx
 
 from app.config import settings
+from app.costing import add_web
 
 ZHIPU_SEARCH_URL = "https://open.bigmodel.cn/api/paas/v4/web_search"
 QUERY_MAX_CHARS = 70  # 智谱建议 ≤70 字符
@@ -86,6 +87,13 @@ class ZhipuWebSearch:
             # 错误体可能含 1701（并发上限）/1702（无可用引擎）等业务码
             raise WebSearchError(f"搜索返回 {response.status_code}: {response.text[:200]}")
 
+        # 全成本（T079 / R36）：智谱按调用次数计费（失败请求不计费——非 200 已在上方抛出）
+        add_web(
+            settings.price_web_search_std_cny
+            if engine == "search_std"
+            else settings.price_web_search_pro_cny
+        )
+
         data = response.json()
         results: list[WebSearchResult] = []
         for item in data.get("search_result") or []:
@@ -113,8 +121,8 @@ class ZhipuWebSearch:
         return []
 
 
-def get_web_search() -> WebSearchClient | None:
-    """工厂：未配置凭据 → None（能力关闭，零行为变化，FR-004）。"""
+def get_paid_web_search() -> ZhipuWebSearch | None:
+    """付费源（智谱）工厂：未配置 key → None；仅 web_search_paid_fallback 开启时由 orchestrator 使用。"""
     if not settings.web_search_api_key:
         return None
     return ZhipuWebSearch(
@@ -124,3 +132,32 @@ def get_web_search() -> WebSearchClient | None:
         freshness=settings.web_search_freshness,
         fallback_engine=settings.web_search_fallback_engine,
     )
+
+
+def get_web_search():
+    """按配置返回搜索源（R39/T085；T086 增 deepseek）：searxng=自建免费（默认）；
+    deepseek=官方服务端搜索（复用 llm_api_key，token 计费）；zhipu=付费 API。
+
+    各源接口对齐（`search(query, count) -> list[WebSearchResult]`；计费源带 `paid=True` 标记）；
+    未配置（缺 key）→ None（能力关闭，FR-004）。
+    """
+    if settings.web_search_provider == "searxng":
+        from app.websearch.searxng import SearXNGClient  # 延迟导入避免环
+
+        return SearXNGClient(
+            base_url=settings.searxng_base_url, timeout=settings.searxng_timeout_s
+        )
+    if settings.web_search_provider == "deepseek":
+        from app.websearch.deepseek import DeepSeekWebSearch  # 延迟导入避免环
+
+        if not settings.llm_api_key:
+            return None  # 服务端搜索复用 llm key：缺 key → 能力关闭
+        return DeepSeekWebSearch(
+            api_key=settings.llm_api_key,
+            base_url=settings.deepseek_search_base_url
+            or f"{settings.llm_base_url.rstrip('/')}/anthropic",
+            model=settings.deepseek_search_model,
+            timeout=settings.deepseek_search_timeout_s,
+            max_tokens=settings.deepseek_search_max_tokens,
+        )
+    return get_paid_web_search()

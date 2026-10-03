@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from app.config import settings
+from app.costing import add_llm
 
 
 class ChatMessage(TypedDict):
@@ -135,12 +136,22 @@ class OpenAICompatLLM:
 
 
 async def complete_chat(client: LLMClient, messages: list[ChatMessage]) -> str:
-    """收集流式输出为完整文本（时间解析等结构化小任务用；失败抛 LLMError）。"""
+    """收集流式输出为完整文本（时间解析等结构化小任务用；失败抛 LLMError）。
+
+    顺带把该调用的 usage 计入本轮全成本（T079）——规划/扩检/时间解析等隐形小调用由此可见。
+    """
     parts: list[str] = []
     async for event in client.stream_chat(messages):
         if event.get("type") == "token":
             parts.append(event.get("text", ""))
+        elif event.get("type") == "usage":
+            add_llm(estimate_cost_cny(event.get("usage") or {}))
     return "".join(parts)
+
+
+def today_cn() -> str:
+    """北京时间的今天（YYYY-MM-DD）——注入规划器/回答上下文，防模型凭训练记忆猜年份（T084）。"""
+    return datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
 
 
 def _is_peak_now() -> bool:
@@ -161,6 +172,23 @@ def estimate_cost_cny(usage: dict) -> float:
         hit / 1_000_000 * settings.price_input_hit_per_million * peak
         + miss / 1_000_000 * settings.price_input_miss_per_million * peak
         + usage.get("completion_tokens", 0) / 1_000_000 * settings.price_output_per_million * peak
+    )
+
+
+def estimate_cost_cny_anthropic(usage: dict) -> float:
+    """Anthropic 风格 usage → 费用（T086：DeepSeek 服务端搜索按 token 计，无按次费）。
+
+    Anthropic 语义：input_tokens 不含缓存读取；缓存读取单列（缓存写入按未命中价计）。
+    """
+    cache_read = usage.get("cache_read_input_tokens") or 0
+    return estimate_cost_cny(
+        {
+            "prompt_tokens": (usage.get("input_tokens") or 0)
+            + cache_read
+            + (usage.get("cache_creation_input_tokens") or 0),
+            "prompt_cache_hit_tokens": cache_read,
+            "completion_tokens": usage.get("output_tokens") or 0,
+        }
     )
 
 

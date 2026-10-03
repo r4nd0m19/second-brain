@@ -19,15 +19,25 @@ OWNER = uuid.uuid4()
 
 
 class _FakeClient:
-    def __init__(self, results=None, error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        results=None,
+        error: Exception | None = None,
+        results_by_query: dict[str, list[WebSearchResult]] | None = None,
+        paid: bool = True,
+    ) -> None:
         self.results = results if results is not None else [_result("A"), _result("B")]
         self.error = error
+        self.results_by_query = results_by_query or {}
+        self.paid = paid
         self.searches: list[tuple[str, int]] = []
 
     async def search(self, query: str, count: int) -> list[WebSearchResult]:
         self.searches.append((query, count))
         if self.error:
             raise self.error
+        if query in self.results_by_query:
+            return self.results_by_query[query]
         return self.results
 
 
@@ -191,6 +201,20 @@ async def test_plan_web_failure_degrades(monkeypatch) -> None:
     plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
     assert plan.source_type is AnswerSource.model_knowledge
     assert plan.citations == []
+    assert plan.web_failed is True  # T083：失败事实随 meta 透出（前端显式提示）
+    assert plan.web_error == "unavailable"  # 超时类错误 → 通用不可用
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "联网检索未成功" in joined  # 系统说明注入（防"没搜到"被编造成"搜到但不相关"）
+
+
+async def test_plan_web_balance_maps_reason(monkeypatch) -> None:
+    """供应商余额不足 → 原因码 balance（前端显示"供应商账户余额不足"）。"""
+    client = _FakeClient(error=WebSearchError("搜索返回 429: {\"error\":{\"code\":\"1113\",\"message\":\"余额不足或无可用资源包\"}}"))
+    _patch(monkeypatch, calls=[("web_search", {"query": "k"})], client=client)
+
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
+    assert plan.web_failed is True
+    assert plan.web_error == "balance"
 
 
 async def test_plan_weak_search_triggers_expansion(monkeypatch) -> None:
@@ -253,3 +277,120 @@ async def test_snippet_truncated_by_config(monkeypatch) -> None:
     joined = "\n".join(m["content"] for m in plan.llm_messages)
     assert "摘要A摘要A摘要A摘要A" not in joined  # 90 字摘要被截到 10
     assert "摘要A" in joined
+
+
+# ---- 结果重排过滤（R37/T081） ----
+
+
+def _enable_web_filter(monkeypatch, scores: dict[str, float]) -> None:
+    """开启重排并注入按标题定分的假打分（绕过外部 API）。"""
+    monkeypatch.setattr(settings, "rerank_enabled", True)
+    monkeypatch.setattr(settings, "embedding_api_key", "test-key")
+
+    async def fake_rerank(_query: str, docs: list[str]) -> list[float]:
+        return [scores.get(d.split("\n")[0], 0.0) for d in docs]
+
+    monkeypatch.setattr(orch, "rerank_texts", fake_rerank)
+
+
+async def test_web_results_filtered_and_reordered(monkeypatch) -> None:
+    """低于下限的条目被丢弃；保留项按相关分排序。"""
+    client = _FakeClient(results=[_result("A"), _result("B"), _result("C")])
+    monkeypatch.setattr(orch, "get_web_search", lambda: client)
+    _enable_web_filter(monkeypatch, {"结果A": 0.9, "结果B": 0.1, "结果C": 0.5})
+    guard.reset_state()
+
+    block, citations, _, _ = await orch._build_web_context(["q"], "用户问题")
+    assert [c["document_name"] for c in citations] == ["结果A", "结果C"]
+    assert block.index("结果A") < block.index("结果C")
+    assert "结果B" not in block
+
+
+async def test_web_results_weak_triggers_free_deepening(monkeypatch) -> None:
+    """R39 免费加深：结果最好分低于闸门 → 改写查询变体二轮检索并合并（零成本换质量）。"""
+    client = _FakeClient(
+        results=[_result("BAD")],
+        results_by_query={"变体X": [_result("GOOD")]},
+    )
+    monkeypatch.setattr(orch, "get_web_search", lambda: client)
+    _enable_web_filter(monkeypatch, {"结果BAD": 0.2, "结果GOOD": 0.9})
+    guard.reset_state()
+
+    async def fake_expand(_text: str) -> list[str]:
+        return ["变体X"]
+
+    monkeypatch.setattr(orch, "expand_queries", fake_expand)
+    _, citations, _, _ = await orch._build_web_context(["q"], "用户问题")
+    assert [q for q, _ in client.searches] == ["q", "变体X"]  # 首轮 + 加深轮
+    assert [c["document_name"] for c in citations] == ["结果GOOD"]  # 合并后由重排精选
+
+
+async def test_web_paid_fallback_behind_flag(monkeypatch) -> None:
+    """付费兜底默认关：免费加深仍不达标也不调用付费源；显式开启才调用。"""
+    free = _FakeClient(results=[_result("BAD")], paid=False)
+    paid = _FakeClient(results=[_result("PAID")])
+    monkeypatch.setattr(orch, "get_web_search", lambda: free)
+    monkeypatch.setattr(orch, "get_paid_web_search", lambda: paid)
+    _enable_web_filter(monkeypatch, {"结果BAD": 0.1, "结果PAID": 0.9})
+
+    async def no_variants(_text: str) -> list[str]:
+        return []
+
+    monkeypatch.setattr(orch, "expand_queries", no_variants)
+    guard.reset_state()
+
+    # 默认关：付费源不被调用
+    _, citations, _, _ = await orch._build_web_context(["q"], "用户问题")
+    assert paid.searches == []
+    assert [c["document_name"] for c in citations] == ["结果BAD"]  # 全部低相关 → 保底保留一条
+
+    # 显式开启：付费源被调用并取优
+    monkeypatch.setattr(settings, "web_search_paid_fallback", True)
+    _, citations, _, _ = await orch._build_web_context(["q"], "用户问题")
+    assert [q for q, _ in paid.searches] == ["q"]
+    assert [c["document_name"] for c in citations] == ["结果PAID"]
+
+
+async def test_web_free_provider_skips_daily_guard(monkeypatch) -> None:
+    """免费源不计每日护栏：额度用尽也不拦截（护栏只约束付费调用）。"""
+    client = _FakeClient(results=[_result("A")], paid=False)
+    monkeypatch.setattr(orch, "get_web_search", lambda: client)
+    guard.reset_state()
+    monkeypatch.setattr(settings, "web_search_daily_limit", 0)
+    # 耗尽护栏（limit=0 表示不限；用 limit=… 不方便，这里直接构造已超限状态）
+    guard._count = 999
+    monkeypatch.setattr(settings, "web_search_daily_limit", 1)
+    _, citations, _, _ = await orch._build_web_context(["q", "q2"], "用户问题")
+    assert len(client.searches) == 2  # 免费源请求不受护栏影响
+    assert [c["document_name"] for c in citations] == ["结果A"]
+
+
+async def test_web_results_rerank_failure_keeps_original(monkeypatch) -> None:
+    """重排失败 → 原序保留（联通路径静默降级，不阻塞）。"""
+    client = _FakeClient(results=[_result("A"), _result("B")])
+    monkeypatch.setattr(orch, "get_web_search", lambda: client)
+    monkeypatch.setattr(settings, "rerank_enabled", True)
+    monkeypatch.setattr(settings, "embedding_api_key", "test-key")
+
+    async def broken_rerank(_query: str, _docs: list[str]) -> list[float]:
+        raise RuntimeError("rerank down")
+
+    monkeypatch.setattr(orch, "rerank_texts", broken_rerank)
+    guard.reset_state()
+
+    _, citations, _, _ = await orch._build_web_context(["q"], "用户问题")
+    assert [c["document_name"] for c in citations] == ["结果A", "结果B"]
+
+
+async def test_web_multiple_queries_merged(monkeypatch) -> None:
+    """R38：规划器的多条联网查询全部执行、按 URL 去重合并。"""
+    client = _FakeClient(results=[_result("A"), _result("B")])
+    _patch(
+        monkeypatch,
+        calls=[("web_search", {"query": "q1"}), ("web_search", {"query": "q2"})],
+        client=client,
+    )
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
+    assert [q for q, _ in client.searches] == ["q1", "q2"]  # 两条查询都执行
+    assert len([c for c in plan.citations if c.get("web")]) == 2  # 同 URL 去重后 2 条
+    assert plan.web_failed is False

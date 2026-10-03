@@ -65,12 +65,36 @@ class Settings(BaseSettings):
 
     # 联网检索（F4，004-web-search；key 为空 = 能力关闭，零行为变化）
     web_search_api_key: str = ""
+    # 联网搜索提供方（R39/T085；T086）：deepseek=官方服务端搜索（默认，token 计费，R40 用户确认）；searxng=自建免费（可切换）；zhipu=付费 API（可切换）
+    web_search_provider: str = "deepseek"
+    searxng_base_url: str = "http://127.0.0.1:8888"
+    searxng_timeout_s: float = 10.0
+    # DeepSeek 服务端搜索（T086/R40）：官方 Anthropic 兼容端点 + web_search 服务端工具；
+    # 账号/计费复用 llm_*（同一 DeepSeek 账户）；token 计费（无按次费）→ 计入 web 成本与每日护栏
+    deepseek_search_base_url: str = ""  # 空 = 由 llm_base_url 推导（+ /anthropic）
+    deepseek_search_model: str = "deepseek-flash"
+    deepseek_search_timeout_s: float = 30.0  # 模型轮次 + 服务端搜索，比直连搜索源慢（实测 2.7s~15s）
+    deepseek_search_max_tokens: int = 256  # 只要求执行搜索、不展开回答：小上限控成本
+    # 免费加深（全部自建的质量补偿）：结果最好分低于此值 → 改写查询变体二轮检索（零成本、耗时）
+    web_search_escalate_below: float = 0.45
+    # 付费兜底开关（默认关；开启且智谱 key 有效时，"免费加深仍不达标"才付一次）
+    web_search_paid_fallback: bool = False
+
     web_search_max_results: int = 5
+    # 搜索+读页（R38/T082）：对过滤后的前 N 条结果抓取正文、段落级筛选（0 = 关闭读页，仅用摘要）
+    web_search_reader_max_pages: int = 4
+    web_search_page_timeout_s: float = 8.0
+    web_search_page_max_bytes: int = 2_000_000
+    web_search_fetch_concurrency: int = 4
+    web_search_digest_max_chars: int = 2000  # 单页注入上下文字符上限
+    web_search_digest_max_paragraphs: int = 6
     web_search_snippet_max: int = 800
     web_search_timeout_s: float = 5.0
     web_search_freshness: str = "noLimit"
-    web_search_engine: str = "search_std"  # 智谱引擎档位：search_std(￥0.01)/search_pro(￥0.03)/search_pro_sogou(￥0.05)/search_pro_quark(￥0.05)
-    web_search_fallback_engine: str = "search_pro_sogou"  # 主引擎零链接时兜底一次（实测 link 按引擎/查询确定性缺失；空串=禁用）
+    # 引擎档位（R37 四组查询实测）：sogou 质量显著最优（命中真实数据源）；std/pro 同源、偏中文 SEO 内容农场
+    web_search_engine: str = "search_pro_sogou"  # 智谱引擎：search_std(￥0.01)/search_pro(￥0.03)/search_pro_sogou(￥0.05)/search_pro_quark(￥0.05)
+    web_search_fallback_engine: str = "search_pro_quark"  # 付费源内部：主引擎零链接时兜底一次（空串=禁用）
+    web_search_relevance_floor: float = 0.3  # 结果重排过滤下限（R37 标定：相关 0.4+ / 垃圾 ≤0.2；Reranker 失败 → 不过滤）
     web_search_daily_limit: int = 30  # 每日搜索次数上限（0=不限；进程内计数护栏）
     retrieval_keyword_terms: int = 4  # 查询拆词上限（T033）
     chat_history_limit: int = 10
@@ -89,9 +113,16 @@ class Settings(BaseSettings):
     writeback_dup_threshold: float = 0.95
 
     # 二段式重排（R24/A 方案）：cross-encoder 复评候选池；失败静默降级为余弦+加成
+    # 模型换代为 Qwen3-Reranker-4B（R35/T076 评测：分离 −0.30→+0.64、改写抽奖消失、延迟 +0.4s）
     rerank_enabled: bool = True
-    rerank_model: str = "BAAI/bge-reranker-v2-m3"
+    rerank_model: str = "Qwen/Qwen3-Reranker-4B"
     rerank_timeout_seconds: float = 15.0
+
+    # 全成本聚合单价（T079 / R36）：联网搜索按次、检索设施按 tokens（用于费用展示）
+    price_web_search_std_cny: float = 0.01  # 智谱 search_std（默认引擎）
+    price_web_search_pro_cny: float = 0.05  # pro/sogou/quark（保守取上限）
+    price_embedding_per_million: float = 0.0  # bge-m3 @ 硅基流动（2026-10 核实免费）
+    price_rerank_per_million: float = 0.14  # Qwen3-Reranker-4B @ 硅基流动（R35）
 
     def assert_secure(self) -> None:
         """fail-closed（审计二期 B1）：默认密钥/口令 → 拒绝启动，要求显式配置。"""

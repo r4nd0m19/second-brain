@@ -1,0 +1,30 @@
+# SearXNG 本地配置（T085/R39）：继承默认设置；开启 JSON 接口（后端程序化调用）；本机单用户无限流
+# 引擎裁剪（2026-10-03 实机实测，本机网络）：google/duckduckgo/brave/wikipedia 等直连超时、baidu 验证码、
+# bing 空结果、quark 引擎崩溃 → 仅保留实机可用的 sogou + 360search（各自返回 7-10 条真实结果）
+use_default_settings:
+  engines:
+    keep_only:
+      - sogou
+      - bing
+      - 360search
+
+engines:
+  # 实机可用集（2026-10-03 实测）：sogou（中英质量最好）、bing（base_url 换 cn 后可用）、360search（补充）
+  # 已剔除：google/duckduckgo/brave/wikipedia（直连超时）、baidu/quark（验证码）、chinaso（不可用）
+  - name: sogou
+    disabled: false
+  - name: bing
+    base_url: https://cn.bing.com
+    disabled: false
+  - name: 360search
+    disabled: false
+
+server:
+  limiter: false        # 仅本机（127.0.0.1）访问；无限流
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json
+  autocomplete: ""

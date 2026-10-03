@@ -46,9 +46,11 @@ async def session(engine):
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _disable_external_rerank(monkeypatch):
-    """单测不触外部 rerank API（专用用例自行开启并 mock，见 test_retrieval_rerank.py）。"""
+async def _disable_external_calls(monkeypatch):
+    """单测不触外部 API：rerank 关闭（专用用例自行开启并 mock，见 test_retrieval_rerank.py）；
+    联网读页关闭（web_search_reader_max_pages=0 → 仅用摘要；专用用例开启并 mock 抓取）。"""
     from app.config import settings
 
     monkeypatch.setattr(settings, "rerank_enabled", False)
+    monkeypatch.setattr(settings, "web_search_reader_max_pages", 0)
     yield

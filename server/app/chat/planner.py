@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from app.chat.llm import ChatMessage, LLMError, get_llm_client
+from app.chat.llm import ChatMessage, LLMError, get_llm_client, today_cn
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,17 @@ async def plan_retrieval(
 
     history：最近对话窗口（用于指代/省略消解；调用方已按 HISTORY_TURNS 截取，此处再限一次）。
     """
-    messages: list[ChatMessage] = [{"role": "system", "content": _PLANNER_SYSTEM}]
+    # 当前日期注入（T084）：模型不知道"现在"，时效类检索词会凭训练记忆猜年份（实测写过 2025）
+    messages: list[ChatMessage] = [
+        {
+            "role": "system",
+            "content": (
+                f"（今天是 {today_cn()}，北京时间。涉及时效诉求（「目前/最新/今年」）或外部行情类"
+                "问题时，检索词应使用当前年份或「latest」等表述——不要凭记忆中的年份。）\n"
+                + _PLANNER_SYSTEM
+            ),
+        }
+    ]
     if history:
         messages.extend(history[-(HISTORY_TURNS * 2):])
     messages.append({"role": "user", "content": user_text})

@@ -138,10 +138,30 @@ async def test_empty_results() -> None:
 
 
 def test_factory_requires_key(monkeypatch) -> None:
+    """R39/T086：自建源（SearXNG）与 key 无关；deepseek/zhipu 缺 key → None。"""
+    from app.websearch.searxng import SearXNGClient
+
+    monkeypatch.setattr(settings, "web_search_provider", "searxng")
     monkeypatch.setattr(settings, "web_search_api_key", "")
-    assert get_web_search() is None
+    assert isinstance(get_web_search(), SearXNGClient)  # 自建源不需要 key
+
+    monkeypatch.setattr(settings, "web_search_provider", "zhipu")
+    assert get_web_search() is None  # 付费源缺 key → 能力关闭
     monkeypatch.setattr(settings, "web_search_api_key", "k")
     assert isinstance(get_web_search(), ZhipuWebSearch)
+
+    # T086：DeepSeek 服务端搜索复用 llm key；base_url 空 → 由 llm_base_url 推导（+ /anthropic）
+    from app.websearch.deepseek import DeepSeekWebSearch
+
+    monkeypatch.setattr(settings, "web_search_provider", "deepseek")
+    monkeypatch.setattr(settings, "llm_api_key", "")
+    monkeypatch.setattr(settings, "deepseek_search_base_url", "")
+    assert get_web_search() is None  # 缺 key → 能力关闭
+    monkeypatch.setattr(settings, "llm_api_key", "k")
+    monkeypatch.setattr(settings, "llm_base_url", "https://api.deepseek.com")
+    client = get_web_search()
+    assert isinstance(client, DeepSeekWebSearch)
+    assert client.base_url == "https://api.deepseek.com/anthropic"
 
 
 def test_decoupled_signature() -> None:

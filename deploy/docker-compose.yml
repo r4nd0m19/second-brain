@@ -17,5 +17,19 @@ services:
       timeout: 3s
       retries: 10
 
+  # 免费自托管元搜索（T085/R39）：联网检索的零成本首选源（SearXNG 聚合多引擎；JSON 接口已开）
+  searxng:
+    image: searxng/searxng:latest
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    ports:
+      # 仅绑定 127.0.0.1（无鉴权，不对公网/局域网暴露）；后端经 http://127.0.0.1:8888 调用
+      - "127.0.0.1:8888:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888/
+      # 仅本机服务；仓库内默认值即可（服务器部署如需可经 deploy/.env 覆盖）
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-local-only-searxng-secret}
+    restart: unless-stopped
+
 volumes:
   db_data:

@@ -22,6 +22,7 @@ dependencies = [
   "docling",
   "transformers",
   "mcp",
+  "trafilatura>=2.3.0",
 ]
 
 [project.optional-dependencies]

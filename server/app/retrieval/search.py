@@ -22,6 +22,7 @@ from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.costing import add_retrieval
 from app.ingestion.embedding import get_embedding_provider
 from app.models import Chunk, Document, SourceType
 
@@ -256,7 +257,17 @@ async def _rerank_api(query: str, documents: list[str]) -> list[float]:
             },
         )
         resp.raise_for_status()
+    data = resp.json()
     out = [0.0] * len(documents)
-    for item in resp.json().get("results", []):
+    for item in data.get("results", []):
         out[int(item["index"])] = float(item["relevance_score"])
+    # 全成本（T079）：重排按 tokens 计价（Qwen3-Reranker-4B，usage 在 meta.tokens）
+    rerank_tokens = int(((data.get("meta") or {}).get("tokens") or {}).get("input_tokens", 0))
+    if rerank_tokens:
+        add_retrieval(rerank_tokens / 1_000_000 * settings.price_rerank_per_million)
     return out
+
+
+async def rerank_texts(query: str, documents: list[str]) -> list[float]:
+    """对外暴露的重排打分（联网结果过滤等复用，R37/T081）；费用经 add_retrieval 计入本回合。"""
+    return await _rerank_api(query, documents)

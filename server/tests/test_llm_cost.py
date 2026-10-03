@@ -37,3 +37,16 @@ def test_hit_exceeds_prompt_clamped(monkeypatch):
     # 异常数据（命中数 > 总数）不应产生负的未命中计费
     usage = {"prompt_tokens": 100, "prompt_cache_hit_tokens": 500, "completion_tokens": 0}
     assert abs(llm.estimate_cost_cny(usage) - 500 / 1_000_000 * 0.02) < 1e-12
+
+
+def test_anthropic_style_usage_mapping(monkeypatch):
+    """T086：Anthropic 风格 usage（input/cache_read/output，input 不含缓存）→ 同分档定价。"""
+    monkeypatch.setattr(llm, "_is_peak_now", lambda: False)
+    usage = {
+        "input_tokens": 500_000,
+        "cache_read_input_tokens": 300_000,
+        "cache_creation_input_tokens": 0,
+        "output_tokens": 250_000,
+    }
+    # 命中 0.3M×0.02 + 未命中 0.5M×1.0 + 输出 0.25M×4.0 = 0.006 + 0.5 + 1.0
+    assert abs(llm.estimate_cost_cny_anthropic(usage) - 1.506) < 1e-9

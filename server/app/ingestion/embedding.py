@@ -13,6 +13,7 @@ from typing import Protocol
 import httpx
 
 from app.config import settings
+from app.costing import add_retrieval
 
 # 逐批进度回调：(已处理条数, 总条数) —— 由入库管线用于"索引中 x/y 块"进度（R7 配套）
 ProgressCallback = Callable[[int, int], Awaitable[None]]
@@ -65,7 +66,14 @@ class OpenAICompatEmbedding:
                     raise EmbeddingError(
                         f"embedding 服务返回 {response.status_code}: {response.text[:300]}"
                     )
-                items = response.json()["data"]
+                body = response.json()
+                # 全成本（T079）：embedding 按 tokens 计价（bge-m3 现免费 → 单价 0，token 照记）
+                prompt_tokens = int((body.get("usage") or {}).get("prompt_tokens", 0))
+                if prompt_tokens:
+                    add_retrieval(
+                        prompt_tokens / 1_000_000 * settings.price_embedding_per_million
+                    )
+                items = body["data"]
                 items.sort(key=lambda item: item.get("index", 0))  # 保序，防止乱序响应
                 vectors.extend(item["embedding"] for item in items)
                 if on_progress is not None:
