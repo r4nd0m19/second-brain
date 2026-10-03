@@ -75,6 +75,8 @@ export type UsageInfo = {
   total_tokens?: number;
   prompt_cache_hit_tokens?: number;
   cost_cny?: number | null;
+  /** 全成本明细（T079）：llm=模型调用（含规划/扩检）、web=联网按次、retrieval=embedding+重排 */
+  cost_breakdown?: { llm?: number; web?: number; retrieval?: number } | null;
 };
 
 export type Conversation = {

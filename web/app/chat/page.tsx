@@ -2,13 +2,14 @@
 
 import { createParser } from "eventsource-parser";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { api, Citation, Conversation, ConversationSearchHit, UsageInfo } from "@/lib/api";
 import { highlight } from "@/lib/highlight";
-import { useLang, type MsgKey } from "@/lib/i18n";
+import { useLang, type MsgKey, type Translate } from "@/lib/i18n";
 import ThemeToggle from "../_components/theme-toggle";
 import LangToggle from "../_components/lang-toggle";
 
@@ -23,7 +24,54 @@ type ChatMsg = {
   time_range_label?: string | null;
   error?: string;
   streaming?: boolean;
+  statusPhase?: string; // 生成阶段（SSE status 事件，2026-10-03）
+  elapsedMs?: number; // 生成总耗时（done 时回填）
+  web_failed?: boolean; // 联网被规划但未取得结果（T083：显式提示，避免"以为在搜却没搜"）
+  web_error?: string | null; // 失败原因码（balance/ratelimit/quota/unavailable）
 };
+
+/** 联网失败原因码 → 文案键（T083 追记：原因对用户可见） */
+const WEB_ERR_KEY: Record<string, MsgKey> = {
+  balance: "chat.webErrBalance",
+  ratelimit: "chat.webErrRate",
+  quota: "chat.webErrQuota",
+  unavailable: "chat.webErrUnavailable",
+};
+
+function webFailedText(msg: ChatMsg, t: Translate): string {
+  if (!msg.web_failed) return "";
+  if (msg.web_error && WEB_ERR_KEY[msg.web_error]) {
+    return t("chat.webFailedReason", { reason: t(WEB_ERR_KEY[msg.web_error]) });
+  }
+  return t("chat.webFailed");
+}
+
+/** 生成阶段 → 文案键（后端 status 事件的 phase 值） */
+const PHASE_KEY: Record<string, MsgKey> = {
+  planning: "chat.phasePlanning",
+  retrieving: "chat.phaseRetrieving",
+  listing: "chat.phaseListing",
+  expanding: "chat.phaseExpanding",
+  web_search: "chat.phaseWeb",
+  generating: "chat.phaseGenerating",
+};
+
+function fmtDur(ms: number): string {
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  return `${Math.floor(s / 60)}m${String(Math.round(s % 60)).padStart(2, "0")}s`;
+}
+
+/** 费用悬停明细（T079 全成本：模型 / 联网 / 检索） */
+function costBreakdownTitle(usage: UsageInfo, t: Translate): string | undefined {
+  const b = usage.cost_breakdown;
+  if (!b) return undefined;
+  const parts: string[] = [];
+  if (b.llm) parts.push(`${t("chat.costLlm")} ¥${b.llm.toFixed(4)}`);
+  if (b.web) parts.push(`${t("chat.costWeb")} ¥${b.web.toFixed(4)}`);
+  if (b.retrieval) parts.push(`${t("chat.costRetrieval")} ¥${b.retrieval.toFixed(4)}`);
+  return parts.length ? parts.join(" · ") : undefined;
+}
 
 /** 流式静默看门狗（三期 P1）：超过该时长无任何字节 → 主动中止（不设总超时，长回答不被掐断） */
 const STREAM_IDLE_TIMEOUT_MS = 60_000;
@@ -104,7 +152,8 @@ function markdownUrlTransform(url: string): string {
 function renderAssistant(
   content: string,
   citations?: Citation[],
-  onNavigate?: () => void
+  onNavigate?: () => void,
+  onOpenConversation?: (conversationId: string, messageId?: string) => void
 ): React.ReactNode {
   const prepared =
     citations && citations.length > 0
@@ -132,6 +181,26 @@ function renderAssistant(
                       title={citation.document_name}
                       target="_blank"
                       rel="noreferrer"
+                    >
+                      {children}
+                    </a>
+                  );
+                }
+                if (citation.conversation_id && onOpenConversation) {
+                  // 对话回写来源：同路由软导航不重挂载（挂载期深链解析不会重跑）→ 直接切换会话；
+                  // 保留 href 以支持中键/新标签（新加载走深链）
+                  return (
+                    <a
+                      className="citation-chip"
+                      href={citationHref(citation)}
+                      title={citation.document_name}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onOpenConversation(
+                          citation.conversation_id!,
+                          citation.message_id ?? undefined
+                        );
+                      }}
                     >
                       {children}
                     </a>
@@ -168,12 +237,15 @@ function CitationList({
   label,
   showJump = true,
   onNavigate,
+  onOpenConversation,
   splitBySource = false,
 }: {
   items: Citation[];
   label?: string;
   showJump?: boolean;
   onNavigate?: () => void;
+  /** 对话回写来源的「回到原对话」：同路由软导航不重挂载 → 直接切换会话（见 renderAssistant 同注） */
+  onOpenConversation?: (conversationId: string, messageId?: string) => void;
   splitBySource?: boolean; // 分「网络来源 / 出处」两组（编号保持与正文 [N] 角标一致）
 }) {
   const { t, lang } = useLang();
@@ -239,18 +311,35 @@ function CitationList({
                       </a>
                     ) : (
                       <>
-                        <Link
-                          className="btn"
-                          style={{ fontSize: 12, padding: "3px 10px" }}
-                          href={citationHref(c)}
-                          onClick={onNavigate}
-                        >
-                          {c.source_url
-                            ? t("chat.viewSnapshot")
-                            : c.conversation_id
-                              ? t("chat.backToConv")
-                              : t("chat.jumpToSource")}
-                        </Link>
+                        {c.conversation_id && !c.source_url && onOpenConversation ? (
+                          <a
+                            className="btn"
+                            style={{ fontSize: 12, padding: "3px 10px" }}
+                            href={citationHref(c)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              onOpenConversation(
+                                c.conversation_id!,
+                                c.message_id ?? undefined
+                              );
+                            }}
+                          >
+                            {t("chat.backToConv")}
+                          </a>
+                        ) : (
+                          <Link
+                            className="btn"
+                            style={{ fontSize: 12, padding: "3px 10px" }}
+                            href={citationHref(c)}
+                            onClick={onNavigate}
+                          >
+                            {c.source_url
+                              ? t("chat.viewSnapshot")
+                              : c.conversation_id
+                                ? t("chat.backToConv")
+                                : t("chat.jumpToSource")}
+                          </Link>
+                        )}
                         {c.source_url && (
                           <a
                             className="btn"
@@ -274,8 +363,128 @@ function CitationList({
   );
 }
 
+/** 对话引用预览小窗（2026-10-03 用户反馈）：只读消息流 + 定位高亮被引用消息，
+ *  不离开当前对话；窗内引用可继续追（对话→重定向本窗，书籍→正常跳阅读器）；
+ *  「在对话中打开」再走整页切换。 */
+function ConvPreview({
+  convId,
+  msgId,
+  titleFor,
+  onClose,
+  onOpenFull,
+}: {
+  convId: string;
+  msgId: string | null;
+  titleFor: (conversationId: string) => string;
+  onClose: () => void;
+  onOpenFull: (conversationId: string, messageId?: string) => void;
+}) {
+  const { t } = useLang();
+  const [target, setTarget] = useState<{ convId: string; msgId: string | null }>({
+    convId,
+    msgId,
+  });
+  const [msgs, setMsgs] = useState<ChatMsg[] | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMsgs(null);
+    api
+      .conversationMessages(target.convId)
+      .then((stored) => {
+        if (cancelled) return;
+        setMsgs(
+          stored.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            source_type: m.source_type,
+            citations: m.citations ?? undefined,
+            related_hints: m.related_hints ?? undefined,
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setMsgs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [target.convId]);
+
+  // 消息渲染后：定位目标消息并短暂高亮
+  useEffect(() => {
+    if (!msgs || !target.msgId) return;
+    document.getElementById(`pv-${target.msgId}`)?.scrollIntoView({ block: "center" });
+    setFlashId(target.msgId);
+  }, [msgs, target.msgId]);
+
+  // Escape 关闭
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="conv-preview-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="conv-preview"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="conv-preview-head">
+          <div className="conv-preview-title">{titleFor(target.convId)}</div>
+          <div style={{ display: "flex", gap: 6, flex: "0 0 auto" }}>
+            <button
+              className="btn"
+              onClick={() => onOpenFull(target.convId, target.msgId ?? undefined)}
+            >
+              {t("chat.previewOpenFull")}
+            </button>
+            <button className="btn" onClick={onClose} aria-label={t("chat.previewClose")}>
+              ✕
+            </button>
+          </div>
+        </div>
+        <div className="conv-preview-body">
+          {msgs === null ? (
+            <p className="muted">{t("docs.loading")}</p>
+          ) : (
+            msgs.map((m) => (
+              <div
+                key={m.id}
+                id={m.id ? `pv-${m.id}` : undefined}
+                className={`bubble ${m.role === "user" ? "bubble-user" : "bubble-assistant"}${
+                  m.id && m.id === flashId ? " bubble-flash" : ""
+                }`}
+                onAnimationEnd={() => {
+                  if (m.id && m.id === flashId) setFlashId(null);
+                }}
+              >
+                {m.role === "assistant"
+                  ? m.content
+                    ? renderAssistant(m.content, chipCitations(m), undefined, (cid, mid) =>
+                        setTarget({ convId: cid, msgId: mid ?? null })
+                      )
+                    : ""
+                  : m.content}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const { t, lang } = useLang();
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -289,6 +498,14 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null); // 生成中止（停止按钮 / 静默看门狗）
   const stopRequestedRef = useRef(false); // 区分"用户主动停止"与"其他中断"
+  const startedAtRef = useRef(0); // 本轮生成开始时间（用时显示/回填）
+  const [, setTimerTick] = useState(0); // 每秒重渲染一次，驱动的用时计时
+
+  useEffect(() => {
+    if (!busy) return;
+    const id = setInterval(() => setTimerTick((v) => v + 1), 1000);
+    return () => clearInterval(id);
+  }, [busy]);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null); // 「复制」反馈
 
   // 侧栏收起（惯例：独立切换按钮 + localStorage 记忆 + Ctrl/Cmd+B；首屏由 layout 内联脚本防闪跳）
@@ -299,6 +516,7 @@ export default function ChatPage() {
   const [convTotal, setConvTotal] = useState(0);
   const [searching, setSearching] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null); // 跳转后的短暂高亮消息
+  const [preview, setPreview] = useState<{ convId: string; msgId: string | null } | null>(null); // 对话引用预览小窗
   const jumpRef = useRef<string | null>(null); // 待定位消息（渲染后消费）
   const searchSeq = useRef(0);
   const convOpenSeq = useRef(0);
@@ -480,6 +698,20 @@ export default function ChatPage() {
     }
   }
 
+  /** 引用角标（对话类）：弹出预览小窗，不离开当前对话（用户反馈：直接整页跳转太突兀） */
+  function openConversationPreview(conversationId: string, messageId?: string) {
+    setPreview({ convId: conversationId, msgId: messageId ?? null });
+  }
+
+  /** 「回到原对话」按钮 / 预览窗「在对话中打开」：同路由软导航不重挂载（挂载期深链解析不会重跑）
+   *  → 直接切换会话 + 同步 URL（刷新/分享仍可用；href 保留供中键/新标签） */
+  function openConversationFromCitation(conversationId: string, messageId?: string) {
+    void openConversation(conversationId, messageId);
+    const params = new URLSearchParams({ conv: conversationId });
+    if (messageId) params.set("msg", messageId);
+    router.replace(`/chat/?${params.toString()}`, { scroll: false });
+  }
+
   function newChat() {
     convRef.current = null;
     setActiveConv(null);
@@ -511,6 +743,7 @@ export default function ChatPage() {
     setInput("");
     setBusy(true);
     stopRequestedRef.current = false;
+    startedAtRef.current = Date.now(); // 用时计时（2026-10-03）
     scrollBottomOnceRef.current = true; // 发送：定位一次，让新提问可见；之后保持不动
     setMessages((m) => [
       ...m,
@@ -571,8 +804,12 @@ export default function ChatPage() {
                 citations: payload.citations ?? [],
                 related_hints: payload.related_hints ?? [],
                 time_range_label: payload.time_range_label ?? null,
+                web_failed: payload.web_failed ?? false,
+                web_error: payload.web_error ?? null,
               }),
             );
+          } else if (event === "status") {
+            setMessages((m) => patchLast(m, { statusPhase: payload.phase }));
           } else if (event === "token") {
             setMessages((m) => patchLast(m, { content: lastContent(m) + payload.text }));
           } else if (event === "error") {
@@ -586,6 +823,7 @@ export default function ChatPage() {
                 usage: payload.usage
                   ? { ...payload.usage, cost_cny: payload.cost_cny }
                   : undefined,
+                elapsedMs: startedAtRef.current ? Date.now() - startedAtRef.current : undefined,
               }),
             );
           }
@@ -766,10 +1004,29 @@ export default function ChatPage() {
               <div>
                 {msg.content
                   ? msg.role === "assistant"
-                    ? renderAssistant(msg.content, chipCitations(msg), rememberScroll)
+                    ? renderAssistant(
+                      msg.content,
+                      chipCitations(msg),
+                      rememberScroll,
+                      openConversationPreview
+                    )
                     : msg.content
                   : ""}
-                {!msg.content && msg.streaming ? "…" : ""}
+                {msg.streaming && (
+                  <div className="stream-status muted">
+                    <span className="stream-dot" aria-hidden="true" />
+                    {[
+                      t(
+                        (msg.statusPhase && PHASE_KEY[msg.statusPhase]) ||
+                          "chat.phaseGenerating"
+                      ),
+                      startedAtRef.current ? fmtDur(Date.now() - startedAtRef.current) : "",
+                      msg.content ? t("chat.streamChars", { n: msg.content.length }) : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                )}
                 {msg.role === "assistant" && msg.streaming && msg.content ? (
                   <span className="stream-caret" aria-hidden="true" />
                 ) : null}
@@ -784,6 +1041,7 @@ export default function ChatPage() {
                             ? t(SOURCE_LABEL_KEY[msg.source_type])
                             : (msg.source_type ?? ""),
                       })}
+                  {!msg.error ? webFailedText(msg, t) : ""}
                 </div>
               )}
               {msg.role === "assistant" && msg.time_range_label && (
@@ -793,9 +1051,14 @@ export default function ChatPage() {
               )}
               {msg.role === "assistant" && msg.usage && (
                 <div className="bubble-meta">
-                  ↑{msg.usage.prompt_tokens ?? 0} ↓{msg.usage.completion_tokens ?? 0} tokens
-                  {typeof msg.usage.cost_cny === "number" &&
-                    ` · ≈¥${msg.usage.cost_cny.toFixed(4)}`}
+                  {typeof msg.usage.prompt_tokens === "number" &&
+                    `↑${msg.usage.prompt_tokens} ↓${msg.usage.completion_tokens ?? 0} tokens · `}
+                  {typeof msg.usage.cost_cny === "number" && (
+                    <span title={costBreakdownTitle(msg.usage, t)}>
+                      ≈¥{msg.usage.cost_cny.toFixed(4)}
+                    </span>
+                  )}
+                  {typeof msg.elapsedMs === "number" && ` · ⏱ ${fmtDur(msg.elapsedMs)}`}
                   {msg.usage.prompt_cache_hit_tokens
                     ? t("chat.cacheHit", { n: msg.usage.prompt_cache_hit_tokens })
                     : ""}
@@ -807,6 +1070,7 @@ export default function ChatPage() {
                   splitBySource
                   showJump={false}
                   onNavigate={rememberScroll}
+                  onOpenConversation={openConversationFromCitation}
                 />
               )}
               {msg.related_hints && msg.related_hints.length > 0 && (
@@ -814,6 +1078,7 @@ export default function ChatPage() {
                   items={msg.related_hints}
                   label={t("chat.related")}
                   onNavigate={rememberScroll}
+                  onOpenConversation={openConversationFromCitation}
                 />
               )}
               {msg.role === "assistant" && (
@@ -821,6 +1086,7 @@ export default function ChatPage() {
                   items={inheritedCitations(msg)}
                   label={t("chat.inherited")}
                   onNavigate={rememberScroll}
+                  onOpenConversation={openConversationFromCitation}
                 />
               )}
               {msg.role === "assistant" && msg.content && !msg.streaming && (
@@ -888,6 +1154,21 @@ export default function ChatPage() {
       </div>
         </div>
       </div>
+      {preview && (
+        <ConvPreview
+          convId={preview.convId}
+          msgId={preview.msgId}
+          titleFor={(id) => {
+            const conv = convs.find((c) => c.id === id);
+            return conv ? conv.title : t("docs.navChat");
+          }}
+          onClose={() => setPreview(null)}
+          onOpenFull={(id, mid) => {
+            setPreview(null);
+            openConversationFromCitation(id, mid);
+          }}
+        />
+      )}
     </main>
   );
 }
