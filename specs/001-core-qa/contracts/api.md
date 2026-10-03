@@ -7,7 +7,7 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/auth/login` | `{username, password}` → 204 + Set-Cookie；失败限速（默认 5 次/15 分钟）→ 429 + `Retry-After`（T034） |
-| POST | `/api/auth/logout` | 清会话 |
+| POST | `/api/auth/logout` | 清会话，并使该账号**所有设备**上的旧会话立即失效（会话纪元 +1，R23） |
 | GET | `/api/me` | → `{username}` |
 
 ## Documents（资料）

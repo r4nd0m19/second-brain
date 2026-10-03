@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     # 回写近似查重（审计二期 C1）：新问答与库内最近邻相似度 ≥ 阈值 → 视为重复，跳过回写
     writeback_dup_threshold: float = 0.95
 
+    # 二段式重排（R24/A 方案）：cross-encoder 复评候选池；失败静默降级为余弦+加成
+    rerank_enabled: bool = True
+    rerank_model: str = "BAAI/bge-reranker-v2-m3"
+    rerank_timeout_seconds: float = 15.0
+
     def assert_secure(self) -> None:
         """fail-closed（审计二期 B1）：默认密钥/口令 → 拒绝启动，要求显式配置。"""
         if self.secret_key == DEFAULT_SECRET_KEY:

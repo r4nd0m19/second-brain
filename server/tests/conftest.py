@@ -43,3 +43,12 @@ async def session(engine):
     maker = async_sessionmaker(engine, expire_on_commit=False)
     async with maker() as s:
         yield s
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _disable_external_rerank(monkeypatch):
+    """单测不触外部 rerank API（专用用例自行开启并 mock，见 test_retrieval_rerank.py）。"""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "rerank_enabled", False)
+    yield

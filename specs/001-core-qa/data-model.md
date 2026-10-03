@@ -9,6 +9,7 @@
 | id | uuid PK | |
 | username | text UNIQUE | |
 | password_hash | text | argon2/bcrypt |
+| session_epoch | int | 会话纪元（登出/吊销 +1 → 该账号全部旧会话立即失效；R23，迁移 70eda961aa20） |
 | created_at | timestamptz | |
 
 单用户阶段 = 白名单单账号（认证边界第一天存在，为多用户留路）。

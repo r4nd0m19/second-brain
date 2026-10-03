@@ -1,0 +1,1167 @@
+{
+  "current": {
+    "summary": {
+      "hit@6": "15/15",
+      "MRR": 1.0,
+      "正确块余弦均值": 0.738,
+      "正确块分均值": 0.738,
+      "命中题 top1 最低": 0.604,
+      "兜底题 top1 最高": 0.7,
+      "分离间隔": -0.096
+    },
+    "records": [
+      {
+        "qid": "f01",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7678201537025078,
+        "cosine": 0.7678201537025078,
+        "top1": 0.7678201537025078,
+        "results_n": 6
+      },
+      {
+        "qid": "f02",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7866553020477295,
+        "cosine": 0.7866553020477295,
+        "top1": 0.7866553020477295,
+        "results_n": 6
+      },
+      {
+        "qid": "f03",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.798045113203222,
+        "cosine": 0.798045113203222,
+        "top1": 0.798045113203222,
+        "results_n": 6
+      },
+      {
+        "qid": "f04",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6037664593388578,
+        "cosine": 0.6037664593388578,
+        "top1": 0.6037664593388578,
+        "results_n": 6
+      },
+      {
+        "qid": "f05",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7252081036567739,
+        "cosine": 0.7252081036567739,
+        "top1": 0.7252081036567739,
+        "results_n": 6
+      },
+      {
+        "qid": "f06",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.8544111204147339,
+        "cosine": 0.8544111204147339,
+        "top1": 0.8544111204147339,
+        "results_n": 6
+      },
+      {
+        "qid": "f07",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7445918646211555,
+        "cosine": 0.7445918646211555,
+        "top1": 0.7445918646211555,
+        "results_n": 6
+      },
+      {
+        "qid": "f08",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7176253031268909,
+        "cosine": 0.7176253031268909,
+        "top1": 0.7176253031268909,
+        "results_n": 6
+      },
+      {
+        "qid": "g01",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7004551887512207,
+        "cosine": 0.7004551887512207,
+        "top1": 0.7004551887512207,
+        "results_n": 6
+      },
+      {
+        "qid": "g02",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7623981233123331,
+        "cosine": 0.7623981233123331,
+        "top1": 0.7623981233123331,
+        "results_n": 6
+      },
+      {
+        "qid": "g03",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6828608701908082,
+        "cosine": 0.6828608701908082,
+        "top1": 0.6828608701908082,
+        "results_n": 6
+      },
+      {
+        "qid": "g04",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7837290317931486,
+        "cosine": 0.7837290317931486,
+        "top1": 0.7837290317931486,
+        "results_n": 6
+      },
+      {
+        "qid": "g05",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7055564475059509,
+        "cosine": 0.7055564475059509,
+        "top1": 0.7055564475059509,
+        "results_n": 6
+      },
+      {
+        "qid": "g06",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6296487998962402,
+        "cosine": 0.6296487998962402,
+        "top1": 0.6296487998962402,
+        "results_n": 6
+      },
+      {
+        "qid": "g07",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.800368502118082,
+        "cosine": 0.800368502118082,
+        "top1": 0.800368502118082,
+        "results_n": 6
+      },
+      {
+        "qid": "b01",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.6443315696716346,
+        "results_n": 6
+      },
+      {
+        "qid": "b02",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.6997539275664646,
+        "results_n": 6
+      },
+      {
+        "qid": "b03",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.6311055069502896,
+        "results_n": 6
+      },
+      {
+        "qid": "b04",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.44277250084549513,
+        "results_n": 6
+      },
+      {
+        "qid": "b05",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.5729009000331434,
+        "results_n": 6
+      }
+    ]
+  },
+  "vector": {
+    "summary": {
+      "hit@6": "15/15",
+      "MRR": 0.956,
+      "正确块余弦均值": 0.659,
+      "正确块分均值": 0.659,
+      "命中题 top1 最低": 0.532,
+      "兜底题 top1 最高": 0.58,
+      "分离间隔": -0.047
+    },
+    "records": [
+      {
+        "qid": "f01",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6478201537025078,
+        "cosine": 0.6478201537025078,
+        "top1": 0.6478201537025078,
+        "results_n": 6
+      },
+      {
+        "qid": "f02",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6666553020477295,
+        "cosine": 0.6666553020477295,
+        "top1": 0.6666553020477295,
+        "results_n": 6
+      },
+      {
+        "qid": "f03",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.678045113203222,
+        "cosine": 0.678045113203222,
+        "top1": 0.678045113203222,
+        "results_n": 6
+      },
+      {
+        "qid": "f04",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6037664593388578,
+        "cosine": 0.6037664593388578,
+        "top1": 0.6037664593388578,
+        "results_n": 6
+      },
+      {
+        "qid": "f05",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7252081036567739,
+        "cosine": 0.7252081036567739,
+        "top1": 0.7252081036567739,
+        "results_n": 6
+      },
+      {
+        "qid": "f06",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7602666163285616,
+        "cosine": 0.7602666163285616,
+        "top1": 0.7602666163285616,
+        "results_n": 6
+      },
+      {
+        "qid": "f07",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6245918646211555,
+        "cosine": 0.6245918646211555,
+        "top1": 0.6245918646211555,
+        "results_n": 6
+      },
+      {
+        "qid": "f08",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7176253031268909,
+        "cosine": 0.7176253031268909,
+        "top1": 0.7176253031268909,
+        "results_n": 6
+      },
+      {
+        "qid": "g01",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7004551887512207,
+        "cosine": 0.7004551887512207,
+        "top1": 0.7004551887512207,
+        "results_n": 6
+      },
+      {
+        "qid": "g02",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6423981233123331,
+        "cosine": 0.6423981233123331,
+        "top1": 0.6423981233123331,
+        "results_n": 6
+      },
+      {
+        "qid": "g03",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6828608701908082,
+        "cosine": 0.6828608701908082,
+        "top1": 0.6828608701908082,
+        "results_n": 6
+      },
+      {
+        "qid": "g04",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6637290317931486,
+        "cosine": 0.6637290317931486,
+        "top1": 0.6637290317931486,
+        "results_n": 6
+      },
+      {
+        "qid": "g05",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.5855564475059509,
+        "cosine": 0.5855564475059509,
+        "top1": 0.5855564475059509,
+        "results_n": 6
+      },
+      {
+        "qid": "g06",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 3,
+        "best_score": 0.5096487998962402,
+        "cosine": 0.5096487998962402,
+        "top1": 0.5324874241642619,
+        "results_n": 6
+      },
+      {
+        "qid": "g07",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.680368502118082,
+        "cosine": 0.680368502118082,
+        "top1": 0.680368502118082,
+        "results_n": 6
+      },
+      {
+        "qid": "b01",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.549013316631321,
+        "results_n": 6
+      },
+      {
+        "qid": "b02",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.5797539275664646,
+        "results_n": 6
+      },
+      {
+        "qid": "b03",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.5276993198574004,
+        "results_n": 6
+      },
+      {
+        "qid": "b04",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.44277250084549513,
+        "results_n": 6
+      },
+      {
+        "qid": "b05",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.4616648669539275,
+        "results_n": 6
+      }
+    ]
+  },
+  "jieba": {
+    "summary": {
+      "hit@6": "15/15",
+      "MRR": 1.0,
+      "正确块余弦均值": 0.738,
+      "正确块分均值": 0.738,
+      "命中题 top1 最低": 0.604,
+      "兜底题 top1 最高": 0.7,
+      "分离间隔": -0.096
+    },
+    "records": [
+      {
+        "qid": "f01",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7678201537025078,
+        "cosine": 0.7678201537025078,
+        "top1": 0.7678201537025078,
+        "results_n": 6
+      },
+      {
+        "qid": "f02",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7866553020477295,
+        "cosine": 0.7866553020477295,
+        "top1": 0.7866553020477295,
+        "results_n": 6
+      },
+      {
+        "qid": "f03",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.798045113203222,
+        "cosine": 0.798045113203222,
+        "top1": 0.798045113203222,
+        "results_n": 6
+      },
+      {
+        "qid": "f04",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6037664593388578,
+        "cosine": 0.6037664593388578,
+        "top1": 0.6037664593388578,
+        "results_n": 6
+      },
+      {
+        "qid": "f05",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7252081036567739,
+        "cosine": 0.7252081036567739,
+        "top1": 0.7252081036567739,
+        "results_n": 6
+      },
+      {
+        "qid": "f06",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.8544111204147339,
+        "cosine": 0.8544111204147339,
+        "top1": 0.8544111204147339,
+        "results_n": 6
+      },
+      {
+        "qid": "f07",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7445918646211555,
+        "cosine": 0.7445918646211555,
+        "top1": 0.7445918646211555,
+        "results_n": 6
+      },
+      {
+        "qid": "f08",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7176253031268909,
+        "cosine": 0.7176253031268909,
+        "top1": 0.7176253031268909,
+        "results_n": 6
+      },
+      {
+        "qid": "g01",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7004551887512207,
+        "cosine": 0.7004551887512207,
+        "top1": 0.7004551887512207,
+        "results_n": 6
+      },
+      {
+        "qid": "g02",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7623981233123331,
+        "cosine": 0.7623981233123331,
+        "top1": 0.7623981233123331,
+        "results_n": 6
+      },
+      {
+        "qid": "g03",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6828608701908082,
+        "cosine": 0.6828608701908082,
+        "top1": 0.6828608701908082,
+        "results_n": 6
+      },
+      {
+        "qid": "g04",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7837290317931486,
+        "cosine": 0.7837290317931486,
+        "top1": 0.7837290317931486,
+        "results_n": 6
+      },
+      {
+        "qid": "g05",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7055564475059509,
+        "cosine": 0.7055564475059509,
+        "top1": 0.7055564475059509,
+        "results_n": 6
+      },
+      {
+        "qid": "g06",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.6296487998962402,
+        "cosine": 0.6296487998962402,
+        "top1": 0.6296487998962402,
+        "results_n": 6
+      },
+      {
+        "qid": "g07",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.800368502118082,
+        "cosine": 0.800368502118082,
+        "top1": 0.800368502118082,
+        "results_n": 6
+      },
+      {
+        "qid": "b01",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.6443315696716346,
+        "results_n": 6
+      },
+      {
+        "qid": "b02",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.6997539275664646,
+        "results_n": 6
+      },
+      {
+        "qid": "b03",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.6311055069502896,
+        "results_n": 6
+      },
+      {
+        "qid": "b04",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.44277250084549513,
+        "results_n": 6
+      },
+      {
+        "qid": "b05",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.5729009000331434,
+        "results_n": 6
+      }
+    ]
+  },
+  "rrf": {
+    "summary": {
+      "hit@6": "15/15",
+      "MRR": 1.0,
+      "正确块余弦均值": 0.638,
+      "正确块分均值": 0.022,
+      "命中题 top1 最低": 0.016,
+      "兜底题 top1 最高": 0.031,
+      "分离间隔": -0.015
+    },
+    "records": [
+      {
+        "qid": "f01",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.03131881575727918,
+        "cosine": 0.5421137263910444,
+        "top1": 0.03131881575727918,
+        "results_n": 6
+      },
+      {
+        "qid": "f02",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.029957522915269395,
+        "cosine": 0.581728994846344,
+        "top1": 0.029957522915269395,
+        "results_n": 6
+      },
+      {
+        "qid": "f03",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.03149801587301587,
+        "cosine": 0.6304384690261811,
+        "top1": 0.03149801587301587,
+        "results_n": 6
+      },
+      {
+        "qid": "f04",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.6037664593388578,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "f05",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.7252081036567739,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "f06",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.7602666163285616,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "f07",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.03125763125763126,
+        "cosine": 0.5661529898643494,
+        "top1": 0.03125763125763126,
+        "results_n": 6
+      },
+      {
+        "qid": "f08",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.7176253031268909,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "g01",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.7004551887512207,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "g02",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.6423981233123331,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "g03",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.6828608701908082,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "g04",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.6637290317931486,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "g05",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.031754032258064516,
+        "cosine": 0.5665939450263977,
+        "top1": 0.031754032258064516,
+        "results_n": 6
+      },
+      {
+        "qid": "g06",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.031746031746031744,
+        "cosine": 0.5096487998962402,
+        "top1": 0.031746031746031744,
+        "results_n": 6
+      },
+      {
+        "qid": "g07",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.01639344262295082,
+        "cosine": 0.680368502118082,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "b01",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "b02",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.030679156908665108,
+        "results_n": 6
+      },
+      {
+        "qid": "b03",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.031099324975891997,
+        "results_n": 6
+      },
+      {
+        "qid": "b04",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.01639344262295082,
+        "results_n": 6
+      },
+      {
+        "qid": "b05",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.03057889822595705,
+        "results_n": 6
+      }
+    ]
+  },
+  "rerank": {
+    "summary": {
+      "hit@6": "15/15",
+      "MRR": 1.0,
+      "正确块余弦均值": 0.636,
+      "正确块分均值": 0.86,
+      "命中题 top1 最低": 0.078,
+      "兜底题 top1 最高": 0.377,
+      "分离间隔": -0.299
+    },
+    "records": [
+      {
+        "qid": "f01",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9487557411193848,
+        "cosine": 0.6478201537025078,
+        "top1": 0.9487557411193848,
+        "results_n": 6
+      },
+      {
+        "qid": "f02",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9881154298782349,
+        "cosine": 0.6666553020477295,
+        "top1": 0.9881154298782349,
+        "results_n": 6
+      },
+      {
+        "qid": "f03",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9982727766036987,
+        "cosine": 0.678045113203222,
+        "top1": 0.9982727766036987,
+        "results_n": 6
+      },
+      {
+        "qid": "f04",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7877168655395508,
+        "cosine": 0.5415356320600402,
+        "top1": 0.7877168655395508,
+        "results_n": 6
+      },
+      {
+        "qid": "f05",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9748702049255371,
+        "cosine": 0.6979665340205126,
+        "top1": 0.9748702049255371,
+        "results_n": 6
+      },
+      {
+        "qid": "f06",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9478247165679932,
+        "cosine": 0.7038255929946899,
+        "top1": 0.9478247165679932,
+        "results_n": 6
+      },
+      {
+        "qid": "f07",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9855115413665771,
+        "cosine": 0.6224436163902283,
+        "top1": 0.9855115413665771,
+        "results_n": 6
+      },
+      {
+        "qid": "f08",
+        "category": "hit",
+        "expected": "Fundamentals",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9672109484672546,
+        "cosine": 0.5763671741704459,
+        "top1": 0.9672109484672546,
+        "results_n": 6
+      },
+      {
+        "qid": "g01",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9918335676193237,
+        "cosine": 0.7004551887512207,
+        "top1": 0.9918335676193237,
+        "results_n": 6
+      },
+      {
+        "qid": "g02",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9159272909164429,
+        "cosine": 0.6423981233123331,
+        "top1": 0.9159272909164429,
+        "results_n": 6
+      },
+      {
+        "qid": "g03",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7959373593330383,
+        "cosine": 0.6281065192095614,
+        "top1": 0.7959373593330383,
+        "results_n": 6
+      },
+      {
+        "qid": "g04",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.9834747910499573,
+        "cosine": 0.6637290317931486,
+        "top1": 0.9834747910499573,
+        "results_n": 6
+      },
+      {
+        "qid": "g05",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7752451300621033,
+        "cosine": 0.5855564475059509,
+        "top1": 0.7752451300621033,
+        "results_n": 6
+      },
+      {
+        "qid": "g06",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.0775926485657692,
+        "cosine": 0.5096487998962402,
+        "top1": 0.0775926485657692,
+        "results_n": 6
+      },
+      {
+        "qid": "g07",
+        "category": "hit",
+        "expected": "Game Engine",
+        "hit": true,
+        "rank": 1,
+        "best_score": 0.7687200903892517,
+        "cosine": 0.680368502118082,
+        "top1": 0.7687200903892517,
+        "results_n": 6
+      },
+      {
+        "qid": "b01",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.08730331063270569,
+        "results_n": 6
+      },
+      {
+        "qid": "b02",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.37707269191741943,
+        "results_n": 6
+      },
+      {
+        "qid": "b03",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.08786731958389282,
+        "results_n": 6
+      },
+      {
+        "qid": "b04",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.013528755865991116,
+        "results_n": 6
+      },
+      {
+        "qid": "b05",
+        "category": "fallback",
+        "expected": null,
+        "hit": false,
+        "rank": null,
+        "best_score": null,
+        "cosine": null,
+        "top1": 0.012689617462456226,
+        "results_n": 6
+      }
+    ]
+  }
+}

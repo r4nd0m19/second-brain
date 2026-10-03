@@ -11,11 +11,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+import httpx
 from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +26,8 @@ from app.ingestion.embedding import get_embedding_provider
 from app.models import Chunk, Document, SourceType
 
 QUOTE_MAX = 300  # 引用片段长度上限（data-model 约定）
+
+logger = logging.getLogger(__name__)
 
 _CJK_RE = re.compile(r"[一-鿿]")
 
@@ -210,7 +214,49 @@ async def hybrid_search(
         for chunk_id in keyword_hit_ids:  # 关键词加成
             scores[chunk_id] = scores.get(chunk_id, 0.0) + settings.retrieval_keyword_boost
 
-    ranked = sorted(found.values(), key=lambda r: scores[r.chunk_id], reverse=True)[:top_k]
+    ranked = sorted(found.values(), key=lambda r: scores[r.chunk_id], reverse=True)
     for item in ranked:
         item.score = scores[item.chunk_id]
-    return ranked
+
+    # 二段式重排（R24/A 方案）：cross-encoder 对候选池"真读复评"，重排分即最终分；
+    # 失败/关闭时静默降级为余弦+加成（constitution VI）。
+    # 注：评分尺度随来源切换——重排成功为重排分（0-1，0.60/0.50 阈值实测落于分离间隔内），
+    # 降级时为余弦+加成（旧口径）；两种尺度的阈值语义见 research R24。
+    reranked = await _apply_rerank(query, ranked)
+    if reranked is not None:
+        return reranked[:top_k]
+    return ranked[:top_k]
+
+
+async def _apply_rerank(query: str, items: list[RetrievedChunk]) -> list[RetrievedChunk] | None:
+    """二段式重排（R24）：重排分替换 score 并重排序；不可用/失败返回 None（调用方降级）。"""
+    if not settings.rerank_enabled or not settings.embedding_api_key or not items:
+        return None
+    try:
+        scores = await _rerank_api(query, [it.content[:2000] for it in items])
+        for i, item in enumerate(items):
+            item.score = scores[i]
+        return sorted(items, key=lambda r: r.score, reverse=True)
+    except Exception:  # noqa: BLE001 — 重排失败静默降级，不阻塞问答
+        logger.warning("rerank failed; degrading to cosine+boost", exc_info=True)
+        return None
+
+
+async def _rerank_api(query: str, documents: list[str]) -> list[float]:
+    """硅基流动 rerank（cross-encoder，与 embedding 同源 key）；返回与输入等长的分数表。"""
+    async with httpx.AsyncClient(timeout=settings.rerank_timeout_seconds) as client:
+        resp = await client.post(
+            f"{settings.embedding_base_url}/rerank",
+            headers={"Authorization": f"Bearer {settings.embedding_api_key}"},
+            json={
+                "model": settings.rerank_model,
+                "query": query,
+                "documents": documents,
+                "top_n": len(documents),
+            },
+        )
+        resp.raise_for_status()
+    out = [0.0] * len(documents)
+    for item in resp.json().get("results", []):
+        out[int(item["index"])] = float(item["relevance_score"])
+    return out
