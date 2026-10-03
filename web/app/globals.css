@@ -599,18 +599,15 @@ textarea.chat-input {
 /* 对话页 ChatGPT 式外壳（2026-10-03）：壳占满视口、仅消息区内部滚动；
    侧栏与主列并排各自独立滚动，发消息栏为主列内底栏——结构上不会被侧栏遮挡 */
 .chat-shell {
-  max-width: 1100px;
-  margin: 0 auto;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 0 20px;
 }
 
 .chat-header {
   position: static;
   margin: 0;
-  padding: 10px 0;
+  padding: 10px 16px;
   background: none;
 }
 
@@ -618,7 +615,7 @@ textarea.chat-input {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 20px;
+  gap: 0;
   align-items: stretch;
 }
 
@@ -631,13 +628,12 @@ textarea.chat-input {
 }
 
 .sidebar {
-  width: 240px;
+  width: 260px;
   flex: none;
   min-height: 0;
   background: var(--sidebar-bg);
-  border-radius: 12px;
-  padding: 10px;
-  overflow-y: auto; /* 全高独立滚动列（2026-10-03 外壳改造） */
+  padding: 12px;
+  overflow-y: auto; /* 全高独立滚动列（2026-10-03 外壳改造，全宽贴左缘） */
 }
 
 /* 侧栏顶部行（ChatGPT 风）：[收起 ◀] [＋ 新对话] 并排 */
@@ -926,6 +922,10 @@ html[data-sidebar="off"] .sidebar {
 
   .chat-shell {
     padding: 0 12px;
+  }
+
+  .chat-header {
+    padding: 10px 4px;
   }
 
   .bubble-user {

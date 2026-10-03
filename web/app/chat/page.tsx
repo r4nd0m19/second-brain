@@ -268,7 +268,9 @@ export default function ChatPage() {
   const [activeConv, setActiveConv] = useState<string | null>(null);
   const convRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const stickRef = useRef(true); // 是否"贴着底部"（用户上滚阅读时不强制跟随流式输出）
+  // 滚动策略（2026-10-03 用户要求"生成回答后不要定位到回答底部"）：仅在「发送 / 打开会话」
+  // 时定位一次到底部；流式生成期间完全不跟随——页面保持不动。
+  const scrollBottomOnceRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null); // 「复制」反馈
 
@@ -390,6 +392,7 @@ export default function ChatPage() {
     const jump = jumpRef.current;
     if (jump) {
       jumpRef.current = null;
+      scrollBottomOnceRef.current = false; // 跳转定位优先于"定位到底部"
       document.getElementById(`msg-${jump}`)?.scrollIntoView({ block: "center" });
       setFlashId(jump);
       return;
@@ -400,6 +403,7 @@ export default function ChatPage() {
       try {
         const { conv, top } = JSON.parse(saved) as { conv: string | null; top: number };
         if (conv && conv === convRef.current) {
+          scrollBottomOnceRef.current = false; // 恢复历史位置优先于"定位到底部"
           scrollRef.current?.scrollTo({ top });
           return;
         }
@@ -407,22 +411,12 @@ export default function ChatPage() {
         /* 忽略 */
       }
     }
-    if (stickRef.current) {
+    if (scrollBottomOnceRef.current) {
+      scrollBottomOnceRef.current = false;
       const el = scrollRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
-
-  // 是否贴底（用户在底部附近才自动跟随流式输出）——监听消息区滚动容器（外壳改造）
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
 
   // 输入草稿不丢（跳去原文/快照再返回时还在）
   useEffect(() => {
@@ -448,6 +442,7 @@ export default function ChatPage() {
       const stored = await api.conversationMessages(id);
       if (seq !== convOpenSeq.current) return; // 竞态：最新打开胜出
       jumpRef.current = jumpMessageId ?? null; // 供渲染后的滚动 effect 消费
+      scrollBottomOnceRef.current = true; // 打开会话：定位到最新消息（此后由用户控制）
       setMessages(
         stored.map((m) => ({
           id: m.id,
@@ -492,6 +487,7 @@ export default function ChatPage() {
     if (!text || busy) return;
     setInput("");
     setBusy(true);
+    scrollBottomOnceRef.current = true; // 发送：定位一次，让新提问可见；之后保持不动
     setMessages((m) => [
       ...m,
       { role: "user", content: text },
