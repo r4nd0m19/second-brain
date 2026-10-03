@@ -26,6 +26,9 @@ type ChatMsg = {
   streaming?: boolean;
   statusPhase?: string; // 生成阶段（SSE status 事件，2026-10-03）
   elapsedMs?: number; // 生成总耗时（done 时回填）
+  thinking?: string; // 思维链增量（SSE thinking 事件；T088 仅当次生成展示、不持久化）
+  thinkingStartedAt?: number; // 思考起始时间戳（前端推算思维链用时）
+  thinkingMs?: number; // 思维链用时（首个正文 token 到达时定格）
   web_failed?: boolean; // 联网被规划但未取得结果（T083：显式提示，避免"以为在搜却没搜"）
   web_error?: string | null; // 失败原因码（balance/ratelimit/quota/unavailable）
 };
@@ -569,6 +572,27 @@ function WebCitePreview({
   );
 }
 
+/** 思维链折叠块（T088）：生成时展开实时刷新，答案开始输出后自动折叠；仅当次生成展示（不持久化）。 */
+function ThinkingBlock({ text, ms, live }: { text: string; ms?: number; live: boolean }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(true);
+  const wasLive = useRef(live);
+  useEffect(() => {
+    if (wasLive.current && !live) setOpen(false); // 正文开始输出 → 自动折叠
+    wasLive.current = live;
+  }, [live]);
+  return (
+    <details className="think-block" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="muted">
+        {live
+          ? t("chat.thinkingLive")
+          : t("chat.thinkingDone", { s: ((ms ?? 0) / 1000).toFixed(1) })}
+      </summary>
+      <div className="think-body muted">{text}</div>
+    </details>
+  );
+}
+
 export default function ChatPage() {
   const { t, lang } = useLang();
   const router = useRouter();
@@ -903,8 +927,23 @@ export default function ChatPage() {
             );
           } else if (event === "status") {
             setMessages((m) => patchLast(m, { statusPhase: payload.phase }));
+          } else if (event === "thinking") {
+            setMessages((m) => {
+              const last = m[m.length - 1];
+              return patchLast(m, {
+                thinking: (last?.thinking ?? "") + (payload.text ?? ""),
+                thinkingStartedAt: last?.thinkingStartedAt ?? Date.now(),
+              });
+            });
           } else if (event === "token") {
-            setMessages((m) => patchLast(m, { content: lastContent(m) + payload.text }));
+            setMessages((m) => {
+              const last = m[m.length - 1];
+              const patch: Partial<ChatMsg> = { content: lastContent(m) + payload.text };
+              if (last?.thinking && last.thinkingStartedAt && last.thinkingMs === undefined) {
+                patch.thinkingMs = Date.now() - last.thinkingStartedAt; // 思维链用时定格（首个正文 token）
+              }
+              return patchLast(m, patch);
+            });
           } else if (event === "error") {
             sawError = true;
             setMessages((m) => patchLast(m, { error: payload.message, streaming: false }));
@@ -1095,6 +1134,18 @@ export default function ChatPage() {
               }}
             >
               <div>
+                {msg.role === "assistant" && msg.thinking ? (
+                  <ThinkingBlock
+                    text={msg.thinking}
+                    ms={
+                      msg.thinkingMs ??
+                      (msg.thinkingStartedAt && !msg.streaming
+                        ? Date.now() - msg.thinkingStartedAt
+                        : undefined)
+                    }
+                    live={!!msg.streaming && !msg.content}
+                  />
+                ) : null}
                 {msg.content
                   ? msg.role === "assistant"
                     ? renderAssistant(

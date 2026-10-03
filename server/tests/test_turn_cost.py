@@ -5,7 +5,7 @@ from app.chat.llm import complete_chat
 
 
 class _FakeClient:
-    async def stream_chat(self, _messages):
+    async def stream_chat(self, _messages, **_kwargs):
         yield {"type": "token", "text": "好"}
         yield {
             "type": "usage",

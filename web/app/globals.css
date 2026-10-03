@@ -1056,6 +1056,26 @@ html[data-sidebar="off"] .sidebar {
   font-size: 12.5px;
   margin-top: 2px;
 }
+
+/* ── 思维链折叠块（T088）：生成时展开实时刷新、答案开始后自动折叠 ── */
+.think-block {
+  margin: 2px 0 8px;
+}
+.think-block summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  user-select: none;
+}
+.think-body {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 12.5px;
+  line-height: 1.55;
+  border-left: 2px solid rgba(127, 127, 127, 0.35);
+  padding: 2px 0 2px 10px;
+  margin-top: 4px;
+}
 .stream-dot {
   flex: 0 0 auto;
   width: 7px;

@@ -12,7 +12,7 @@ class _FakeClient:
     def __init__(self, output: str) -> None:
         self.output = output
 
-    async def stream_chat(self, messages):  # noqa: ANN001, ANN201
+    async def stream_chat(self, messages, **_kwargs):
         yield {"type": "token", "text": self.output}
 
 

@@ -138,11 +138,14 @@ async def _stream(
         parts: list[str] = []
         usage: dict | None = None
         try:
-            async for event in llm.stream_chat(plan.llm_messages):
+            async for event in llm.stream_chat(plan.llm_messages, thinking=True):
                 if event.get("type") == "token":
                     token = event.get("text", "")
                     parts.append(token)
                     yield _sse("token", {"text": token})
+                elif event.get("type") == "thinking":
+                    # 思维链（T088）：流式转发供前端折叠展示；不持久化（仅当次生成可见）
+                    yield _sse("thinking", {"text": event.get("text", "")})
                 elif event.get("type") == "usage":
                     usage = event.get("usage")
         except LLMError as exc:  # 降级：明确错误 + 可重试（US2 场景 2）

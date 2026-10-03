@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = "https://api.deepseek.com"
     llm_model: str = "deepseek-flash"
+    # 答案调用思考档（V4 系，T088）：low/high/max（官方默认 high）；小调用（规划/扩检/时间解析）
+    # 恒关思考——V4 默认开启且思维链占用 max_tokens，不关会把规划器（200 tokens）打空
+    llm_answer_effort: str = "high"
 
     # Embedding
     embedding_provider: str = "siliconflow"

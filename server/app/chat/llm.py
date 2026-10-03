@@ -28,7 +28,7 @@ class ChatMessage(TypedDict):
 
 
 class StreamEvent(TypedDict, total=False):
-    type: str  # "token" | "usage"
+    type: str  # "token" | "thinking" | "usage"
     text: str
     usage: dict
 
@@ -38,8 +38,10 @@ class LLMError(RuntimeError):
 
 
 class LLMClient(Protocol):
-    def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[StreamEvent]:
-        """流式生成：依次 yield token / usage 事件。"""
+    def stream_chat(
+        self, messages: list[ChatMessage], *, thinking: bool = False
+    ) -> AsyncIterator[StreamEvent]:
+        """流式生成：依次 yield token / thinking（思维链增量，仅思考档）/ usage 事件。"""
 
     async def complete_with_tools(
         self, messages: list[dict], tools: list[dict], tool_choice: str = "auto"
@@ -55,20 +57,32 @@ class OpenAICompatLLM:
         api_key: str,
         model: str,
         timeout: float = 180.0,
+        transport: httpx.AsyncBaseTransport | None = None,  # 测试注入（MockTransport）
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout = timeout
+        self.transport = transport
 
-    async def stream_chat(self, messages: list[ChatMessage]) -> AsyncIterator[StreamEvent]:
+    async def stream_chat(
+        self, messages: list[ChatMessage], *, thinking: bool = False
+    ) -> AsyncIterator[StreamEvent]:
         payload = {
             "model": self.model,
             "messages": messages,
             "stream": True,
             "stream_options": {"include_usage": True},  # 末尾块带回 token 计数（FR-017）
         }
-        async with httpx.AsyncClient(timeout=self.timeout) as client, client.stream(
+        if thinking:  # 答案调用（T088）：开思考档——思维链经 reasoning_content 增量转发
+            payload["thinking"] = {"type": "enabled"}
+            if settings.llm_answer_effort:
+                payload["effort"] = settings.llm_answer_effort
+        else:  # 小调用（规划/扩检/时间解析）：显式关思考（V4 默认开启会吃满小 max_tokens 预算）
+            payload["thinking"] = {"type": "disabled"}
+        async with httpx.AsyncClient(
+            timeout=self.timeout, transport=self.transport
+        ) as client, client.stream(
             "POST",
             f"{self.base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self.api_key}"},
@@ -92,9 +106,13 @@ class OpenAICompatLLM:
                     yield {"type": "usage", "usage": usage}
                 choices = obj.get("choices") or []
                 if choices:
-                    delta = (choices[0].get("delta") or {}).get("content")
-                    if delta:
-                        yield {"type": "token", "text": delta}
+                    delta = choices[0].get("delta") or {}
+                    reasoning = delta.get("reasoning_content")  # 思维链增量（T088，思考档）
+                    if reasoning:
+                        yield {"type": "thinking", "text": reasoning}
+                    content = delta.get("content")
+                    if content:
+                        yield {"type": "token", "text": content}
 
 
     async def complete_with_tools(
@@ -112,8 +130,11 @@ class OpenAICompatLLM:
             "tool_choice": tool_choice,
             "max_tokens": max_tokens,
             "stream": False,
+            "thinking": {"type": "disabled"},  # 规划器等工具调用：关思考防思维链吃满 max_tokens（T088）
         }
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout, transport=self.transport
+        ) as client:
             response = await client.post(
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
