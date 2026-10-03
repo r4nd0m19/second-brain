@@ -90,7 +90,7 @@ server/app/
 
 server/tests/
 ├── test_websearch_client.py   # 智谱响应解析 / 错误 / 超时
-├── test_websearch_planner.py  # 决策解析 / 仅当前问题 / 失败容错
+├── test_websearch_planner.py  # 决策解析 / 仅当前问题 / 失败容错（后并入查询规划器，见 R21/R3 补记）
 ├── test_websearch_guard.py    # 每日上限：达限停用 / 跨日重置
 └── test_websearch_flow.py     # 编排集成：触发/不触发/降级/来源形状（假 client）
 

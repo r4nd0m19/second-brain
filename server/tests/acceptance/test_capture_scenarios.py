@@ -181,8 +181,10 @@ async def test_sc007_time_lookup_list_and_search(client):
         listing = await ask(client, "我最近3天看过哪些网页？", None)
         conv_ids.append(listing.get("conversation_id"))
         assert listing["source_type"] == "kb"
-        assert recent_title in listing["answer"], "清单应含近三天条目"
-        assert old_title not in listing["answer"], "20 天前的条目不应出现"
+        # 清单材料确定性校验（2026-10-03：回答侧为聚合摘要、不保证逐条列名——以引用为准）
+        listing_urls = [c.get("source_url") or "" for c in listing["citations"]]
+        assert any(f"recent-{nonce}" in u for u in listing_urls), "清单材料应含近三天条目"
+        assert all(f"old-{nonce}" not in u for u in listing_urls), "20 天前的条目不应出现"
 
         combo = await ask(client, f"最近3天看过的网页里，{marker}是什么？", None)
         conv_ids.append(combo.get("conversation_id"))

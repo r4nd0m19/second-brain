@@ -35,9 +35,27 @@ async def test_plan_parses_tool_calls_and_privacy(monkeypatch) -> None:
     calls = await planner.plan_retrieval("问题文本")
     assert [c.name for c in calls] == ["search_library", "list_browsing"]
     assert calls[0].args["query"] == "康威定律"
-    # 隐私边界：只发送当前问题（system + user 两条）
+    # 无历史时仅当前问题（system + user 两条）
     assert [m["role"] for m in llm.messages] == ["system", "user"]
     assert llm.messages[1]["content"] == "问题文本"
+
+
+async def test_plan_includes_bounded_history_for_coreference(monkeypatch) -> None:
+    """R3 补记：携带最近对话窗口（≤HISTORY_TURNS 轮）用于指代/省略消解。"""
+    llm = _FakeLLM(
+        {"tool_calls": [{"name": "search_library", "arguments": {"query": "康威定律 书中章节"}}]}
+    )
+    _patch_llm(monkeypatch, llm)
+    history = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"消息{i}"} for i in range(10)
+    ]
+
+    calls = await planner.plan_retrieval("书里怎么说的？", history)
+
+    # system + 最近 6 条（3 轮）+ 当前问题
+    assert len(llm.messages) == 1 + planner.HISTORY_TURNS * 2 + 1
+    assert llm.messages[-1]["content"] == "书里怎么说的？"
+    assert calls[0].args["query"] == "康威定律 书中章节"
 
 
 async def test_plan_caps_calls_and_skips_unknown_tool(monkeypatch) -> None:

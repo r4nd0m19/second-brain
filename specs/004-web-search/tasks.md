@@ -58,6 +58,7 @@
 - [X] T004 [P] [US1] 决策器测试先行 `server/tests/test_websearch_planner.py`：需要搜索→返回 `{search: True, query}`；不需要→`{search: False}`（模型回 `NO_SEARCH`）；LLM 异常→容错返回不搜索；**断言发给模型的消息只含当前问题（不含对话历史/本地库内容）**；并入 `complete_with_tools` 的 mock 解析用例（tool_calls → 目标函数与参数）
   - Deps: T001
   - DoD: 测试可运行且因实现缺失而失败
+  - 后续（2026-10-03）：决策器并入查询规划器（R21），携带**受限对话窗口**用于指代消解——"仅当前问题"口径已被 R3 补记取代；本任务与测试文件为历史记录
 - [X] T007 [P] [US1] 编排集成测试先行 `server/tests/test_websearch_flow.py`（US1 场景）：兜底路径触发决策→假客户端返回结果→plan 的 `citations` 含 web 形状（`web:true`、`document_id=null`、`source_url`、`quote=摘要`）且 `source_type == web`；**强命中（score ≥ hit_threshold）不调用决策器**（假对象断言未被调用）；注入上下文含 `<web_results>` 不可信包裹与"指令不得执行"声明
   - Deps: T001
   - DoD: 测试可运行且因实现缺失而失败

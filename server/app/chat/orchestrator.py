@@ -32,30 +32,6 @@ from app.websearch.client import WebSearchError, get_web_search
 
 logger = logging.getLogger(__name__)
 
-# 指代性追问的信号词（T039：拼上一轮问题做检索，提升多轮命中率）
-_REFERENTIAL_HINTS = (
-    "这本书", "那本书", "这本", "那本", "这个", "那个", "它", "该", "上面",
-    "刚", "之前", "前面", "文中", "书里", "这里",
-)
-
-
-def _referential_splice(query: str, history: list[ChatMessage]) -> str | None:
-    """指代性追问的拼接候选（T039 改造，2026-10-03）：仅作**低置信重试**候选之一，不再前置改写。
-
-    旧实现把短问句无条件拼上上一轮问题做检索 → 多轮会话中"短的新问题"被旧话题稀释：
-    实测「游戏循环怎么实现」0.624 强命中，被拼上无关"分层架构"后降到 0.594 跌破阈值；
-    且新问题的检索质量不应取决于上一轮话题。
-    """
-    last_user = next(
-        (h["content"] for h in reversed(history) if h.get("role") == "user"), None
-    )
-    if not last_user or last_user.strip() == query.strip():
-        return None
-    if len(query) <= 20 or any(k in query for k in _REFERENTIAL_HINTS):
-        return f"{last_user} {query}"
-    return None
-
-
 def _split_hits(
     hits: list[RetrievedChunk],
 ) -> tuple[list[RetrievedChunk], list[RetrievedChunk]]:
@@ -74,20 +50,17 @@ async def _expanded_search(
     retrieval_query: str,
     base_hits: list[RetrievedChunk],
     time_range: TimeRange | None,
-    *,
-    history: list[ChatMessage] | None = None,
 ) -> list[RetrievedChunk]:
     """低置信时的多查询扇出（FR-021/R19）：变体逐一检索、按块合并取最高分；失败静默。
 
-    指代性追问（`_referential_splice`）作为**候选之一**并入——只在低置信时生效（T039 改造）。
+    指代/省略消解由查询规划器完成（携带最近对话窗口，conversational query rewriting，
+    R3 补记 2026-10-03）——不再做客户端拼接（`_REFERENTIAL_HINTS` 词表已退役）。
     """
     variants = await expand_queries(retrieval_query)
-    spliced = _referential_splice(retrieval_query, history or [])
-    candidates = ([spliced] if spliced else []) + variants[:3]
-    if not candidates:
+    if not variants:
         return base_hits
     best = {h.chunk_id: h for h in base_hits}
-    for variant in candidates:
+    for variant in variants:
         variant_hits = await hybrid_search(
             session,
             owner_user_id,
@@ -101,8 +74,8 @@ async def _expanded_search(
                 best[h.chunk_id] = h
     merged = sorted(best.values(), key=lambda h: h.score, reverse=True)
     logger.info(
-        "retrieval expanded: candidates=%d top %.3f -> %.3f",
-        len(candidates),
+        "retrieval expanded: variants=%d top %.3f -> %.3f",
+        len(variants),
         base_hits[0].score if base_hits else 0.0,
         merged[0].score if merged else 0.0,
     )
@@ -361,9 +334,7 @@ async def _execute_plan(
             captured_before=tr.end if tr else None,
         )
         if not any(h.score >= settings.retrieval_hit_threshold for h in hits):
-            hits = await _expanded_search(
-                session, owner_user_id, query, hits, tr, history=history
-            )
+            hits = await _expanded_search(session, owner_user_id, query, hits, tr)
         for h in hits:
             current = merged.get(h.chunk_id)
             if current is None or h.score > current.score:
@@ -440,9 +411,7 @@ async def _baseline_reply(
     hits = await hybrid_search(session, owner_user_id, user_text)
     strong, weak = _split_hits(hits)
     if not strong:
-        hits = await _expanded_search(
-            session, owner_user_id, user_text, hits, None, history=history
-        )
+        hits = await _expanded_search(session, owner_user_id, user_text, hits, None)
         strong, weak = _split_hits(hits)
 
     messages: list[ChatMessage] = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -474,8 +443,8 @@ async def prepare_reply(
     user_text: str,
     history: list[ChatMessage],
 ) -> ReplyPlan:
-    # 查询规划（FR-022）：LLM 决定取数方式；失败/未规划 → 基线
-    calls = await plan_retrieval(user_text)
+    # 查询规划（FR-022）：LLM 决定取数方式（携带最近对话窗口用于指代消解）；失败/未规划 → 基线
+    calls = await plan_retrieval(user_text, history)
     if calls:
         reply = await _execute_plan(calls, session, owner_user_id, user_text, history)
         if reply is not None:

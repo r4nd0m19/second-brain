@@ -61,7 +61,7 @@ class _NullSession:  # 强命中路径会调用 enrich_citations，提供最小�
 def _patch(monkeypatch, *, calls=None, client=None, hits=None, expand=None):
     """装配：规划器（工具调用）/ 检索 / 搜索客户端 / 扇出。"""
 
-    async def fake_plan(_user_text: str) -> list[PlannedCall]:
+    async def fake_plan(_user_text: str, _history=None) -> list[PlannedCall]:
         return [PlannedCall(name=n, args=a) for n, a in (calls or [])]
 
     async def fake_search(_session, _owner, _query, captured_after=None, captured_before=None):
