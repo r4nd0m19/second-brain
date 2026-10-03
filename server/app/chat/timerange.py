@@ -107,18 +107,6 @@ def parse_time_range(text: str, now: datetime | None = None) -> TimeRange | None
     return None
 
 
-_TEMPORAL_HINTS = (
-    "今天", "昨天", "前天", "最近", "近几", "上周", "上上周", "本周", "这周",
-    "上个月", "上月", "本月", "这个月", "今年", "去年", "这几天", "那几天",
-    "天前", "周前", "月前", "年前", "天内", "周内",
-)
-
-
-def looks_temporal(text: str) -> bool:
-    """廉价启发：是否值得走 LLM 兜底（规则未命中但含时间词）。"""
-    return any(hint in text for hint in _TEMPORAL_HINTS)
-
-
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
@@ -166,8 +154,8 @@ async def llm_parse_time_range(client, text: str, now: datetime | None = None) -
     if not start_raw or not end_raw:
         return None
     try:
-        start = datetime.fromisoformat(str(start_raw).replace("Z", "+00:00"))
-        end = datetime.fromisoformat(str(end_raw).replace("Z", "+00:00"))
+        start = datetime.fromisoformat(str(start_raw))  # py3.11+ 原生支持 "Z" 后缀
+        end = datetime.fromisoformat(str(end_raw))
     except ValueError:
         return None
     if start.tzinfo is None:

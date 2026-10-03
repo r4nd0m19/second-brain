@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.deps import get_current_user
 from app.chat.llm import LLMError, estimate_cost_cny, get_llm_client
 from app.chat.orchestrator import prepare_reply
-from app.chat.writeback import enqueue_writeback, is_no_info_answer
+from app.chat.writeback import enqueue_writeback
 from app.config import settings
 from app.db import SessionLocal, get_session
 from app.models import AnswerSource, Conversation, Message, MessageRole, User
@@ -133,8 +133,8 @@ async def _stream(
         await session.commit()
 
         # 兜底/弱相关产生的问答回写检索层（FR-008）；kb 命中的回答不重复入库
-        # 「找不到/无权限」类失败回答不回写（防自污染，2026-10-02；见 001 research R18）
-        if plan.source_type is AnswerSource.model_knowledge and not is_no_info_answer(answer_text):
+        # 回写前经 LLM 复用性判定（失败说明/个人数据断言/寒暄不回写；见 writeback.is_reusable_qa、R18 续三）
+        if plan.source_type is AnswerSource.model_knowledge:
             enqueue_writeback(owner_id, conversation_id, conversation_title, text, answer_text)
 
         yield _sse(

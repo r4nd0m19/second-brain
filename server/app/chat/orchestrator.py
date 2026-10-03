@@ -22,7 +22,6 @@ from app.chat.timerange import (
     TZ,
     TimeRange,
     llm_parse_time_range,
-    looks_temporal,
     parse_time_range,
 )
 from app.config import settings
@@ -149,12 +148,14 @@ def _format_hit(index: int, hit: RetrievedChunk) -> str:
 
 
 async def resolve_time_range(user_text: str) -> TimeRange | None:
-    """时间解析（F2 US3）：规则优先；含时间词但未命中 → LLM 兜底（失败回退无过滤）。"""
+    """时间解析（F2 US3）：规则优先；未命中 → LLM 兜底（失败回退无过滤）。
+
+    仅由查询规划器的工具参数调用（planner 明确断言"这是时间表达"），故不再做时间词预检
+    （`_TEMPORAL_HINTS` 词表随 FR-022 工具化退役，2026-10-03）。
+    """
     parsed = parse_time_range(user_text)
     if parsed is not None:
         return parsed
-    if not looks_temporal(user_text):
-        return None
     try:
         return await llm_parse_time_range(get_llm_client(), user_text)
     except Exception:  # noqa: BLE001 — 解析失败不阻塞问答
