@@ -17,6 +17,7 @@ import uuid
 from sqlalchemy import func, select
 
 from app.chat.llm import complete_chat, get_llm_client
+from app.config import settings
 from app.db import SessionLocal
 from app.ingestion.embedding import get_embedding_provider
 from app.models import Chunk, Document, DocumentStatus, SourceType
@@ -37,6 +38,24 @@ async def writeback_exchange(
         logger.info("writeback skipped (LLM judged not reusable): conv=%s", conversation_id)
         return
     async with SessionLocal() as session:
+        content = f"问：{question}\n答：{answer}"
+        vector = (await get_embedding_provider().embed([content]))[0]
+
+        # 写前近似查重（审计二期 C1）：库内已有 ≥ 阈值的相似内容 → 跳过，防重复问答污染检索
+        distance = await session.scalar(
+            select(Chunk.embedding.cosine_distance(vector))
+            .where(Chunk.owner_user_id == owner_id)
+            .order_by(Chunk.embedding.cosine_distance(vector))
+            .limit(1)
+        )
+        if distance is not None and (1.0 - float(distance)) >= settings.writeback_dup_threshold:
+            logger.info(
+                "writeback skipped (duplicate sim=%.3f): conv=%s",
+                1.0 - float(distance),
+                conversation_id,
+            )
+            return
+
         doc = await session.scalar(
             select(Document).where(
                 Document.conversation_id == conversation_id,
@@ -65,8 +84,6 @@ async def writeback_exchange(
             )
         ) or 0
 
-        content = f"问：{question}\n答：{answer}"
-        vector = (await get_embedding_provider().embed([content]))[0]
         session.add(
             Chunk(
                 document_id=doc.id,

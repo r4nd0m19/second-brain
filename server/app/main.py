@@ -14,6 +14,7 @@ from app.auth.service import ensure_admin_user
 from app.capture.router import router as capture_router
 from app.capture.tokens_router import router as capture_tokens_router
 from app.chat.router import router as chat_router
+from app.config import settings
 from app.conversations.router import router as conversations_router
 from app.documents.router import router as documents_router
 from app.ingestion.pipeline import mark_interrupted_documents
@@ -30,6 +31,7 @@ mcp_asgi = build_mcp_asgi_app()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    settings.assert_secure()  # fail-closed：默认密钥/口令拒绝启动（审计二期 B1）
     await ensure_admin_user()  # 单用户初始化（T008）
     await mark_interrupted_documents()  # 上次中断的解析 → 标记可重试（R7）
     async with mcp.session_manager.run():  # MCP 会话管理器（挂载后须由父应用驱动）

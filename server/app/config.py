@@ -4,6 +4,10 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 哨兵默认值：启动时检测到即拒绝（fail-closed，审计二期 B1，见 Settings.assert_secure）
+DEFAULT_ADMIN_PASSWORD = "change-me-please"
+DEFAULT_SECRET_KEY = "change-me-random-string"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -24,12 +28,12 @@ class Settings(BaseSettings):
     # 数据库
     database_url: str = "postgresql+asyncpg://secondbrain:secondbrain@localhost:5433/secondbrain"
 
-    # 单用户账号
+    # 单用户账号（口令默认值为哨兵值：启动时 fail-closed 拒绝，审计二期 B1）
     admin_username: str = "me"
-    admin_password: str = "change-me-please"
+    admin_password: str = DEFAULT_ADMIN_PASSWORD
 
-    # 会话签名
-    secret_key: str = "change-me-random-string"
+    # 会话签名（默认值为哨兵值：启动时 fail-closed 拒绝，审计二期 B1）
+    secret_key: str = DEFAULT_SECRET_KEY
 
     # 认证安全（T034；spec NFR Security）
     login_rate_limit: int = 5  # 登录失败限速：窗口内最大失败次数
@@ -72,9 +76,28 @@ class Settings(BaseSettings):
     chat_history_limit: int = 10
     timerange_max_years: int = 5  # 时间解析兜底的最大跨度（F2 US3；超出视为解析失败）
 
-    # 模型计价（¥/百万 tokens；默认 deepseek-chat 空闲时段价，用于用量估算 FR-017）
-    price_input_per_million: float = 1.1
-    price_output_per_million: float = 4.4
+    # 模型计价（¥/百万 tokens；deepseek-flash 官方价，2026-10-03 核实：
+    # api-docs.deepseek.com/zh-cn/quick_start/pricing）。下列为**空闲时段基准价**；
+    # 高峰时段（北京时间周一至五 9:00-12:00 / 14:00-18:00；法定节假日未建模——
+    # 节假日按高峰计、费用略高估）为基准 ×2。用于用量估算（FR-017，R22）。
+    price_input_hit_per_million: float = 0.02  # 输入·缓存命中（空闲）
+    price_input_miss_per_million: float = 1.0  # 输入·缓存未命中（空闲）
+    price_output_per_million: float = 4.0  # 输出（空闲）
+    price_peak_multiplier: float = 2.0  # 高峰倍率（官方口径：空闲 = 高峰一半）
+
+    # 回写近似查重（审计二期 C1）：新问答与库内最近邻相似度 ≥ 阈值 → 视为重复，跳过回写
+    writeback_dup_threshold: float = 0.95
+
+    def assert_secure(self) -> None:
+        """fail-closed（审计二期 B1）：默认密钥/口令 → 拒绝启动，要求显式配置。"""
+        if self.secret_key == DEFAULT_SECRET_KEY:
+            raise RuntimeError(
+                "SECRET_KEY 仍为默认值——请在 .env 设置随机 SECRET_KEY 后重启（fail-closed，审计二期 B1）"
+            )
+        if self.admin_password == DEFAULT_ADMIN_PASSWORD:
+            raise RuntimeError(
+                "ADMIN_PASSWORD 仍为默认值——请在 .env 设置 ADMIN_PASSWORD 后重启（fail-closed，审计二期 B1）"
+            )
 
     @property
     def storage_path(self) -> Path:

@@ -9,6 +9,7 @@ from app.auth import ratelimit
 from app.auth.deps import get_current_user
 from app.auth.security import (
     COOKIE_NAME,
+    DUMMY_PASSWORD_HASH,
     SESSION_MAX_AGE,
     make_session,
     verify_password,
@@ -46,22 +47,41 @@ async def login(
         )
 
     user = await session.scalar(select(User).where(User.username == payload.username))
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if user is None:
+        # 时序对齐（审计二期 A1）：不存在的用户也跑一次哈希校验（恒假），防用户名枚举
+        verify_password(payload.password, DUMMY_PASSWORD_HASH)
+        ratelimit.record_failure(key)
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    if not verify_password(payload.password, user.password_hash):
         ratelimit.record_failure(key)
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     ratelimit.clear(key)
     response.set_cookie(
         COOKIE_NAME,
-        make_session(str(user.id)),
+        make_session(str(user.id), user.session_epoch),
         max_age=SESSION_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=settings.cookie_secure,  # HTTPS 部署后 .env 置 AUTH_COOKIE_SECURE=true（T035）
+        # Secure 按环境自动（审计二期 B1）：HTTPS 场景自动带上（--proxy-headers 下 url.scheme 反映
+        # X-Forwarded-Proto）；AUTH_COOKIE_SECURE=true 可显式强制
+        secure=settings.cookie_secure or request.url.scheme == "https",
     )
 
 
 @router_auth.post("/logout", status_code=204)
-async def logout(response: Response) -> None:
+async def logout(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    # 纪元 +1（审计二期 A1）：无状态 cookie 的服务端吊销——所有设备上的旧 cookie 立即失效
+    try:
+        user = await get_current_user(request, session)
+    except HTTPException:
+        user = None
+    if user is not None:
+        user.session_epoch += 1
+        await session.commit()
     response.delete_cookie(COOKIE_NAME)
 
 

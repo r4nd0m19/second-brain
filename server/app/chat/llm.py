@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Protocol, TypedDict
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -141,11 +143,24 @@ async def complete_chat(client: LLMClient, messages: list[ChatMessage]) -> str:
     return "".join(parts)
 
 
+def _is_peak_now() -> bool:
+    """高峰时段判定（北京时间周一至五 9:00-12:00、14:00-18:00；法定节假日未建模）。"""
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    if now.weekday() >= 5:
+        return False
+    return 9 <= now.hour < 12 or 14 <= now.hour < 18
+
+
 def estimate_cost_cny(usage: dict) -> float:
-    """按配置单价估算费用（.env 可改；默认 deepseek 空闲时段价）。"""
+    """按官方分档单价估算费用（FR-017 / R22）：缓存命中与未命中分开计价 + 峰谷倍率。"""
+    peak = settings.price_peak_multiplier if _is_peak_now() else 1.0
+    prompt = usage.get("prompt_tokens", 0)
+    hit = usage.get("prompt_cache_hit_tokens", 0)
+    miss = max(prompt - hit, 0)
     return (
-        usage.get("prompt_tokens", 0) / 1_000_000 * settings.price_input_per_million
-        + usage.get("completion_tokens", 0) / 1_000_000 * settings.price_output_per_million
+        hit / 1_000_000 * settings.price_input_hit_per_million * peak
+        + miss / 1_000_000 * settings.price_input_miss_per_million * peak
+        + usage.get("completion_tokens", 0) / 1_000_000 * settings.price_output_per_million * peak
     )
 
 

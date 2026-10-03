@@ -340,6 +340,13 @@ Task: "T022 前端-对话页 web/app/chat/"
   - 追记（同日，用户实测）：对话页侧栏"吸顶"方案引入遮挡（侧栏伸至视口底部、盖住全宽发消息栏）→ 该页改为 **ChatGPT 式外壳**：壳高 100dvh、侧栏与主列并排各自独立滚动、消息区独立内滚（768 居中列，`padding-inline: max()` 技巧）、发消息栏为主列内底栏（不再 fixed、不再压内容）——**结构上不可能再被遮挡**；滚动位置记忆/贴底跟随/跳转定位由 window 迁移至消息区容器；侧栏移动端保持原有横向会话条。同轮（用户要求"与 ChatGPT 一致"，先查证 ChatGPT 设计规范再落地）：顶栏/侧栏顶部按钮 ChatGPT 化——**ghost 无边框、10px 圆角、悬停 5% 淡色填充（"chrome should recede until hovered"）、组内 6px 间距（`hdr-actions` 改 flex 消除基线错位）、图标钮 36×36**；收起钮按 ChatGPT 排布移入**侧栏顶部行**（[◀ 收起] [＋ 新对话] 并排），侧栏收起时顶栏出现 ▶ 展开钮；「＋ 新对话」由主色填充改为 ghost 行。规范来源：refero.design ChatGPT 样式拆解（10px 圆角/5% 悬停淡色/6px 节奏）。另（用户要求）：消息区滚动策略改为**仅「发送 / 打开会话」时定位一次到底部、流式生成期间完全不跟随**——不再被拽到回答底部，页面保持不动（原"贴底 140px 阈值自动追随"逻辑整体删除；跳转定位/历史位置恢复优先级高于一键到底）。再另（同日）：对话页外壳改**全宽**——去 1100px 居中容器，侧栏 260px 贴左缘全高、内容列在剩余区域居中、顶栏左右 16px 留白（修复宽屏下内容被挤在中间）
 - [x] **T061 范式审计一期整改：文实不符 2 项（2026-10-03，全项目审计驱动）**：①Docling 分块对齐 R5——`HierarchicalChunker()`（零参数，超长块超 embedding 上限）→ `HybridChunker` + bge-m3 tokenizer + `max_tokens=1024`（新增 `transformers` 依赖）；②`quality.py` docstring「<0.4」与代码 0.5 不一致 → docstring 对齐。审计全文与后续批次见 `audit-paradigm-gap-2026-10-03.md`
   - DoD: 分块链实测（标题路径保留 ✓；超长段切分 1008≤1024 tokens ✓）；104 单测全过 ✓
+- [x] **T062 计费口径修正（审计二期·R22，2026-10-03）**：`estimate_cost_cny` 改官方**三档分价**（缓存命中/未命中分开）+ **峰谷倍率**（北京时间周一至五 9-12/14-18；法定节假日未建模、按高峰计略高估）；config 计价键替换为 `price_input_hit/miss_per_million` + `price_output_per_million` + `price_peak_multiplier`（deepseek-flash 空闲 ¥0.02/¥1/¥4、倍率 2——旧值 1.1/4.4 无来源且与默认模型错配）
+  - DoD: 单测 +4（分档/倍率/缺字段兜底/异常钳制）✓；108 单测全过 ✓；定价来源入 research R22 ✓
+- [x] **T063 审计二期·会话加固 + fail-closed（R23①②，2026-10-03）**：签名 SHA-1→SHA-256；`users.session_epoch`（迁移 70eda961aa20）+ cookie 携纪元、**登出纪元 +1 → 全设备失效**（无状态 cookie 的服务端吊销）；登录 dummy 校验防枚举时序；argon2 参数显式固化（t=3/m=64MiB/p=4，RFC 9106 低内存档）；SECRET_KEY/ADMIN_PASSWORD 哨兵默认值 → **启动拒绝**（fail-closed）；cookie Secure 按环境自动
+  - DoD: 单测 +4（纪元匹配/失配 401/登出后旧 cookie 失效/assert_secure 拒绝）✓；114 单测全过 ✓；迁移已应用 ✓
+  - 实启发现（同日）：fail-closed **上线首启即拦截真实占位配置**——`.env` 的 SECRET_KEY 与 ADMIN_PASSWORD 一直就是哨兵默认值（此前无检查所以从未暴露）。已更换为强随机值（同时更新库内口令哈希）；真机冒烟：登录 204 → /api/me 200 → 登出 204 → 旧 cookie 401 → 重登 200 ✓；全员旧会话已失效（签名升级 + 密钥更换），需用新口令重新登录
+- [x] **T064 审计二期·写回最小对齐（R23③，2026-10-03）**：写前近似查重（新问答 embedding 与 owner 全库最近邻相似度 ≥0.95 → 跳过回写）；「保持原文形态、无衰减、无冲突处理」登记为显式产品决策（research R23）
+  - DoD: 单测 +2（重复跳过/不同内容正常写入）✓；114 单测全过 ✓
 
 ## Notes
 

@@ -54,6 +54,8 @@ class User(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username: Mapped[str] = mapped_column(sa.Text, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    # 会话纪元（审计二期 A1）：cookie 携带；登出/吊销时 +1 → 所有旧 cookie 立即失效
+    session_epoch: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0")
 
 
 class Document(Base, OwnerMixin, TimestampMixin):
