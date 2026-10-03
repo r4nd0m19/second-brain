@@ -10,7 +10,6 @@ const staticFiles = [
   ["manifest.json", "dist/manifest.json"],
   ["src/options/options.html", "dist/options.html"],
   ["src/popup/popup.html", "dist/popup.html"],
-  ["src/offscreen/offscreen.html", "dist/offscreen.html"],
 ];
 for (const [from, to] of staticFiles) cpSync(from, to);
 
@@ -27,7 +26,6 @@ const common = {
 const builds = [
   { entryPoints: [{ in: "src/background/index.ts", out: "background" }], format: "esm" },
   { entryPoints: [{ in: "src/content/index.ts", out: "content" }], format: "iife" },
-  { entryPoints: [{ in: "src/offscreen/index.ts", out: "offscreen" }], format: "esm" },
   { entryPoints: [{ in: "src/options/index.ts", out: "options" }], format: "esm" },
   { entryPoints: [{ in: "src/popup/index.ts", out: "popup" }], format: "esm" },
 ];

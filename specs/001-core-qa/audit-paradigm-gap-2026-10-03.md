@@ -1,0 +1,42 @@
+# 范式审计与整改跟踪（全项目，2026-10-03）
+
+> 依据「范式优先」纪律（全局 CLAUDE.md，T060 同期落地）对全项目做的机制级审计：盘点全部自研/启发式机制，
+> 逐条对照 `specs/*/research.md` 的调研记录，标记「无范式记录」项。
+> 方法：三路并行只读审计（检索与入库 / 对话与编排 / 基建与前端），关键断言人工抽验后记录。
+> 状态：✅ 已完成 ｜ ⚪ 待办（整改按新纪律：调研 → 征询 → 落地）
+
+## 一期：记录与实现不一致（✅ 已整改，2026-10-03）
+
+| # | 记录宣称 | 实际 | 整改 |
+|---|---------|------|------|
+| 1 | 002-R2：扩展 `setAccessLevel('TRUSTED_CONTEXTS')` 保护 token | 未实现，content script 可直读 storage | ✅ SW 启动时设置；content 改经 `get-behavior` 消息取行为快照（token 不下发页面上下文）——002 T052 |
+| 2 | 002 实测#10：已拆除 offscreen 上传器 | 源码/构建入口/manifest 权限/popup 诊断全在 | ✅ 彻底拆除（含消息协议与 dist 残留）——002 T052 |
+| 3 | 001-R5：Docling 用 HybridChunker（按标题路径 + token 上限） | 实为零参数 `HierarchicalChunker`（超长块超 embedding 上限风险） | ✅ 对齐 R5：HybridChunker + bge-m3 tokenizer + max_tokens=1024（新增 transformers 依赖）——001 T061 |
+| 4 | quality.py docstring「<0.4 不索引」 | 代码阈值 0.5 | ✅ docstring 对齐 0.5——001 T061 |
+
+## 二期：P0 正确性/安全（⚪ 待办，先调研再征询）
+
+**对话数据**
+- ⚪ usage 计费口径：单价 1.1/4.4 标注「deepseek-chat 空闲时段价」而默认模型 `deepseek-flash`——查官方定价修正 + 记录（含缓存价区分）
+- ⚪ 写回/记忆策略全自研（触发/粒度/去重/衰减）——补 mem0/Letta 类「记忆写入策略」范式对照，或登记为显式产品决策
+
+**检索质量**
+- ⚪ 融合公式 `cosine + 0.12` 自定义加法（001-R15 引 RRF 未采用未说明）——RRF/加权融合对照
+- ⚪ 阈值 0.60/0.50 全仓无出处（001-R19 实测身份类问句 0.49–0.59 贴线）——需标定
+- ⚪ 分块参数三套并存：网页 1200 字符 / PDF 700-900（含死常量 CHUNK_TARGET）/ Docling（一期已修）——统一与依据
+- ⚪ 中文切词自研（无分词器，标点切分+整句 ILIKE，长问句关键词加成近失效）
+- ⚪ 扇出/多查询合并按 chunk 取 max（非 rank fusion，变体分数不可比）
+
+**安全**
+- ⚪ 会话机制：itsdangerous 自组合（默认 HMAC-SHA1）+ 固定 30 天 + 无吊销/轮换——OWASP 对照
+- ⚪ argon2 参数无 cost 依据；`cookie_secure=False` 与 ADMIN_PASSWORD/SECRET_KEY 弱默认 fail-open；登录无 dummy hash（用户名枚举时序）
+
+## 三期：P1/P2（⚪ 待办）
+
+**P1**：防编造提示词事故驱动（补 grounding/citation 规范对照）；SSE 客户端手写解析（CRLF/多行 data/无读超时/无取消）；SW 缓存策略零调研；备份加密算法/KDF/轮换记录；FNV-1a 指纹 vs simhash 对照；inherit 启发式（前缀 120/扫描 50）；上传 200MB 整传无分片调研。
+
+**P2（集中登记 + 逐项补来源或标为产品自定）**：`chat_history_limit=10`（与规划器 3 轮口径并存）、top_k=6、keyword_terms=4、HNSW m=16/ef_construction=64、PDF 版面细阈值（1.55/1.28/1.12、42pt…）、站点聚合 TOP12、MCP 参数 30/600/20000/8/10、`_INFRA_HINTS` 错误分类词表、confidence≥0.5、query 70 字符、planner max_tokens=240、会话搜索 50 上限、片段窗口 24/64、处理中 3s 轮询、快照 Cache-Control 3600、采集限速 120、登录限速 `_MAX_KEYS=4096`、备份 14 天/20h、快照分片 3MB、guard `date.today()` 时区、MCP 内网 IP 硬编码、标题分隔符不统一（网页 `" > "` vs 文件 `" / "`）。
+
+## 良好记录（对照参考）
+
+快照回放安全（002-R4，本审计中最完备）、采集 token 体系（002-R2）、MCP 接入（003 research）、检索选型与调优（001-R9/R10/R15/R16/R19）、时间解析（002-R6）、引用渲染与继承（001-R12/R14）、EPUB 定位（001-R6）、侧栏与 URL 状态（001-R10、002 #12）。

@@ -1,6 +1,6 @@
 /**
  * Service Worker（F2）：采集队列（先落盘再发 → capture_id 幂等重试）、alarms 退避、
- * badge 三态、SPA 导航转发、offscreen 上传调度。
+ * badge 三态、SPA 导航转发。
  * MV3 硬约束：监听器全部顶层注册；不依赖全局内存态（storage.local = 唯一事实源）。
  */
 
@@ -12,6 +12,7 @@ import {
   putSnapshotPart,
 } from "../shared/db";
 import type {
+  BehaviorSnapshot,
   CaptureDoneMessage,
   PageReadMessage,
   QueueEntry,
@@ -27,6 +28,10 @@ const SCAN_ALARM = "sb-scan";
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MINUTES = [1, 2, 4, 8, 16];
 const SNAPSHOT_WAIT_MS = 30_000; // 等快照分片落盘的最长时间（超时降级仅正文）
+
+// 安全（002-R2）：storage 仅受信上下文（SW/options/popup）可读——content script 不再直读设置，
+// 改经 get-behavior 消息取行为快照（token 不下发到页面上下文）。
+void chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" }).catch(() => {});
 
 // ── 队列读写 ──
 
@@ -84,7 +89,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 async function handleMessage(
   msg: SwMessage,
   tabId: number | null
-): Promise<{ ok: boolean; reason?: string }> {
+): Promise<{ ok: boolean; reason?: string } | BehaviorSnapshot> {
   switch (msg.type) {
     case "page-read":
       return handlePageRead(msg as unknown as PageReadMessage, tabId);
@@ -145,9 +150,24 @@ async function handleMessage(
       await handleUploadResult(result);
       return { ok: true };
     }
+    case "get-behavior":
+      return buildBehaviorSnapshot();
     default:
       return { ok: false, reason: "unknown" };
   }
+}
+
+/** 行为快照（content 经消息获取；不含 token/serverUrl 值——002-R2 安全登记）。 */
+async function buildBehaviorSnapshot(): Promise<BehaviorSnapshot> {
+  const settings = await loadSettings();
+  return {
+    enabled: Boolean(settings.serverUrl && settings.token && !settings.paused),
+    blocklist: settings.blocklist,
+    minVisibleSeconds: settings.minVisibleSeconds,
+    minScrollRatio: settings.minScrollRatio,
+    captureMetadataOnly: settings.captureMetadataOnly,
+    snapshotMaxMb: settings.snapshotMaxMb,
+  };
 }
 
 async function handlePageRead(

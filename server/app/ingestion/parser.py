@@ -148,17 +148,33 @@ def _chunk_document(document, chunker) -> list[ChunkDraft]:
     return drafts
 
 
+def _build_docling_chunker():
+    """HybridChunker（R5 决策）：按标题路径分块 + token 上限——防超长块超 embedding 输入上限。
+
+    tokenizer 与 embedding 模型一致（bge-m3，XLM-R 系）；max_tokens=1024 ≈ 600-1000 中文字符，
+    与网页/PDF 分块体量可比，远低于 bge-m3 的 8192 上限。
+    （2026-10-03 范式审计整改：此前代码误用零参数 HierarchicalChunker、与 R5 记录不符。）
+    """
+    from docling.chunking import HybridChunker
+    from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-m3")
+    return HybridChunker(
+        tokenizer=HuggingFaceTokenizer(tokenizer=tokenizer, max_tokens=1024)
+    )
+
+
 def _iter_docling(
     path: Path, fmt: str, batch_pages: int | None
 ) -> Iterator[tuple[int, int, list[ChunkDraft], dict | None]]:
     """Docling 路径：非 PDF 整体解析；PDF 按页批解析（内存受控，R7）。"""
     try:
-        from docling.chunking import HierarchicalChunker
         from docling.document_converter import DocumentConverter
-    except ImportError as exc:
-        raise ParseInfraError(f"解析器不可用：{exc}") from exc
 
-    chunker = HierarchicalChunker()
+        chunker = _build_docling_chunker()
+    except Exception as exc:  # 含 transformers/tokenizer 下载失败（网络）
+        raise ParseInfraError(f"解析器不可用：{exc}") from exc
     try:
         if fmt != "pdf":
             result = DocumentConverter().convert(str(path))

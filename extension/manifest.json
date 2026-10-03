@@ -6,7 +6,7 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "second-brain 采集" },
   "options_page": "options.html",
-  "permissions": ["storage", "alarms", "offscreen", "webNavigation", "unlimitedStorage"],
+  "permissions": ["storage", "alarms", "webNavigation", "unlimitedStorage"],
   "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
   "content_scripts": [
     {

@@ -6,13 +6,12 @@
 
 import { isBlocked } from "../shared/block";
 import type {
+  BehaviorSnapshot,
   PageReadMessage,
   SnapshotChunkMessage,
   SnapshotCompleteMessage,
   SnapshotFailedMessage,
 } from "../shared/messages";
-import type { Settings } from "../shared/settings";
-import { loadSettings } from "../shared/settings";
 import {
   contentHash,
   looksLikeChallenge,
@@ -31,7 +30,8 @@ const TICK_MS = 1000;
 const SNAPSHOT_CHUNK_BYTES = 3 * 1024 * 1024;
 
 let meter: ReadingMeter | null = null;
-let settings: Settings | null = null;
+// 行为快照经 SW 消息获取（002-R2：storage 仅受信上下文可读，content 不直读、拿不到 token）
+let settings: BehaviorSnapshot | null = null;
 let currentUrl = "";
 let triggered = false;
 let snapshotStarted = false;
@@ -69,13 +69,18 @@ void init();
 
 async function init(): Promise<void> {
   try {
-    settings = await loadSettings();
+    const snapshot = (await chrome.runtime.sendMessage({
+      target: "sw",
+      type: "get-behavior",
+    })) as BehaviorSnapshot | undefined;
+    if (!snapshot) return;
+    settings = snapshot;
     currentUrl = normalizeUrl(location.href);
   } catch {
-    return; // 非 http(s) 或存储不可用
+    return; // SW 不可用或非 http(s)
   }
   console.debug("[second-brain] 内容脚本就绪", currentUrl);
-  if (!settings.serverUrl || !settings.token || settings.paused) return;
+  if (!settings.enabled) return; // 未配置 / 暂停（行为快照由 SW 判定）
   if (isLoopbackHost(hostOf(currentUrl))) return; // 本机页面默认不采集（避免采到自身界面）
   if (isBlocked(hostOf(currentUrl), settings.blocklist)) return; // 源头不采（含元信息）
 

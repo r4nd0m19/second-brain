@@ -10,7 +10,6 @@ function el<T extends HTMLElement>(id: string): T {
 const statusEl = el<HTMLDivElement>("status");
 const statsEl = el<HTMLDivElement>("stats");
 const errorEl = el<HTMLDivElement>("error");
-const debugEl = el<HTMLDivElement>("debug");
 const pausedEl = el<HTMLInputElement>("paused");
 const optionsEl = el<HTMLButtonElement>("options");
 
@@ -21,13 +20,11 @@ async function render(): Promise<void> {
     "stats",
     "lastError",
     "lastSnapshotError",
-    "offscreenDebug",
   ])) as {
     queue?: QueueEntry[];
     stats?: { date: string; count: number };
     lastError?: string | null;
     lastSnapshotError?: string | null;
-    offscreenDebug?: string | null;
   };
   const queue = stored.queue ?? [];
   const pending = queue.filter((e) => e.status === "pending").length;
@@ -62,13 +59,6 @@ async function render(): Promise<void> {
     errorEl.style.display = "block";
   } else {
     errorEl.style.display = "none";
-  }
-
-  if (stored.offscreenDebug) {
-    debugEl.textContent = `离屏：${stored.offscreenDebug}`;
-    debugEl.style.display = "block";
-  } else {
-    debugEl.style.display = "none";
   }
 }
 

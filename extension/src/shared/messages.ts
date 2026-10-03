@@ -1,4 +1,4 @@
-/** 扩展内消息协议（content ↔ SW ↔ offscreen）。 */
+/** 扩展内消息协议（content ↔ SW）。 */
 
 export interface PageReadMessage {
   target: "sw";
@@ -46,21 +46,20 @@ export interface SpaNavMessage {
   type: "spa-nav";
 }
 
-export interface UploadJob {
-  captureId: string;
-  url: string;
-  title: string;
-  text: string;
-  capturedAt: string;
-  hasSnapshot: boolean;
-  serverUrl: string;
-  token: string;
+/** content → SW：取采集行为快照（002-R2：content 不直读 storage——token 不出受信上下文）。 */
+export interface GetBehaviorMessage {
+  target: "sw";
+  type: "get-behavior";
 }
 
-export interface UploadRequestMessage {
-  target: "offscreen";
-  type: "upload";
-  job: UploadJob;
+/** 行为快照：内容脚本所需的采集判定字段（不含 token / serverUrl）。 */
+export interface BehaviorSnapshot {
+  enabled: boolean;
+  blocklist: string[];
+  minVisibleSeconds: number;
+  minScrollRatio: number;
+  captureMetadataOnly: boolean;
+  snapshotMaxMb: number;
 }
 
 export interface UploadResultMessage {
