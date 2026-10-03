@@ -14,6 +14,7 @@
   --quote: light-dark(#98a2b3, #8a93a5);
   --bubble-user-bg: light-dark(#f0f1f3, #2f2f33);
   --sidebar-bg: light-dark(#eceef2, #0b0d10);
+  --hdr-h: 60px; /* 顶栏吸顶实测高度（HeaderOffset 组件运行时更新）——其下吸顶元素对位用 */
 }
 
 :root[data-theme="light"] {
@@ -51,12 +52,54 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  /* 吸顶（2026-10-03）：滚动时顶部按钮常驻；padding 与负 margin 抵消，视觉间距不变 */
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg);
+  margin: -12px 0 12px;
+  padding: 12px 0;
 }
 
 .header h1 {
   font-size: 20px;
   margin: 0;
+}
+
+/* 顶栏/侧栏顶部按钮 ChatGPT 化（2026-10-03，参照 ChatGPT 设计规范：
+   ghost 无边框、10px 圆角、悬停 5% 淡色填充（--code-bg）、组内 6px 间距、图标钮 36×36） */
+.header .btn,
+.sidebar-top .btn {
+  height: 36px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.header .btn:hover,
+.sidebar-top .btn:hover {
+  border: none;
+  background: var(--code-bg);
+}
+
+.header .sidebar-toggle,
+.header .theme-toggle,
+.sidebar-top .sidebar-toggle {
+  width: 36px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.hdr-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .muted {
@@ -349,6 +392,15 @@ textarea:focus-visible {
   justify-content: flex-end;
 }
 
+/* 吸顶操作条（资料页页签行）：停靠在顶栏下方 */
+.actions-sticky {
+  position: sticky;
+  top: var(--hdr-h);
+  z-index: 30;
+  background: var(--bg);
+  padding: 6px 0;
+}
+
 .center-card {
   max-width: 360px;
   margin: 15vh auto 0;
@@ -357,13 +409,15 @@ textarea:focus-visible {
 
 /* ── 对话页 ── */
 .chat-area {
+  /* 消息区 = 独立滚动容器（外壳改造）：内容列 768 居中、滚动条贴列边 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  width: 100%;
-  max-width: 768px;
-  margin: 0 auto;
-  padding-bottom: 150px;
+  padding: 8px max(16px, calc((100% - 768px) / 2)) 24px;
 }
 
 /* 消息：用户 = 右侧灰气泡；助手 = 平铺正文（ChatGPT 式，长回答更易读） */
@@ -402,6 +456,13 @@ textarea:focus-visible {
 .citation summary {
   cursor: pointer;
   color: var(--accent);
+}
+
+/* 联网来源直链（FR-002）：标题可点、新标签打开原文 */
+.citation-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .citation blockquote {
@@ -461,13 +522,10 @@ textarea:focus-visible {
   }
 }
 
+/* 发消息栏：主列内流式底栏（2026-10-03 外壳改造，不再 fixed 到窗口、不再压内容） */
 .input-row {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(transparent, var(--bg) 30%);
-  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+  flex: none;
+  padding: 8px 16px calc(14px + env(safe-area-inset-bottom));
 }
 
 .input-inner {
@@ -538,23 +596,62 @@ textarea.chat-input {
 }
 
 /* ── 对话历史侧栏 ── */
+/* 对话页 ChatGPT 式外壳（2026-10-03）：壳占满视口、仅消息区内部滚动；
+   侧栏与主列并排各自独立滚动，发消息栏为主列内底栏——结构上不会被侧栏遮挡 */
+.chat-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px;
+}
+
+.chat-header {
+  position: static;
+  margin: 0;
+  padding: 10px 0;
+  background: none;
+}
+
 .chat-layout {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
+}
+
+.chat-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar {
   width: 240px;
-  flex-shrink: 0;
+  flex: none;
+  min-height: 0;
   background: var(--sidebar-bg);
   border-radius: 12px;
   padding: 10px;
+  overflow-y: auto; /* 全高独立滚动列（2026-10-03 外壳改造） */
+}
+
+/* 侧栏顶部行（ChatGPT 风）：[收起 ◀] [＋ 新对话] 并排 */
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .sidebar-new {
-  width: 100%;
-  margin-bottom: 10px;
+  flex: 1;
+  justify-content: flex-start;
+  margin-bottom: 0;
 }
 
 .view-toolbar {
@@ -562,6 +659,12 @@ textarea.chat-input {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+  /* 吸顶（2026-10-03）：长文/EPUB 阅读时翻页按钮常驻 */
+  position: sticky;
+  top: var(--hdr-h);
+  z-index: 30;
+  background: var(--bg);
+  padding: 6px 0;
 }
 
 .sidebar-item {
@@ -769,7 +872,7 @@ html[data-sidebar="off"] .sidebar {
   .header {
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 4px; /* + 基础 padding 12px = 原 16px 视觉间距 */
   }
 
   .input-row {
@@ -788,7 +891,14 @@ html[data-sidebar="off"] .sidebar {
     display: flex;
     gap: 8px;
     overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
     padding-bottom: 2px;
+  }
+
+  .sidebar-top {
+    flex: 0 0 auto;
+    margin-bottom: 0;
   }
 
   .sidebar-new {
@@ -814,8 +924,8 @@ html[data-sidebar="off"] .sidebar {
     max-width: 240px;
   }
 
-  .chat-area {
-    padding-bottom: 160px;
+  .chat-shell {
+    padding: 0 12px;
   }
 
   .bubble-user {

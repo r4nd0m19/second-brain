@@ -379,12 +379,10 @@ function HomeInner() {
     <main className="container">
       <div className="header">
         <h1>second-brain</h1>
-        <div>
-          <span className="muted" style={{ marginRight: 12 }}>
-            {username ?? ""}
-          </span>
+        <div className="hdr-actions">
+          <span className="muted">{username ?? ""}</span>
           <ThemeToggle />
-          <Link className="btn" style={{ marginRight: 8 }} href="/chat/">
+          <Link className="btn" href="/chat/">
             对话
           </Link>
           <button className="btn" onClick={onLogout}>
@@ -404,7 +402,7 @@ function HomeInner() {
         </div>
       )}
 
-      <div className="actions" style={{ marginBottom: 12 }}>
+      <div className="actions actions-sticky" style={{ marginBottom: 12 }}>
         <button
           className={source === "upload" ? "btn btn-primary" : "btn"}
           onClick={() => switchSource("upload")}

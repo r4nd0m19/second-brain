@@ -428,14 +428,9 @@ export default function ViewPage() {
         >
           {doc ? doc.name : "浏览"}
         </h1>
-        <div>
+        <div className="hdr-actions">
           {doc && (
-            <a
-              className="btn"
-              style={{ marginRight: 8 }}
-              href={api.originalUrl(doc.id)}
-              download={doc.name}
-            >
+            <a className="btn" href={api.originalUrl(doc.id)} download={doc.name}>
               下载
             </a>
           )}

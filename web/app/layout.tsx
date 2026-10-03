@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 import ServiceWorkerRegister from "./_components/sw-register";
+import HeaderOffset from "./_components/header-offset";
 
 export const metadata: Metadata = {
   title: "second-brain",
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <ServiceWorkerRegister />
+        <HeaderOffset />
         {children}
       </body>
     </html>

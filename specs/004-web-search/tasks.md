@@ -83,6 +83,8 @@
 - [X] T011 [P] [US1] 前端 `web/lib/api.ts`：`Citation` 增加 `web?: boolean`；`web/app/chat/page.tsx`：`SOURCE_LABEL` 增加 `web: "来自网络"`；`citationHref` 对 `web` 来源返回 `source_url`；chip 与出处列表对该来源以 `<a target="_blank">` 新标签打开（按钮文案「↗ 打开网页」）
   - Deps: T008
   - DoD: 前端构建通过；mock 数据下 web 来源渲染为外链
+  - 补记（2026-10-03，用户验收发现）：回答底部「网络来源」列表此前 `showJump={false}`——列表项无任何可点链接（仅回答正文 [N] chip 可跳），FR-002「来源含可点击链接」未完全兑现；修复：`CitationList` 对 web 来源的**标题**渲染为直链（`.citation-link`，新标签打开、无需展开详情），前端已重建生效
+  - 续（2026-10-03）：底部来源列表整体改为**按类别分组折叠**（「网络来源 / 出处 / 原文出处 / 库中可能相关」，组默认折叠）——详见 001 T022 补记
 - [X] T012 [US1] 端到端手动验收（quickstart 场景 1；无 key 时先以 mock 注入验证前端渲染，key 就绪后跑真实搜索）
   - Deps: T009, T010, T011
   - DoD: 库外问题回答含 ≥1 条可点击网页来源；强命中问题出处全为本地

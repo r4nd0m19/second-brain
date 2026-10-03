@@ -15,8 +15,7 @@ export default function ThemeToggle() {
   const nextLabel = theme === "dark" ? "切换到白天模式" : "切换到夜间模式";
   return (
     <button
-      className="btn"
-      style={{ marginLeft: 8 }}
+      className="btn theme-toggle"
       title={nextLabel}
       aria-label={nextLabel}
       onClick={() => setTheme(toggleTheme())}

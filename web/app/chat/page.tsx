@@ -165,66 +165,97 @@ function CitationList({
   label,
   showJump = true,
   onNavigate,
+  splitBySource = false,
 }: {
   items: Citation[];
-  label: string;
+  label?: string;
   showJump?: boolean;
   onNavigate?: () => void;
+  splitBySource?: boolean; // 分「网络来源 / 出处」两组（编号保持与正文 [N] 角标一致）
 }) {
   if (items.length === 0) return null;
+  const numbered = items.map((c, i) => ({ c, n: i + 1 }));
+  const groups: { label: string; entries: { c: Citation; n: number }[] }[] = splitBySource
+    ? [
+        { label: "网络来源", entries: numbered.filter((e) => e.c.web) },
+        { label: "出处", entries: numbered.filter((e) => !e.c.web) },
+      ]
+    : [{ label: label ?? "来源", entries: numbered }];
   return (
     <div className="citation">
-      <div className="muted">{label}</div>
-      {items.map((c, i) => (
-        <details key={c.chunk_id ?? `citation-${i}`}>
-          <summary>
-            【{i + 1}】{c.document_name}
-            {c.source_url
-              ? ` · 网页${c.last_captured_at ? ` · 浏览于 ${fmtCitationTime(c.last_captured_at)}` : ""}`
-              : ""}
-            {c.heading_path ? ` · ${c.heading_path}` : ""}
-            {c.page ? `（第 ${c.page} 页）` : ""}
-          </summary>
-          {c.quote ? <blockquote className="muted">“{c.quote}”</blockquote> : null}
-          {showJump && (
-            <div style={{ marginTop: 4 }}>
-              {c.web ? (
-                <a
-                  className="btn"
-                  style={{ fontSize: 12, padding: "3px 10px" }}
-                  href={c.source_url ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  ↗ 打开网页
-                </a>
-              ) : (
-                <>
-                  <Link
-                    className="btn"
-                    style={{ fontSize: 12, padding: "3px 10px" }}
-                    href={citationHref(c)}
-                    onClick={onNavigate}
-                  >
-                    {c.source_url ? "🖼 查看快照" : c.conversation_id ? "↩ 回到原对话" : "↗ 跳到原文位置"}
-                  </Link>
-                  {c.source_url && (
+      {/* 按类别分组折叠（2026-10-03）：每组摘要行显示「类别 + 条数」，点开才列条目 */}
+      {groups
+        .filter((g) => g.entries.length > 0)
+        .map((g) => (
+          <details key={g.label}>
+            <summary>
+              {g.label}：{g.entries.length} 条
+            </summary>
+            {g.entries.map(({ c, n }) => (
+              <details key={c.chunk_id ?? `citation-${n}`}>
+                <summary>
+                  【{n}】{c.web && c.source_url ? (
+                    // 联网来源直链（FR-002）：标题可点、新标签打开原文，无需展开详情
                     <a
-                      className="btn"
-                      style={{ fontSize: 12, padding: "3px 10px", marginLeft: 8 }}
-                      href={c.source_url}
+                      className="citation-link"
+                      href={citationHref(c)}
+                      title={c.source_url}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      ↗ 打开原文
+                      {c.document_name} ↗
                     </a>
+                  ) : (
+                    c.document_name
                   )}
-                </>
-              )}
-            </div>
-          )}
-        </details>
-      ))}
+                  {c.source_url
+                    ? ` · 网页${c.last_captured_at ? ` · 浏览于 ${fmtCitationTime(c.last_captured_at)}` : ""}`
+                    : ""}
+                  {c.heading_path ? ` · ${c.heading_path}` : ""}
+                  {c.page ? `（第 ${c.page} 页）` : ""}
+                </summary>
+                {c.quote ? <blockquote className="muted">“{c.quote}”</blockquote> : null}
+                {showJump && (
+                  <div style={{ marginTop: 4 }}>
+                    {c.web ? (
+                      <a
+                        className="btn"
+                        style={{ fontSize: 12, padding: "3px 10px" }}
+                        href={c.source_url ?? "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        ↗ 打开网页
+                      </a>
+                    ) : (
+                      <>
+                        <Link
+                          className="btn"
+                          style={{ fontSize: 12, padding: "3px 10px" }}
+                          href={citationHref(c)}
+                          onClick={onNavigate}
+                        >
+                          {c.source_url ? "🖼 查看快照" : c.conversation_id ? "↩ 回到原对话" : "↗ 跳到原文位置"}
+                        </Link>
+                        {c.source_url && (
+                          <a
+                            className="btn"
+                            style={{ fontSize: 12, padding: "3px 10px", marginLeft: 8 }}
+                            href={c.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            ↗ 打开原文
+                          </a>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </details>
+            ))}
+          </details>
+        ))}
     </div>
   );
 }
@@ -340,13 +371,13 @@ export default function ChatPage() {
     return () => clearTimeout(timer);
   }, [convQuery]);
 
-  // 滚动位置记忆（2026-10-02）：本页实际由窗口滚动（.chat-area 非独立滚动容器），
-  // 跳去原文/快照再返回时恢复离开时的位置；否则自动回到底部。
+  // 滚动位置记忆（2026-10-02）：跳去原文/快照再返回时恢复离开时的位置；否则自动回到底部。
+  // （2026-10-03 ChatGPT 式外壳改造：消息区 .chat-area 为独立滚动容器，记录/恢复其 scrollTop。）
   function rememberScroll() {
     try {
       sessionStorage.setItem(
         "sb-chat-scroll",
-        JSON.stringify({ conv: convRef.current, top: window.scrollY })
+        JSON.stringify({ conv: convRef.current, top: scrollRef.current?.scrollTop ?? 0 })
       );
     } catch {
       /* 忽略 */
@@ -369,7 +400,7 @@ export default function ChatPage() {
       try {
         const { conv, top } = JSON.parse(saved) as { conv: string | null; top: number };
         if (conv && conv === convRef.current) {
-          window.scrollTo({ top });
+          scrollRef.current?.scrollTo({ top });
           return;
         }
       } catch {
@@ -377,18 +408,20 @@ export default function ChatPage() {
       }
     }
     if (stickRef.current) {
-      window.scrollTo({ top: document.documentElement.scrollHeight });
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
 
-  // 是否贴底（用户在底部附近才自动跟随流式输出）
+  // 是否贴底（用户在底部附近才自动跟随流式输出）——监听消息区滚动容器（外壳改造）
   useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
     const onScroll = () => {
-      stickRef.current =
-        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 140;
+      stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   // 输入草稿不丢（跳去原文/快照再返回时还在）
@@ -548,22 +581,24 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="container" style={{ maxWidth: 1100 }}>
-      <div className="header">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <button
-            className="btn sidebar-toggle"
-            aria-label={sidebarOpen ? "收起对话列表" : "展开对话列表"}
-            aria-expanded={sidebarOpen}
-            title="收起 / 展开对话列表（Ctrl+B）"
-            onClick={toggleSidebar}
-          >
-            {sidebarOpen ? "◀" : "▶"}
-          </button>
+    <main className="chat-shell">
+      <div className="header chat-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          {!sidebarOpen && (
+            <button
+              className="btn sidebar-toggle"
+              aria-label="展开对话列表"
+              aria-expanded={sidebarOpen}
+              title="展开对话列表（Ctrl+B）"
+              onClick={toggleSidebar}
+            >
+              ▶
+            </button>
+          )}
           <h1 style={{ fontSize: 16, color: "var(--muted)" }}>second-brain · 对话</h1>
         </div>
-        <div>
-          <Link className="btn" style={{ marginRight: 8 }} href="/">
+        <div className="hdr-actions">
+          <Link className="btn" href="/">
             资料
           </Link>
           <ThemeToggle />
@@ -572,9 +607,20 @@ export default function ChatPage() {
 
       <div className="chat-layout">
         <aside className="sidebar" style={{ display: sidebarOpen ? undefined : "none" }}>
-          <button className="btn btn-primary sidebar-new" onClick={newChat}>
-            ＋ 新对话
-          </button>
+          <div className="sidebar-top">
+            <button
+              className="btn sidebar-toggle"
+              aria-label="收起对话列表"
+              aria-expanded={sidebarOpen}
+              title="收起 / 展开对话列表（Ctrl+B）"
+              onClick={toggleSidebar}
+            >
+              ◀
+            </button>
+            <button className="btn sidebar-new" onClick={newChat}>
+              ＋ 新对话
+            </button>
+          </div>
           <input
             className="sidebar-search"
             type="search"
@@ -634,7 +680,8 @@ export default function ChatPage() {
           )}
         </aside>
 
-        <div className="chat-area" ref={scrollRef} style={{ flex: 1, minWidth: 0 }}>
+        <div className="chat-main">
+        <div className="chat-area" ref={scrollRef}>
           {messages.length === 0 && (
             <div className="chat-empty">
               <h2>向你的第二大脑提问吧</h2>
@@ -700,7 +747,7 @@ export default function ChatPage() {
               {msg.citations && msg.citations.length > 0 && (
                 <CitationList
                   items={msg.citations}
-                  label={msg.source_type === "web" ? "网络来源：" : "出处："}
+                  splitBySource
                   showJump={false}
                   onNavigate={rememberScroll}
                 />
@@ -708,14 +755,14 @@ export default function ChatPage() {
               {msg.related_hints && msg.related_hints.length > 0 && (
                 <CitationList
                   items={msg.related_hints}
-                  label="库中可能相关："
+                  label="库中可能相关"
                   onNavigate={rememberScroll}
                 />
               )}
               {msg.role === "assistant" && (
                 <CitationList
                   items={inheritedCitations(msg)}
-                  label="原对话出处："
+                  label="原文出处"
                   onNavigate={rememberScroll}
                 />
               )}
@@ -739,7 +786,6 @@ export default function ChatPage() {
             </div>
           ))}
         </div>
-      </div>
 
       <div className="input-row">
         <div className="input-inner">
@@ -768,6 +814,8 @@ export default function ChatPage() {
             </button>
           </div>
           <div className="composer-hint">回答可能有误，请以出处为准 · Enter 发送，Shift+Enter 换行</div>
+        </div>
+      </div>
         </div>
       </div>
     </main>

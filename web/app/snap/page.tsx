@@ -53,8 +53,8 @@ function SnapInner() {
             </div>
           )}
         </div>
-        <div>
-          <Link className="btn" style={{ marginRight: 8 }} href={back.href}>
+        <div className="hdr-actions">
+          <Link className="btn" href={back.href}>
             {back.label}
           </Link>
           <ThemeToggle />
