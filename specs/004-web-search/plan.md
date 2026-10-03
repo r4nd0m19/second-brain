@@ -79,7 +79,9 @@ server/app/
 ├── websearch/
 │   ├── __init__.py
 │   ├── client.py          # WebSearchClient Protocol + ZhipuWebSearch（httpx，超时/错误→WebSearchError）
-│   ├── planner.py         # 决策调用：是否需要联网 + 搜索词（非流式，函数调用；只收当前问题）
+│   ├── searxng.py         # SearXNG 自托管元搜索客户端（paid=False，零成本；T085/R39）
+│   ├── deepseek.py        # DeepSeek 服务端 web_search 客户端（token 计费；T086/R40）
+│   ├── reader.py          # 读页管线：并行抓取→trafilatura 正文→段落级重排筛（T082/R38）
 │   └── guard.py           # 每日搜索次数护栏（进程内计数；WEB_SEARCH_DAILY_LIMIT）
 ├── chat/
 │   ├── llm.py             # +complete_with_tools（非流式，带 tools，解析 tool_calls）
@@ -89,8 +91,10 @@ server/app/
 └── models/entities.py     # AnswerSource + web（无迁移）
 
 server/tests/
-├── test_websearch_client.py   # 智谱响应解析 / 错误 / 超时
-├── test_websearch_planner.py  # 决策解析 / 仅当前问题 / 失败容错（后并入查询规划器，见 R21/R3 补记）
+├── test_websearch_client.py   # 智谱响应解析 / 错误 / 超时 / 工厂
+├── test_websearch_searxng.py  # SearXNG 解析 / 免费源标记（T085）
+├── test_websearch_deepseek.py # DeepSeek 服务端搜索：块解析 / 去重 / token 计费 / 错误（T086）
+├── test_websearch_reader.py   # 读页：正文提取 / 段落筛选 / 降级（T082）
 ├── test_websearch_guard.py    # 每日上限：达限停用 / 跨日重置
 └── test_websearch_flow.py     # 编排集成：触发/不触发/降级/来源形状（假 client）
 

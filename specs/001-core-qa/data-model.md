@@ -72,7 +72,7 @@
 | source_type | enum NULL | assistant 专属：`kb` / `model_knowledge` / `prior_conversation`（FR-005/007/008） |
 | citations | jsonb NULL | `[{document_id, chunk_id, heading_path, page, quote}]`（FR-006 出处三要素；quote 长度约 ≤300 字，可配置） |
 | related_hints | jsonb NULL | 弱相关提示列表（FR-007） |
-| usage | jsonb NULL | 模型 token 用量 + 估算费用（FR-017；含 cost_cny） |
+| usage | jsonb NULL | 回答模型 token 用量 + **全成本**费用（FR-017/R36/T079：`cost_cny`=合计、`cost_breakdown`={llm, web, retrieval}；2026-10-03 前为回答单调用口径） |
 | created_at | timestamptz | |
 
 **索引**: pg_trgm GIN（content，对话全文搜索，2026-10-02；`ix_messages_content_trgm`，迁移 `d51a9c73e2b4`，与 R9 同机制）。
