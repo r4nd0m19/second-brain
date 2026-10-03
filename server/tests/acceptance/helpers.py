@@ -140,15 +140,29 @@ async def capture_page(
 
 
 async def wait_browser_indexed(client: httpx.AsyncClient, doc_id: str, timeout: float = 180) -> dict:
-    """轮询浏览器来源列表直到条目 indexed/unparseable；返回该条目。"""
+    """轮询浏览器来源列表直到条目 indexed/unparseable；返回该条目。
+
+    全量翻页（2026-10-03）：列表按 last_captured_at 倒序且 page_size 上限 100——真实浏览库
+    超 100 条后，回填的旧条目（如 sc007 的 20 天前页）被挤出第一页，只看首页会永远找不到。
+    """
     t0 = time.monotonic()
     while time.monotonic() - t0 < timeout:
-        docs = (
-            await client.get(
-                "/api/documents", params={"source": "browser", "page_size": 100}
-            )
-        ).json()["items"]
-        doc = next((d for d in docs if d["id"] == doc_id), None)
+        doc = None
+        page = 1
+        while True:
+            items = (
+                await client.get(
+                    "/api/documents",
+                    params={"source": "browser", "page_size": 100, "page": page},
+                )
+            ).json()["items"]
+            found = next((d for d in items if d["id"] == doc_id), None)
+            if found:
+                doc = found
+                break
+            if len(items) < 100 or page >= 50:  # 到末页（或异常翻页保险）
+                break
+            page += 1
         if doc and doc["status"] in {"indexed", "unparseable"}:
             return doc
         await asyncio.sleep(2)
