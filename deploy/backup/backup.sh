@@ -40,7 +40,10 @@ if [ "${SECOND_BRAIN_BACKUP_STALE_ONLY:-0}" = "1" ]; then
 fi
 
 encrypt() { # stdin → 指定 .gpg 文件
+  # 参数显式固化（三期 P1，同 T063 argon2 思路：不随工具版本默认漂移）：
+  # AES-256（含完整性保护 MDC）+ 迭代加盐 S2K、SHA-256 摘要；迭代次数用 gpg 自动标定。
   gpg --batch --yes --quiet --symmetric --cipher-algo AES256 \
+    --s2k-mode 3 --s2k-digest-algo SHA256 \
     --passphrase-file "$KEY_FILE" -o "$1"
 }
 

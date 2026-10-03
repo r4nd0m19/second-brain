@@ -1,15 +1,17 @@
-"""既往对话引用的来源追溯（2026-10-02）：把复制文本里的 [N] 标记映射回原出处。
+"""既往对话引用的来源追溯（2026-10-02 建；2026-10-03 三期 P1 改版为写时留痕）。
 
 背景：对话回写文档只存"问/答"文本，且**回写回答本身无 citations**（回写只发生在模型兜底
 回答，FR-008）；后续回答复制这些文本时会带上旧标记。前端把 [N] 硬映射到本轮 citations
 会出现误指（指向对话文档本身）或死标（[2][3] 无对应项）。
 
-追溯规则（启发式；失败返回 None，调用方降级为纯文本不误导）：
-1. 以回写块内容（"问：…\\n答：…"）在会话消息中定位**原始回答消息** M（全文相等优先，
-   其次前 120 字前缀匹配——写入侧理论上保真，前缀兜底防御）；
-2. M 自带 citations（如 kb 回答）→ 直接继承；
-3. M 无 citations（"复制型"回答，标记来自更早的引用型回答）→ 取 M 之前**最近一条
-   citations 条数 ≥ M 文本中最大标记编号**的助手消息 → 继承。
+追溯方式（2026-10-03 起 —— 写时留痕优先，文本匹配仅存量兜底）：
+1. **新数据**：回写时（writeback.py）源消息 id 已知——解析结果 {message_id, citations}
+   直接存进 `chunks.provenance`，读取时零匹配取用（enrich_citations 的 provenance 分支）；
+2. **存量数据**：回填脚本（scripts/backfill_chunk_provenance.py）跑一次同样的解析并入库；
+3. **兜底启发式**（仅剩无 provenance 的旧数据；失败返回 None，调用方降级纯文本不误导）：
+   以回写块内容（"问：…\\n答：…"）定位原始回答消息 M——全文相等优先、前 120 字前缀兜底；
+   M 自带 citations → 直接继承；M 无 citations（复制型）→ 取 M 之前最近一条
+   citations 条数 ≥ 文本最大标记编号的助手消息。
 """
 
 from __future__ import annotations
@@ -39,8 +41,13 @@ async def resolve_inherited_citations(
     session: AsyncSession,
     conversation_id: uuid.UUID,
     chunk_content: str,
+    message_id: uuid.UUID | None = None,
 ) -> dict | None:
-    """返回 {"message_id": 定位目标消息, "citations": 继承的出处数组或 None}。"""
+    """返回 {"message_id": 定位目标消息, "citations": 继承的出处数组或 None}。
+
+    message_id 已知（回写时留痕）→ 直接取该消息为目标，跳过文本匹配；
+    否则（存量兜底）按全文/前缀匹配定位。
+    """
     answer = _answer_part(chunk_content).strip()
     if not answer:
         return None
@@ -57,27 +64,32 @@ async def resolve_inherited_citations(
         )
     ).all()
 
-    target_index = None
-    prefix = answer[:120]
-    for index, message in enumerate(rows):
-        if message.content == answer:
-            target_index = index
-            break
-    if target_index is None:
+    target: Message | None = None
+    target_index: int | None = None
+    if message_id is not None:
+        target = await session.get(Message, message_id)
+        if target is not None:
+            target_index = next((i for i, m in enumerate(rows) if m.id == target.id), None)
+    if target is None:  # 存量兜底：全文相等 → 前 120 字前缀
+        prefix = answer[:120]
         for index, message in enumerate(rows):
-            if message.content.startswith(prefix):
-                target_index = index
+            if message.content == answer:
+                target, target_index = message, index
                 break
-    if target_index is None:
+        if target is None:
+            for index, message in enumerate(rows):
+                if message.content.startswith(prefix):
+                    target, target_index = message, index
+                    break
+    if target is None:
         return None
-    target = rows[target_index]
 
     if target.citations:  # 自带出处 → 直接继承
         return {"message_id": str(target.id), "citations": target.citations}
 
     # 复制型回答：向前找最近一条"引用条数 ≥ 文本中最大标记"的助手消息
     need = _max_marker(target.content)
-    if need == 0:
+    if need == 0 or target_index is None:
         return {"message_id": str(target.id), "citations": None}
     for message in reversed(rows[:target_index]):
         if message.citations and len(message.citations) >= need:
@@ -96,6 +108,7 @@ async def enrich_citations(session: AsyncSession, citations: list[dict] | None) 
     """就地为对话回写来源的引用补 {conversation_id, message_id, inherited_citations}。
 
     - 生成时（orchestrator）与读取时（历史消息存量数据兜底）共用；
+    - 新数据走 chunk.provenance（写时留痕，零匹配）；无 provenance 的旧数据走兜底启发式；
     - 非对话来源引用不动；无法追溯时至少保留 conversation_id（前端降级纯文本，不误指）。
     """
     for citation in citations or []:
@@ -117,6 +130,11 @@ async def enrich_citations(session: AsyncSession, citations: list[dict] | None) 
             citation["conversation_id"] = conv_id
         chunk = await session.get(Chunk, _as_uuid(citation.get("chunk_id", "")))
         if chunk is None:
+            continue
+        if chunk.provenance:  # 写时留痕（新数据）：直接取用
+            citation["message_id"] = chunk.provenance.get("message_id")
+            if chunk.provenance.get("citations"):
+                citation["inherited_citations"] = chunk.provenance["citations"]
             continue
         resolved = await resolve_inherited_citations(session, _as_uuid(conv_id), chunk.content)
         if resolved is None:

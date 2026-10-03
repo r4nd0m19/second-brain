@@ -182,6 +182,68 @@ async def test_enrich_citations_for_legacy_data(maker, user):
     assert "conversation_id" not in upload_citation[0]
 
 
+async def test_resolve_with_known_message_id(maker, user):
+    """写时留痕：message_id 已知 → 跳过文本匹配直接定位（块内容对不上也能解析）。"""
+    conv_id = uuid.uuid4()
+    async with maker() as s:
+        s.add(Conversation(id=conv_id, owner_user_id=user.id, title="t"))
+        await s.commit()
+    cites = _citations(2)
+    msg_id = await _mk_message(
+        maker, user.id, conv_id, "原始回答 [1][2]。", cites, datetime.now(timezone.utc)
+    )
+
+    async with maker() as s:
+        resolved = await resolve_inherited_citations(
+            s, conv_id, "问：x\n答：与消息文本完全不同的内容", message_id=msg_id
+        )
+    assert resolved is not None
+    assert resolved["message_id"] == str(msg_id)
+    assert resolved["citations"] == cites
+
+
+async def test_enrich_uses_chunk_provenance(maker, user):
+    """新数据：chunk.provenance 存在 → enrich 直接取用（无需任何可匹配的消息）。"""
+    conv_id = uuid.uuid4()
+    doc_id, chunk_id = uuid.uuid4(), uuid.uuid4()
+    prov_cites = _citations(2)
+    prov = {"message_id": str(uuid.uuid4()), "citations": prov_cites}
+    async with maker() as s:
+        s.add(Conversation(id=conv_id, owner_user_id=user.id, title="t"))
+        s.add(
+            Document(
+                id=doc_id,
+                owner_user_id=user.id,
+                name="对话：t",
+                format="conversation",
+                size_bytes=0,
+                sha256=uuid.uuid4().hex,
+                status=DocumentStatus.indexed,
+                source_type=SourceType.conversation,
+                original_path="",
+                conversation_id=conv_id,
+            )
+        )
+        s.add(
+            Chunk(
+                id=chunk_id,
+                owner_user_id=user.id,
+                document_id=doc_id,
+                content="问：q\n答：没有任何可匹配的消息",
+                embedding=[0.0] * settings.embedding_dim,
+                provenance=prov,
+            )
+        )
+        await s.commit()
+
+    citations = [{"document_id": str(doc_id), "chunk_id": str(chunk_id), "quote": None}]
+    async with maker() as s:
+        await enrich_citations(s, citations)
+    assert citations[0]["conversation_id"] == str(conv_id)
+    assert citations[0]["message_id"] == prov["message_id"]
+    assert citations[0]["inherited_citations"] == prov_cites
+
+
 async def test_inherit_unmatched_or_no_markers(maker, user):
     conv_id = uuid.uuid4()
     async with maker() as s:

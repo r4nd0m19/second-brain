@@ -31,9 +31,16 @@
 - ✅ 会话机制（R23①/T063，迁移 70eda961aa20）：SHA-256 签名 + **纪元吊销**（登出全设备失效）+ argon2 参数固化（RFC 9106 低内存档）+ dummy 校验防枚举时序
 - ✅ fail-open 默认（R23②/T063）：SECRET_KEY/ADMIN_PASSWORD 哨兵值 → 启动拒绝；cookie Secure 按环境自动
 
-## 三期：P1/P2（⚪ 待办）
+## 三期：P1/P2（P1 ✅ 已整改 2026-10-03；P2 ⚪ 集中登记待办）
 
-**P1**：防编造提示词事故驱动（补 grounding/citation 规范对照）；SSE 客户端手写解析（CRLF/多行 data/无读超时/无取消）；SW 缓存策略零调研；备份加密算法/KDF/轮换记录；FNV-1a 指纹 vs simhash 对照；inherit 启发式（前缀 120/扫描 50）；上传 200MB 整传无分片调研。
+**P1（✅ 全部完成，2026-10-03；每项：调研 → 落地 → 留痕）**：
+- ✅ 防编造提示词（R27/T069）：Anthropic 三招对照 → 提示词补硬约束（事实以原文为准/编号不得杜撰/推断须标注）
+- ✅ SSE 手写解析（R28/T068）：eventsource-parser（de-facto 标准）+ 停止按钮 + 静默看门狗 + 断流提示；手写解析退役
+- ✅ SW 缓存策略（R29/T070）：按资源类型分级——哈希 CacheFirst / 非哈希 SWR / API+导航走网络（原有正确项保留）
+- ✅ 备份加密（R30/T071）：S2K 显式固化（SHA256 迭代加盐）+ 轮换/存放/演练成文；备份 + drill 实测全一致
+- ✅ FNV-1a 指纹（R31/T072）：保留论证——单 URL/窗口受限 + 失败安全；simhash 语义不匹配，无代码改动
+- ✅ inherit 启发式（R32/T073）：写时留痕（chunks.provenance，迁移 b3f7c2a91d04）+ 存量回填 6/6；启发式降为兜底
+- ✅ 上传分片（R33/T074）：维持整传登记（业界阈值：>200MB 或不可靠链路才必须 tus）；部署阶段（WAN）触发 tus
 
 **P2（集中登记 + 逐项补来源或标为产品自定）**：`chat_history_limit=10`（与规划器 3 轮口径并存）、top_k=6、keyword_terms=4、HNSW m=16/ef_construction=64、PDF 版面细阈值（1.55/1.28/1.12、42pt…）、站点聚合 TOP12、MCP 参数 30/600/20000/8/10、`_INFRA_HINTS` 错误分类词表、confidence≥0.5、query 70 字符、planner max_tokens=240、会话搜索 50 上限、片段窗口 24/64、处理中 3s 轮询、快照 Cache-Control 3600、采集限速 120、登录限速 `_MAX_KEYS=4096`、备份 14 天/20h、快照分片 3MB、guard `date.today()` 时区、MCP 内网 IP 硬编码、标题分隔符不统一（网页 `" > "` vs 文件 `" / "`）。
 

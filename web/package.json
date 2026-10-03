@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "epubjs": "^0.3.93",
+    "eventsource-parser": "^4.1.1",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-day-picker": "^10.0.2",

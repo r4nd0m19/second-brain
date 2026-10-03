@@ -46,6 +46,7 @@
 | page | int NULL | PDF 页码 |
 | chapter / paragraph | text / int NULL | 章节 / 段落序号 |
 | embedding | vector(1024) | 维度按 provider（bge-m3=1024）；换 provider 需重建（配置化） |
+| provenance | jsonb NULL | 对话回写块的溯源：`{message_id, citations}`（写时留痕，读取零匹配；迁移 b3f7c2a91d04，R32/T073） |
 | created_at | timestamptz | |
 
 **索引**: HNSW（embedding, cosine）；pg_trgm GIN（content，中文关键词检索，T033/R9）。

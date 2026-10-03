@@ -135,7 +135,9 @@ async def _stream(
         # 兜底/弱相关产生的问答回写检索层（FR-008）；kb 命中的回答不重复入库
         # 回写前经 LLM 复用性判定（失败说明/个人数据断言/寒暄不回写；见 writeback.is_reusable_qa、R18 续三）
         if plan.source_type is AnswerSource.model_knowledge:
-            enqueue_writeback(owner_id, conversation_id, conversation_title, text, answer_text)
+            enqueue_writeback(
+                owner_id, conversation_id, conversation_title, text, answer_text, assistant.id
+            )
 
         yield _sse(
             "done",

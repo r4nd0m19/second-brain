@@ -132,6 +132,9 @@ class Chunk(Base, OwnerMixin, TimestampMixin):
     chapter: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     paragraph: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     embedding: Mapped[list[float]] = mapped_column(Vector(settings.embedding_dim), nullable=False)
+    # 写时留痕（三期 P1，2026-10-03）：对话回写块的溯源结果 {"message_id": str, "citations": [...]|None}；
+    # 读取时直接取用，不再依赖文本匹配启发式（仅存量数据兜底走启发式/回填）
+    provenance: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     document: Mapped["Document"] = relationship(back_populates="chunks")
 

@@ -8,7 +8,16 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.chat import writeback
 from app.config import settings
-from app.models import Chunk, Conversation, Document, DocumentStatus, SourceType, User
+from app.models import (
+    Chunk,
+    Conversation,
+    Document,
+    DocumentStatus,
+    Message,
+    MessageRole,
+    SourceType,
+    User,
+)
 
 
 def _vec(axis: int) -> list[float]:
@@ -87,3 +96,36 @@ async def test_distinct_writeback_kept(monkeypatch, maker):
     _enable_writeback(monkeypatch, maker, _vec(1))  # 正交向量 → 相似度 0 → 正常写入
     await writeback.writeback_exchange(owner, conv, "测试", "新问题", "新答案")
     assert await _count(maker, owner) == 2
+
+
+async def test_writeback_stores_provenance(monkeypatch, maker):
+    """写时留痕（三期 P1）：回写块携带 {message_id, citations}——读取零匹配取用。"""
+    owner, conv = uuid.uuid4(), uuid.uuid4()
+    _enable_writeback(monkeypatch, maker, _vec(2))
+    cites = [
+        {"document_id": str(uuid.uuid4()), "chunk_id": str(uuid.uuid4()), "quote": "q"}
+    ]
+    msg_id = uuid.uuid4()
+    async with maker() as s:
+        s.add(User(id=owner, username=f"wb-{owner.hex[:8]}", password_hash="x"))
+        await s.flush()
+        s.add(Conversation(id=conv, owner_user_id=owner, title="测试会话"))
+        await s.flush()
+        s.add(
+            Message(
+                id=msg_id,
+                owner_user_id=owner,
+                conversation_id=conv,
+                role=MessageRole.assistant,
+                content="新答案",
+                citations=cites,
+            )
+        )
+        await s.commit()
+
+    await writeback.writeback_exchange(owner, conv, "测试", "新问题", "新答案", msg_id)
+
+    async with maker() as s:
+        chunk = await s.scalar(select(Chunk).where(Chunk.owner_user_id == owner))
+    assert chunk is not None
+    assert chunk.provenance == {"message_id": str(msg_id), "citations": cites}

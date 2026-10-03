@@ -16,6 +16,7 @@ import uuid
 
 from sqlalchemy import func, select
 
+from app.chat.inherit import resolve_inherited_citations
 from app.chat.llm import complete_chat, get_llm_client
 from app.config import settings
 from app.db import SessionLocal
@@ -33,6 +34,7 @@ async def writeback_exchange(
     conversation_title: str,
     question: str,
     answer: str,
+    message_id: uuid.UUID | None = None,
 ) -> None:
     if not await is_reusable_qa(question, answer):
         logger.info("writeback skipped (LLM judged not reusable): conv=%s", conversation_id)
@@ -84,6 +86,12 @@ async def writeback_exchange(
             )
         ) or 0
 
+        # 写时留痕（三期 P1）：把源消息与继承出处随块存下——读取时零匹配取用，
+        # 不再依赖文本匹配启发式（inherit.resolve 的匹配仅为存量数据兜底）
+        provenance = await resolve_inherited_citations(
+            session, conversation_id, content, message_id=message_id
+        )
+
         session.add(
             Chunk(
                 document_id=doc.id,
@@ -91,6 +99,7 @@ async def writeback_exchange(
                 content=content,
                 heading_path=f"第 {round_no + 1} 轮",
                 embedding=vector,
+                provenance=provenance,
             )
         )
         await session.commit()
@@ -129,13 +138,14 @@ def enqueue_writeback(
     conversation_title: str,
     question: str,
     answer: str,
+    message_id: uuid.UUID | None = None,
 ) -> None:
     """异步回写：不阻塞回答的 SSE 流（FR-008）。"""
 
     async def _run() -> None:
         try:
             await writeback_exchange(
-                owner_id, conversation_id, conversation_title, question, answer
+                owner_id, conversation_id, conversation_title, question, answer, message_id
             )
         except Exception:  # 回写失败不影响用户（仅记日志）
             logger.exception("writeback failed: conv=%s", conversation_id)

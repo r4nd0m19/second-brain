@@ -1,5 +1,6 @@
 "use client";
 
+import { createParser } from "eventsource-parser";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
@@ -23,6 +24,9 @@ type ChatMsg = {
   error?: string;
   streaming?: boolean;
 };
+
+/** 流式静默看门狗（三期 P1）：超过该时长无任何字节 → 主动中止（不设总超时，长回答不被掐断） */
+const STREAM_IDLE_TIMEOUT_MS = 60_000;
 
 /** 来源标签 → 文案键（中英文案表见 lib/i18n） */
 const SOURCE_LABEL_KEY: Record<string, MsgKey> = {
@@ -283,6 +287,8 @@ export default function ChatPage() {
   // 时定位一次到底部；流式生成期间完全不跟随——页面保持不动。
   const scrollBottomOnceRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null); // 生成中止（停止按钮 / 静默看门狗）
+  const stopRequestedRef = useRef(false); // 区分"用户主动停止"与"其他中断"
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null); // 「复制」反馈
 
   // 侧栏收起（惯例：独立切换按钮 + localStorage 记忆 + Ctrl/Cmd+B；首屏由 layout 内联脚本防闪跳）
@@ -493,11 +499,18 @@ export default function ChatPage() {
     }
   }
 
+  /** 停止生成（三期 P1）：中止 fetch 流；已生成内容保留 */
+  function stopGeneration() {
+    stopRequestedRef.current = true;
+    abortRef.current?.abort();
+  }
+
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
     setBusy(true);
+    stopRequestedRef.current = false;
     scrollBottomOnceRef.current = true; // 发送：定位一次，让新提问可见；之后保持不动
     setMessages((m) => [
       ...m,
@@ -505,12 +518,26 @@ export default function ChatPage() {
       { role: "assistant", content: "", streaming: true },
     ]);
 
+    const ac = new AbortController();
+    abortRef.current = ac;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let idleTimedOut = false;
+    const armIdle = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        idleTimedOut = true;
+        ac.abort();
+      }, STREAM_IDLE_TIMEOUT_MS);
+    };
+
     try {
+      armIdle(); // 覆盖"连接建立 / 首字节"等待；每收到数据即重置
       const res = await fetch("/api/chat", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, conversation_id: convRef.current }),
+        signal: ac.signal,
       });
       if (res.status === 401) {
         window.location.href = "/login/";
@@ -520,27 +547,16 @@ export default function ChatPage() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
       let createdNew = false;
+      let gotDone = false;
+      let sawError = false;
 
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let split;
-        while ((split = buffer.indexOf("\n\n")) >= 0) {
-          const block = buffer.slice(0, split);
-          buffer = buffer.slice(split + 2);
-
-          let event = "message";
-          let data = "";
-          for (const line of block.split("\n")) {
-            if (line.startsWith("event:")) event = line.slice(6).trim();
-            else if (line.startsWith("data:")) data += line.slice(5).trim();
-          }
-          if (!data) continue;
-          const payload = JSON.parse(data);
+      // SSE 帧解析交 eventsource-parser（规范实现：CRLF / 多行 data / 跨块 UTF-8；手写解析退役，三期 P1）
+      const parser = createParser({
+        onEvent: (ev) => {
+          if (!ev.data) return;
+          const payload = JSON.parse(ev.data);
+          const event = ev.event ?? "message";
 
           if (event === "meta") {
             if (payload.conversation_id) {
@@ -560,8 +576,10 @@ export default function ChatPage() {
           } else if (event === "token") {
             setMessages((m) => patchLast(m, { content: lastContent(m) + payload.text }));
           } else if (event === "error") {
+            sawError = true;
             setMessages((m) => patchLast(m, { error: payload.message, streaming: false }));
           } else if (event === "done") {
+            gotDone = true;
             setMessages((m) =>
               patchLast(m, {
                 streaming: false,
@@ -571,17 +589,38 @@ export default function ChatPage() {
               }),
             );
           }
-        }
+        },
+      });
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        armIdle();
+        parser.feed(decoder.decode(value, { stream: true }));
+      }
+      parser.feed(decoder.decode());
+      if (!gotDone && !sawError && !stopRequestedRef.current && !idleTimedOut) {
+        setMessages((m) =>
+          patchLast(m, { error: t("chat.streamInterrupted"), streaming: false }),
+        );
       }
       if (createdNew) await loadConversations();
     } catch (err) {
-      setMessages((m) =>
-        patchLast(m, {
-          error: err instanceof Error ? err.message : t("chat.sendFailed"),
-          streaming: false,
-        }),
-      );
+      if (stopRequestedRef.current) {
+        // 用户主动停止：保留已生成内容，不报错
+      } else if (idleTimedOut) {
+        setMessages((m) => patchLast(m, { error: t("chat.streamTimeout"), streaming: false }));
+      } else {
+        setMessages((m) =>
+          patchLast(m, {
+            error: err instanceof Error ? err.message : t("chat.sendFailed"),
+            streaming: false,
+          }),
+        );
+      }
     } finally {
+      clearTimeout(idleTimer);
+      abortRef.current = null;
       setBusy(false);
       setMessages((m) => patchLast(m, { streaming: false }));
     }
@@ -821,15 +860,28 @@ export default function ChatPage() {
                 }
               }}
             />
-            <button
-              className="send-btn"
-              onClick={() => void send()}
-              disabled={busy || !input.trim()}
-              title={busy ? t("chat.answering") : t("chat.sendTitle")}
-              aria-label={t("chat.send")}
-            >
-              {busy ? "…" : "↑"}
-            </button>
+            {busy ? (
+              <button
+                type="button"
+                className="send-btn send-btn-stop"
+                onClick={stopGeneration}
+                title={t("chat.stop")}
+                aria-label={t("chat.stop")}
+              >
+                ■
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="send-btn"
+                onClick={() => void send()}
+                disabled={!input.trim()}
+                title={t("chat.sendTitle")}
+                aria-label={t("chat.send")}
+              >
+                ↑
+              </button>
+            )}
           </div>
           <div className="composer-hint">{t("chat.composerHint")}</div>
         </div>

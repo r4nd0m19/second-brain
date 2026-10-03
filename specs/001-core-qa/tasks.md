@@ -354,6 +354,18 @@ Task: "T022 前端-对话页 web/app/chat/"
   - 范围排除（按批准）：回答内容（模型按提问语言作答）、后端错误消息、layout 静态 metadata description（保持中文）
 - [x] **T067 日期控件替换（R26 追补，2026-10-03 用户实测）**：原生 `<input type="date">` 显示格式随浏览器语言、无法随界面切换（Chrome 官方 FAQ 确认无作者接口）→ 新增 `web/app/_components/date-field.tsx`（业界组件 react-day-picker v10：触发钮按界面语言格式化显示所选日期、弹层日历跟随 zh/en locale、外部点击/Escape 关闭、有值时提供「清除」）；接入 `docs` 页清理区两处（value 契约保持 "YYYY-MM-DD"，后端参数与 UTC 语义不变）；组件与中文 locale 经 `next/dynamic` 按需加载，不进页面首包
   - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过、`/` 首包 122 kB（与改造前持平）✓；rdp 样式已入导出 CSS ✓；真机复核（用户）
+- [x] **T068 SSE 客户端解析规范化 + 停止/看门狗（R28，2026-10-03 三期 P1）**：手写帧解析退役 → `eventsource-parser`（de-facto 标准，规范处理 CRLF/多行 data/跨块 UTF-8/防缓冲区膨胀）；生成中发送钮变**停止**（AbortController 中止、已生成内容保留）；60s 静默看门狗（**不设总超时**，长回答不掐断）；断流未收 done / 静默超时如实提示（`chat.streamInterrupted`/`chat.streamTimeout`）
+  - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过（chat 页 50.4→52.1 kB）✓；真机复核（发送/停止/断流，用户）
+- [x] **T069 防编造提示词对齐（R27，2026-10-03 三期 P1）**：SYSTEM_PROMPT 规则 1 按 Anthropic 三招补硬约束——事实性内容（数字/日期/人名/结论）以资料原文为准、不得臆测具体值；编号只允许使用本次实际提供的编号、严禁杜撰来源名；模型补充或推断须明确标注
+  - DoD: 131 服务端测试全过 ✓；真机问答抽查（用户）
+- [x] **T070 SW 缓存策略分级（R29，2026-10-03 三期 P1）**：`/_next/static/*`（内容哈希）缓存优先；未哈希静态（图标/manifest/字体）改 **stale-while-revalidate**（先用缓存、后台刷新）；API 与页面导航始终走网络（现状正确，保留）；缓存版本 v2（旧缓存 activate 清理）
+  - DoD: 构建通过、sw.js 随导出产物发布 ✓；真机（图标更新收敛性，随 PWA 日常使用观察）
+- [x] **T071 备份加密固化与轮换成文（R30，2026-10-03 三期 P1）**：`backup.sh` S2K 参数显式固化（`--s2k-mode 3 --s2k-digest-algo SHA256`，防工具默认漂移）；README 新增「加密参数与密钥轮换」节（事件轮换流程/旧密钥保留期/存放纪律/演练节奏）
+  - DoD: 新参数备份 + `restore.sh drill` 全量对照通过（users/documents/chunks/conversations/messages 行数、消息内容指纹、全量文件 sha256 均一致）✓
+- [x] **T072 内容指纹决策登记（R31，2026-10-03 三期 P1）**：保留 FNV-1a 32 位——论证入 R31（单 URL/10 分钟窗口/表上限 500 → 误判 ≈2⁻³² 且失败安全；simhash 为近似去重语义，不匹配"内容相同才跳过"）；无代码改动
+- [x] **T073 溯源写时留痕（R32，2026-10-03 三期 P1）**：`chunks.provenance`（JSONB，迁移 `b3f7c2a91d04`）+ 回写时解析存储（源消息 id 已知，跳过匹配）+ 读取零匹配取用 + 存量回填脚本（`scripts/backfill_chunk_provenance.py`，6/6 块）；启发式仅剩"无 provenance 旧数据"兜底
+  - DoD: 单测 +3（已知 id 跳过匹配 / provenance 直取 / 回写存储 provenance）✓；131 服务端测试全过 ✓；迁移已应用 + 回填 6/6 ✓
+- [x] **T074 大文件上传决策登记（R33，2026-10-03 三期 P1）**：维持 200MB 整传（单用户/可靠链路/低频，业界阈值 >200MB 或不可靠链路才必须 tus）；触发条件入 R33——部署阶段（WAN）大文件上传成常态时接入 tus（tuspyserver）；无代码改动
 
 ## Notes
 
