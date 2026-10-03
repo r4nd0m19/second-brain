@@ -2,7 +2,7 @@
 
 2026-10-03 架构调整（R21）：句式规则路由（清单/语义意图词表、显式联网指令正则）由
 **查询规划器**（app/chat/planner.py，LLM 工具调用）取代；规划失败/未选择工具时回退
-**默认检索基线**（默认语义检索 + 扇出），基线是安全网，规划器只是其上的优化。
+**默认检索基线**（默认语义检索），基线是安全网，规划器只是其上的优化。
 """
 
 from __future__ import annotations
@@ -52,43 +52,9 @@ def _split_hits(
     return strong, weak
 
 
-async def _expanded_search(
-    session: AsyncSession,
-    owner_user_id: uuid.UUID,
-    retrieval_query: str,
-    base_hits: list[RetrievedChunk],
-    time_range: TimeRange | None,
-) -> list[RetrievedChunk]:
-    """低置信时的多查询扇出（FR-021/R19）：变体逐一检索、按块合并取最高分；失败静默。
-
-    指代/省略消解由查询规划器完成（携带最近对话窗口，conversational query rewriting，
-    R3 补记 2026-10-03）——不再做客户端拼接（`_REFERENTIAL_HINTS` 词表已退役）。
-    """
-    variants = await expand_queries(retrieval_query)
-    if not variants:
-        return base_hits
-    best = {h.chunk_id: h for h in base_hits}
-    for variant in variants:
-        variant_hits = await hybrid_search(
-            session,
-            owner_user_id,
-            variant,
-            captured_after=time_range.start if time_range else None,
-            captured_before=time_range.end if time_range else None,
-        )
-        for h in variant_hits:
-            current = best.get(h.chunk_id)
-            if current is None or h.score > current.score:
-                best[h.chunk_id] = h
-    merged = sorted(best.values(), key=lambda h: h.score, reverse=True)
-    logger.info(
-        "retrieval expanded: variants=%d top %.3f -> %.3f",
-        len(variants),
-        base_hits[0].score if base_hits else 0.0,
-        merged[0].score if merged else 0.0,
-    )
-    return merged
-
+# 低置信多查询扇出（FR-021/R19）已于 T077 退役（2026-10-03，评测驱动）：
+# 重排换代后命中题 base 全强（≥0.994）、库外题被变体造成假强命中（b03 0.868/0.983）+ 空挣扎 11–19s；
+# 措辞盲区的职责由前置的规划器改写（FR-022）承担。改写器 `expand_queries` 仍服务联网"免费加深"（T085）。
 
 SYSTEM_PROMPT = (
     "你是「second-brain」，用户的个人知识助手。规则：\n"
@@ -466,7 +432,7 @@ async def _execute_plan(
     if not (search_queries or browsing_ranges or web_queries):
         return None
 
-    # ---- 本地检索：多查询合并、按块去重取最高分；低置信扇出（FR-021）；总量上限 2×top_k ----
+    # ---- 本地检索：多查询合并、按块去重取最高分；总量上限 2×top_k（低置信扇出已退役，见 T077）----
     # 原问题始终参与召回（MultiQuery 惯例：改写是增量通道、原问题永远保留）——2026-10-03 实测：
     # 规划器改写质量有波动（g05 原句重排 0.775、某轮改写词袋跌至 0.32；g06 部分轮次池外漏召），
     # 原问题通道是最稳的兜底；时间范围沿用规划器第一个时间窗（问题被判定为时间限定时同样受限）
@@ -487,9 +453,6 @@ async def _execute_plan(
             captured_after=tr.start if tr else None,
             captured_before=tr.end if tr else None,
         )
-        if not any(h.score >= settings.retrieval_hit_threshold for h in hits):
-            await _emit_status(on_status, "expanding")
-            hits = await _expanded_search(session, owner_user_id, query, hits, tr)
         for h in hits:
             current = merged.get(h.chunk_id)
             if current is None or h.score > current.score:
@@ -573,14 +536,10 @@ async def _baseline_reply(
     history: list[ChatMessage],
     on_status: Callable[[str], Awaitable[None]] | None = None,
 ) -> ReplyPlan:
-    """基线路径（规划器失败/未选择工具时）：默认语义检索 + 低置信扇出；保持既有行为下限。"""
+    """基线路径（规划器失败/未选择工具时）：默认语义检索；保持既有行为下限（扇出已退役，T077）。"""
     await _emit_status(on_status, "retrieving")
     hits = await hybrid_search(session, owner_user_id, user_text)
     strong, weak = _split_hits(hits)
-    if not strong:
-        await _emit_status(on_status, "expanding")
-        hits = await _expanded_search(session, owner_user_id, user_text, hits, None)
-        strong, weak = _split_hits(hits)
 
     messages: list[ChatMessage] = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages.extend(history)

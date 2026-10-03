@@ -69,7 +69,7 @@ class _NullSession:  # 强命中路径会调用 enrich_citations，提供最小�
 
 
 def _patch(monkeypatch, *, calls=None, client=None, hits=None, expand=None):
-    """装配：规划器（工具调用）/ 检索 / 搜索客户端 / 扇出。"""
+    """装配：规划器（工具调用）/ 检索 / 搜索客户端 / 检索扩检（T077 退役：桩被调用即报错）。"""
 
     async def fake_plan(_user_text: str, _history=None) -> list[PlannedCall]:
         return [PlannedCall(name=n, args=a) for n, a in (calls or [])]
@@ -78,7 +78,7 @@ def _patch(monkeypatch, *, calls=None, client=None, hits=None, expand=None):
         return hits if hits is not None else []
 
     async def no_expand(*_args, **_kwargs):
-        raise AssertionError("本用例不应触发扇出")
+        raise AssertionError("扇出已退役（T077）：不应调用 expand_queries")
 
     monkeypatch.setattr(orch, "plan_retrieval", fake_plan)
     monkeypatch.setattr(orch, "hybrid_search", fake_search)
@@ -217,25 +217,19 @@ async def test_plan_web_balance_maps_reason(monkeypatch) -> None:
     assert plan.web_error == "balance"
 
 
-async def test_plan_weak_search_triggers_expansion(monkeypatch) -> None:
-    strong = _chunk(0.8, "正解")
-    expanded: list[str] = []
-
-    async def expand(query: str) -> list[str]:
-        expanded.append(query)
-        return ["变体一"] if query == "q" else []
+async def test_plan_weak_search_no_expansion(monkeypatch) -> None:
+    """T077 退役：规划查询弱检索不再触发扇出——不升格 kb，走兜底（原问题通道照常参与）。"""
 
     async def fake_search(_session, _owner, query, captured_after=None, captured_before=None):
-        return [strong] if query == "变体一" else [_chunk(0.55)]
+        return [_chunk(0.55)]
 
-    _patch(monkeypatch, calls=[("search_library", {"query": "q"})], expand=expand)
+    _patch(monkeypatch, calls=[("search_library", {"query": "q"})])  # 默认 no_expand：被调用即报错
     monkeypatch.setattr(orch, "hybrid_search", fake_search)
 
     plan = await orch.prepare_reply(_NullSession(), OWNER, "找找看", [])
-    # 规划查询弱检索 → 触发扇出；原问题通道（MultiQuery 惯例）同样参与、同样可能触发
-    assert "q" in expanded
-    assert plan.source_type is AnswerSource.kb
-    assert [c["document_name"] for c in plan.citations] == ["正解"]
+
+    assert plan.source_type is AnswerSource.model_knowledge
+    assert plan.citations == []
 
 
 async def test_invalid_plan_falls_back_to_baseline(monkeypatch) -> None:

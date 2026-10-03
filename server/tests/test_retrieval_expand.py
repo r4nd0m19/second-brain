@@ -1,4 +1,4 @@
-"""低置信多查询重试（FR-021/R19）：变体解析 + 编排扩检行为（改写失败静默）。"""
+"""检索改写与扇出退役回归（FR-021/R19 → T077）：变体解析（联网免费加深仍用）+ 低置信不再扩检。"""
 
 import uuid
 
@@ -76,27 +76,26 @@ def _patch(monkeypatch, *, search, expand) -> None:
     guard.reset_state()
 
 
-async def test_low_confidence_expansion_rescues_strong_hit(monkeypatch) -> None:
-    """弱命中 → 扇出变体召回强命中 → 走 kb 路径且出处含变体召回文档。"""
+async def test_low_confidence_no_longer_expands(monkeypatch) -> None:
+    """T077 退役回归：弱命中不再扇出——变体不得被调用、弱命中不升格 kb（走兜底 + related_hints）。"""
     weak = _chunk(0.55, "弱资料")
-    strong = _chunk(0.8, "正解")
     seen_queries: list[str] = []
 
     async def fake_search(_session, _owner, query, captured_after=None, captured_before=None):
         seen_queries.append(query)
-        return {"低置信问题": [weak], "变体一": [strong]}.get(query, [])
+        return [weak]
 
-    async def fake_expand(q: str) -> list[str]:
-        assert q == "低置信问题"
-        return ["变体一"]
+    async def boom_expand(_q: str) -> list[str]:
+        raise AssertionError("扇出已退役（T077）：不应调用 expand_queries")
 
-    _patch(monkeypatch, search=fake_search, expand=fake_expand)
+    _patch(monkeypatch, search=fake_search, expand=boom_expand)
 
     plan = await orch.prepare_reply(_NullSession(), OWNER, "低置信问题", [])
 
-    assert plan.source_type is AnswerSource.kb
-    assert [c["document_name"] for c in plan.citations] == ["正解"]
-    assert seen_queries == ["低置信问题", "变体一"]
+    assert seen_queries == ["低置信问题"]  # 仅原问题一次检索，无变体
+    assert plan.source_type is AnswerSource.model_knowledge  # 弱命中不再升格 kb
+    assert plan.citations == []
+    assert [c["document_name"] for c in plan.related_hints] == ["弱资料"]
 
 
 async def test_strong_hit_skips_expansion(monkeypatch) -> None:
@@ -111,15 +110,16 @@ async def test_strong_hit_skips_expansion(monkeypatch) -> None:
     assert plan.source_type is AnswerSource.kb
 
 
-async def test_expansion_failure_keeps_existing_behavior(monkeypatch) -> None:
-    """改写无有效变体 → 与原行为一致：无强命中且无联网 → model_knowledge。"""
+async def test_pure_fallback_question_no_expansion(monkeypatch) -> None:
+    """库外问题（0.4 < 弱线）→ 直接兜底：不扩检、无 related_hints（T077 退役回归）。"""
 
     async def fake_search(_session, _owner, _query, captured_after=None, captured_before=None):
         return [_chunk(0.4)]
 
-    async def empty_expand(_q: str) -> list[str]:
-        return []
+    async def boom_expand(_q: str) -> list[str]:
+        raise AssertionError("扇出已退役（T077）：不应调用 expand_queries")
 
-    _patch(monkeypatch, search=fake_search, expand=empty_expand)
+    _patch(monkeypatch, search=fake_search, expand=boom_expand)
     plan = await orch.prepare_reply(None, OWNER, "低置信问题", [])
     assert plan.source_type is AnswerSource.model_knowledge
+    assert plan.related_hints == []

@@ -1,0 +1,581 @@
+{
+  "config": {
+    "rounds": 3,
+    "strong": 0.6,
+    "window": 12
+  },
+  "records": [
+    {
+      "id": "f01",
+      "category": "hit",
+      "question": "书里把“大泥球”（Big Ball of Mud）这种架构描述成什么？给出的建议是什么？",
+      "expected": "Fundamentals",
+      "base_top1": 0.999,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 0.999,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 1.6
+    },
+    {
+      "id": "f02",
+      "category": "hit",
+      "question": "分层架构中的“隔离层”（layers of isolation）是什么意思？",
+      "expected": "Fundamentals",
+      "base_top1": 1.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "f03",
+      "category": "hit",
+      "question": "管道（pipeline）架构适合处理什么样的系统？",
+      "expected": "Fundamentals",
+      "base_top1": 1.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 1.0
+    },
+    {
+      "id": "f04",
+      "category": "hit",
+      "question": "书中引用康威定律（Conway's Law）想说明什么道理？",
+      "expected": "Fundamentals",
+      "base_top1": 0.994,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 0.994,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 1.2
+    },
+    {
+      "id": "f05",
+      "category": "hit",
+      "question": "为什么说软件架构里的决策本质上是权衡（trade-off）？",
+      "expected": "Fundamentals",
+      "base_top1": 1.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "f06",
+      "category": "hit",
+      "question": "Why does the book recommend a “database per service” data topology for microservices?",
+      "expected": "Fundamentals",
+      "base_top1": 1.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.7
+    },
+    {
+      "id": "f07",
+      "category": "hit",
+      "question": "风险风暴（risk storming）是一次性活动吗？书里怎么说的？",
+      "expected": "Fundamentals",
+      "base_top1": 1.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.9
+    },
+    {
+      "id": "f08",
+      "category": "hit",
+      "question": "事件驱动架构里，为了避免事件丢失可以采用什么办法？",
+      "expected": "Fundamentals",
+      "base_top1": 1.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 1.2
+    },
+    {
+      "id": "g01",
+      "category": "hit",
+      "question": "游戏引擎的运行时架构大致由哪些部分构成？",
+      "expected": "Game Engine",
+      "base_top1": 0.999,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 0.999,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "g02",
+      "category": "hit",
+      "question": "游戏循环（game loop）如果实现得不好，会产生什么副作用？",
+      "expected": "Game Engine",
+      "base_top1": 1.0,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "g03",
+      "category": "hit",
+      "question": "为什么游戏引擎要专门处理字符串（string）？直接用一个 std::string 不行吗？",
+      "expected": "Game Engine",
+      "base_top1": 0.999,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 0.999,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 1.1
+    },
+    {
+      "id": "g04",
+      "category": "hit",
+      "question": "What does the rendering pipeline define for how a single full-frame image should be rendered?",
+      "expected": "Game Engine",
+      "base_top1": 0.994,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 0.994,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "g05",
+      "category": "hit",
+      "question": "环境映射（environment mapping）里，怎么找到某个表面点对应的贴图纹素？",
+      "expected": "Game Engine",
+      "base_top1": 1.0,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 1.0,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "g06",
+      "category": "hit",
+      "question": "OpenAL 在书里被提到时的许可状况是怎样的？",
+      "expected": "Game Engine",
+      "base_top1": 0.998,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 0.998,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 0.8
+    },
+    {
+      "id": "g07",
+      "category": "hit",
+      "question": "当动画的时间缩放（time scale）设为 0.5 时，播放会发生什么变化？",
+      "expected": "Game Engine",
+      "base_top1": 0.999,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": true,
+      "base_expected_score": 0.999,
+      "fanned": false,
+      "rounds": [],
+      "elapsed_s": 1.0
+    },
+    {
+      "id": "b01",
+      "category": "fallback",
+      "question": "量子计算里表面码（surface code）的纠错阈值大约是多少？",
+      "expected": null,
+      "base_top1": 0.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": false,
+      "base_expected_score": null,
+      "fanned": true,
+      "rounds": [
+        {
+          "variants": [
+            "量子计算 表面码 纠错阈值",
+            "surface code 容错阈值 大约多少",
+            "量子纠错 surface code threshold"
+          ],
+          "top1": 0.023,
+          "top1_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+          "top1_source": "surface code 容错阈值 大约多少",
+          "strong": false,
+          "top1_corroborated": true,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "量子计算 表面码 纠错阈值 数值",
+            "surface code 容错阈值 大约多少",
+            "量子纠错 表面码 threshold 是多少"
+          ],
+          "top1": 0.024,
+          "top1_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+          "top1_source": "surface code 容错阈值 大约多少",
+          "strong": false,
+          "top1_corroborated": true,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "量子计算 表面码 纠错阈值",
+            "surface code 错误阈值 量子纠错",
+            "Surface code error correction threshold"
+          ],
+          "top1": 0.005,
+          "top1_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+          "top1_source": "Surface code error correction threshold",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        }
+      ],
+      "elapsed_s": 13.9
+    },
+    {
+      "id": "b02",
+      "category": "fallback",
+      "question": "2026 年世界杯在哪些城市举办？",
+      "expected": null,
+      "base_top1": 0.037,
+      "base_doc": "伊朗戰爭 (2026年)",
+      "base_strong": false,
+      "base_expected_score": null,
+      "fanned": true,
+      "rounds": [
+        {
+          "variants": [
+            "2026年世界杯举办城市有哪些",
+            "2026 FIFA World Cup 主办城市",
+            "2026世界杯比赛城市列表"
+          ],
+          "top1": 0.152,
+          "top1_doc": "伊朗戰爭 (2026年)",
+          "top1_source": "2026世界杯比赛城市列表",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "2026世界杯举办城市有哪些",
+            "2026 FIFA World Cup host cities",
+            "2026年世界杯主办城市列表"
+          ],
+          "top1": 0.177,
+          "top1_doc": "伊朗戰爭 (2026年)",
+          "top1_source": "2026世界杯举办城市有哪些",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "2026世界杯举办城市有哪些",
+            "2026 FIFA World Cup host cities",
+            "2026年美加墨世界杯比赛城市"
+          ],
+          "top1": 0.172,
+          "top1_doc": "伊朗戰爭 (2026年)",
+          "top1_source": "2026世界杯举办城市有哪些",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        }
+      ],
+      "elapsed_s": 17.1
+    },
+    {
+      "id": "b03",
+      "category": "fallback",
+      "question": "如何用 Rust 实现一个无锁队列？",
+      "expected": null,
+      "base_top1": 0.368,
+      "base_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+      "base_strong": false,
+      "base_expected_score": null,
+      "fanned": true,
+      "rounds": [
+        {
+          "variants": [
+            "Rust 无锁队列实现",
+            "lock-free queue Rust 并发编程",
+            "Rust 原子操作实现无锁队列"
+          ],
+          "top1": 0.868,
+          "top1_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+          "top1_source": "lock-free queue Rust 并发编程",
+          "strong": true,
+          "top1_corroborated": false,
+          "strong_hits": [
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.868,
+              "source": "lock-free queue Rust 并发编程"
+            },
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.777,
+              "source": "lock-free queue Rust 并发编程"
+            },
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.678,
+              "source": "lock-free queue Rust 并发编程"
+            }
+          ]
+        },
+        {
+          "variants": [
+            "Rust 无锁队列实现方法",
+            "Rust lock-free queue 实现",
+            "Rust 并发队列 lock-free 编程"
+          ],
+          "top1": 0.983,
+          "top1_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+          "top1_source": "Rust 并发队列 lock-free 编程",
+          "strong": true,
+          "top1_corroborated": false,
+          "strong_hits": [
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.983,
+              "source": "Rust 并发队列 lock-free 编程"
+            },
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.979,
+              "source": "Rust 并发队列 lock-free 编程"
+            },
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.964,
+              "source": "Rust 并发队列 lock-free 编程"
+            },
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.951,
+              "source": "Rust 并发队列 lock-free 编程"
+            },
+            {
+              "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+              "score": 0.944,
+              "source": "Rust 并发队列 lock-free 编程"
+            }
+          ]
+        },
+        {
+          "variants": [
+            "Rust 无锁队列实现方法",
+            "lock-free queue in Rust implementation",
+            "Rust 并发无锁队列设计"
+          ],
+          "top1": 0.526,
+          "top1_doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+          "top1_source": "lock-free queue in Rust implementation",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        }
+      ],
+      "elapsed_s": 11.4
+    },
+    {
+      "id": "b04",
+      "category": "fallback",
+      "question": "正宗的法式可颂怎么做？",
+      "expected": null,
+      "base_top1": 0.046,
+      "base_doc": "登录 - 考务运营中心",
+      "base_strong": false,
+      "base_expected_score": null,
+      "fanned": true,
+      "rounds": [
+        {
+          "variants": [
+            "法式可颂的正宗做法",
+            "如何制作法式可颂",
+            "法式可颂烘焙食谱"
+          ],
+          "top1": 0.053,
+          "top1_doc": "登录 - 考务运营中心",
+          "top1_source": "如何制作法式可颂",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "法式可颂家常做法",
+            "可颂面包烘焙配方",
+            "Croissant 制作步骤"
+          ],
+          "top1": 0.046,
+          "top1_doc": "登录 - 考务运营中心",
+          "top1_source": "base",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "法式可颂正宗做法",
+            "法式牛角包如何制作",
+            "可颂面包传统配方"
+          ],
+          "top1": 0.046,
+          "top1_doc": "登录 - 考务运营中心",
+          "top1_source": "base",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        }
+      ],
+      "elapsed_s": 19.3
+    },
+    {
+      "id": "b05",
+      "category": "fallback",
+      "question": "太阳系里木星目前有多少颗已确认的卫星？",
+      "expected": null,
+      "base_top1": 0.0,
+      "base_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+      "base_strong": false,
+      "base_expected_score": null,
+      "fanned": true,
+      "rounds": [
+        {
+          "variants": [
+            "木星已确认卫星数量",
+            "木星目前有多少颗卫星",
+            "Jupiter confirmed moons count"
+          ],
+          "top1": 0.004,
+          "top1_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+          "top1_source": "Jupiter confirmed moons count",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "木星已确认卫星数量",
+            "木星有多少颗confirmed卫星",
+            "Jupiter confirmed moons count"
+          ],
+          "top1": 0.004,
+          "top1_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+          "top1_source": "Jupiter confirmed moons count",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        },
+        {
+          "variants": [
+            "木星已确认卫星数量",
+            "木星有多少颗confirmed moons",
+            "Jupiter目前确认的卫星总数"
+          ],
+          "top1": 0.004,
+          "top1_doc": "Fundamentals of Software Architecture_ A Modern Engineering -- Mark Richards -- 2, 2025 -- O'Reilly Media -- afcbf6a4ca13dc689e7879cf2ff7c594 -- Anna’s Archive.epub",
+          "top1_source": "Jupiter目前确认的卫星总数",
+          "strong": false,
+          "top1_corroborated": false,
+          "strong_hits": []
+        }
+      ],
+      "elapsed_s": 18.8
+    }
+  ],
+  "analysis": {
+    "基线（现生产·扇出开）": {
+      "兜底假强明细": [
+        {
+          "id": "b03",
+          "round": 1,
+          "top1": 0.868,
+          "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+          "source": "lock-free queue Rust 并发编程",
+          "corroborated": false
+        },
+        {
+          "id": "b03",
+          "round": 2,
+          "top1": 0.983,
+          "doc": "Game Engine Architecture -- Gregory, Jason -- Game Engine Architecture, 3, 2019 -- A K Peters_CRC Press -- 9781138035454 -- 42868ee0b48b38f1f6706cacde3c4d79 -- Anna’s Archive.pdf",
+          "source": "Rust 并发队列 lock-free 编程",
+          "corroborated": false
+        }
+      ],
+      "兜底假强(轮次合计)": 2,
+      "兜底题数(扇出触发)": 5,
+      "命中集救回": [],
+      "命中集强错文档": []
+    },
+    "候选③ 触发收紧(仅 base≥X 扇出)": {
+      "0.00": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      },
+      "0.30": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      },
+      "0.45": {
+        "兜底假强剩余(轮次)": 0,
+        "命中救回保留": "0/0"
+      },
+      "0.50": {
+        "兜底假强剩余(轮次)": 0,
+        "命中救回保留": "0/0"
+      }
+    },
+    "候选② 变体惩罚(变体来源 −δ)": {
+      "0.00": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      },
+      "0.03": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      },
+      "0.05": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      },
+      "0.08": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      },
+      "0.10": {
+        "兜底假强剩余(轮次)": 2,
+        "命中救回保留": "0/0"
+      }
+    },
+    "候选① 佐证要求(原问题词项)": {
+      "兜底假强剩余(轮次)": 0,
+      "命中救回保留": "0/0"
+    }
+  }
+}
