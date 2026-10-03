@@ -99,6 +99,58 @@ async def test_low_confidence_expansion_rescues_strong_hit(monkeypatch) -> None:
     assert seen_queries == ["低置信问题", "变体一"]
 
 
+def test_referential_splice_rules() -> None:
+    """T039 改造（2026-10-03）：拼接仅作低置信候选——纯函数规则。"""
+    history = [{"role": "user", "content": "康威定律是什么？"}]
+    assert orch._referential_splice("书里怎么说的？", history) == "康威定律是什么？ 书里怎么说的？"
+    assert orch._referential_splice("那本书里关于它的部分讲了什么", history) is not None
+    # 长且无指代词 → 不拼接；无历史 → 不拼接；与上轮相同 → 不拼接
+    assert orch._referential_splice("光合作用的暗反应阶段发生在叶绿体的基质中请详细说明", history) is None
+    assert orch._referential_splice("短问题", []) is None
+    assert orch._referential_splice("康威定律是什么？", history) is None
+
+
+async def test_short_new_question_not_polluted_by_history(monkeypatch) -> None:
+    """实测修复：自足强命中（「游戏循环怎么实现」0.624）不得被上一轮话题拼接稀释（0.594 跌破阈值）。"""
+    queries: list[str] = []
+
+    async def fake_search(_session, _owner, query, captured_after=None, captured_before=None):
+        queries.append(query)
+        return [_chunk(0.62, "游戏引擎书")]
+
+    async def boom(*_args, **_kwargs):
+        raise AssertionError("强命中不应触发重试/拼接")
+
+    _patch(monkeypatch, search=fake_search, expand=boom)
+    history = [{"role": "user", "content": "架构书里分层架构是怎么讲的？"}]
+
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "游戏循环怎么实现", history)
+
+    assert plan.source_type is AnswerSource.kb
+    assert queries == ["游戏循环怎么实现"]  # 未经拼接、未重试
+
+
+async def test_weak_referential_followup_splices_in_retry(monkeypatch) -> None:
+    """指代性追问低置信时，拼接上一轮问题的版本作为候选参与重试并救回。"""
+    strong = _chunk(0.8, "康威定律所在章节")
+    seen: list[str] = []
+
+    async def fake_search(_session, _owner, query, captured_after=None, captured_before=None):
+        seen.append(query)
+        return [strong] if query == "康威定律是什么？ 书里怎么说的？" else []
+
+    async def no_variants(_query: str) -> list[str]:
+        return []
+
+    _patch(monkeypatch, search=fake_search, expand=no_variants)
+    history = [{"role": "user", "content": "康威定律是什么？"}]
+
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "书里怎么说的？", history)
+
+    assert plan.source_type is AnswerSource.kb
+    assert "康威定律是什么？ 书里怎么说的？" in seen
+
+
 async def test_strong_hit_skips_expansion(monkeypatch) -> None:
     async def boom(*_args, **_kwargs):
         raise AssertionError("强命中不应触发扩检")
