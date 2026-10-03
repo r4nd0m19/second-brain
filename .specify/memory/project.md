@@ -163,6 +163,7 @@
 - 2026-10-01：定制 `spec-template.md`（+背景与问题、Non-Goals、NFR 节）、`plan-template.md`（+设计决策与理由节）、`tasks-template.md`（每任务 +Deps/+DoD 子项）。
 - 2026-10-01：**sdd-standard 标准件建成**（`~/code/sdd-standard`，preset + 引导脚本，已在临时项目实测通过）——本项目的定制模板与 constitution 通用层是其母版来源。
 - ⚠️ `specify self` 升级或重新 init 可能覆盖 `.specify/templates/`；升级前先备份/对比本记录。
+- 2026-10-03：**「范式优先」纪律落地**（用户决策「全部加上」）：① 全局 `~/.claude/CLAUDE.md` 新增「范式优先（prior-art-first）」节，decision-consult skill 增补（调研必含业界范式对照、推荐项默认业界范式、机制自研偏离须征询）；② 本仓 `plan-template.md`「设计决策与理由」增**业界范式对照**列/条目、`/speckit-analyze` 增 G. 范式偏离检查；③ `~/code/sdd-standard` 母版同步（模板 + README）。动因：词表式自研机制（R17–R21 清剿）暴露「设计时未对照业界范式、自研无举证」的流程洞；机制设计默认业界范式、自研需举证。
 
 ## 附录 D：候选 feature 清单（Backlog）
 
