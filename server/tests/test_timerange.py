@@ -44,7 +44,6 @@ def test_this_week_and_last_week_monday_start() -> None:
     assert r is not None
     assert r.start == _midnight(monday - timedelta(days=7))
     assert r.end == _midnight(monday)
-    assert r.intent == "list"
 
 
 def test_last_week_crosses_year_boundary() -> None:
@@ -92,15 +91,12 @@ def test_this_year() -> None:
     assert r.end == datetime(2027, 1, 1, tzinfo=TZ)
 
 
-def test_intent_list_vs_search_vs_none() -> None:
+def test_intent_field_retired() -> None:
+    """R21（2026-10-03）：list/search 意图字段随规则路由退役，取数方式由查询规划器决定。"""
     now = _anchor()
-    assert parse_time_range("我上周看过哪些网页？", now).intent == "list"
-    assert parse_time_range("上周看过的文章里关于中间件的部分", now).intent == "search"
+    r = parse_time_range("我昨天浏览了什么内容", now)
+    assert r is not None and not hasattr(r, "intent")
     assert parse_time_range("什么是 RAG？", now) is None
-    # 2026-10-03 实测补齐：「浏览了什么内容」类问句此前误判 search → 答"没有资料"（应走清单直达）
-    assert parse_time_range("我昨天浏览了什么内容", now).intent == "list"
-    assert parse_time_range("昨天看了什么", now).intent == "list"
-    assert parse_time_range("我昨天读了什么", now).intent == "list"
 
 
 def test_naive_now_is_localized() -> None:

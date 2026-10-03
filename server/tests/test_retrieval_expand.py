@@ -66,6 +66,10 @@ async def test_expand_queries_excludes_echo(monkeypatch) -> None:
 
 
 def _patch(monkeypatch, *, search, expand) -> None:
+    async def no_plan(_user_text: str) -> list:
+        return []  # 规划器未选择工具 → 走基线路径（本组用例聚焦既有检索行为）
+
+    monkeypatch.setattr(orch, "plan_retrieval", no_plan)
     monkeypatch.setattr(orch, "hybrid_search", search)
     monkeypatch.setattr(orch, "expand_queries", expand)
     monkeypatch.setattr(orch, "get_web_search", lambda: None)

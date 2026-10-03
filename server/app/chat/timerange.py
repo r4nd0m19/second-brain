@@ -1,8 +1,8 @@
 """中文相对时间解析（F2 US3；research R6）：规则层（本模块）+ LLM 兜底（orchestrator）。
 
-契约：`TimeRange {start, end, granularity, confidence, intent}` —— 半开区间 [start, end)；
+契约：`TimeRange {start, end, granularity, confidence}` —— 半开区间 [start, end)；
 时区固定 Asia/Shanghai；锚点 = 收到消息的时刻（naive 视为本地时间）。
-intent：list（"看过哪些"清单）| search（语义×时间组合）| none 由"未命中"表示（返回 None）。
+（2026-10-03 R21：list/search 意图字段随规则路由一并退役，取数方式由查询规划器决定。）
 """
 
 from __future__ import annotations
@@ -14,26 +14,6 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Asia/Shanghai")
-
-_LIST_HINTS = (
-    "哪些",
-    "哪几",
-    "看过什么",
-    "看过些什么",
-    "看过啥",
-    "看了什么",
-    "看了些什么",
-    "看了啥",
-    "都看了什么",
-    "都有什么",
-    "浏览了什么",
-    "浏览了些什么",
-    "浏览过什么",
-    "浏览了啥",
-    "浏览过啥",
-    "读过什么",
-    "读了什么",
-)
 
 _CN_DIGITS = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
 
@@ -47,7 +27,6 @@ class TimeRange:
     end: datetime
     granularity: str  # day / week / month / year / custom
     confidence: float
-    intent: str = "search"
 
 
 def _cn_number(token: str) -> int | None:
@@ -68,10 +47,6 @@ def _midnight(day: date) -> datetime:
     return datetime(day.year, day.month, day.day, tzinfo=TZ)
 
 
-def _intent(text: str) -> str:
-    return "list" if any(hint in text for hint in _LIST_HINTS) else "search"
-
-
 def parse_time_range(text: str, now: datetime | None = None) -> TimeRange | None:
     """规则层解析；未命中返回 None（由调用方决定是否走 LLM 兜底）。"""
     anchor = now if now is not None else datetime.now(TZ)
@@ -79,10 +54,9 @@ def parse_time_range(text: str, now: datetime | None = None) -> TimeRange | None
         anchor = anchor.replace(tzinfo=TZ)
     anchor = anchor.astimezone(TZ)
     today = anchor.date()
-    intent = _intent(text)
 
     def result(start: datetime, end: datetime, granularity: str) -> TimeRange:
-        return TimeRange(start=start, end=end, granularity=granularity, confidence=0.9, intent=intent)
+        return TimeRange(start=start, end=end, granularity=granularity, confidence=0.9)
 
     # ── N 天（中文/阿拉伯数字）──
     match = _RE_RECENT_DAYS.search(text)
@@ -168,8 +142,8 @@ async def llm_parse_time_range(client, text: str, now: datetime | None = None) -
         "只输出严格 JSON（不要解释、不要代码块）：\n"
         '{"start_iso": "YYYY-MM-DDTHH:MM:SS+08:00" 或 null, "end_iso": "同上 或 null", '
         '"granularity": "day|week|month|year|custom", "confidence": 0到1的小数, '
-        '"intent": "list|search|none"}\n'
-        "intent：问『看过/浏览了哪些、什么内容』（要清单）→ list；找『某时间段看过的某主题内容』→ search；与时间无关 → none。\n"
+        '"time_relevant": true 或 false}\n'
+        "time_relevant：时间表达用于限定检索范围时为 true；若时间只是顺带提及、并非要按时间过滤 → false。\n"
         "start 必须早于 end；无法确定时间时 start_iso/end_iso 置 null。\n"
         f"用户问题：{text}"
     )
@@ -186,9 +160,8 @@ async def llm_parse_time_range(client, text: str, now: datetime | None = None) -
     except json.JSONDecodeError:
         return None
 
-    intent = data.get("intent")
-    if intent not in {"list", "search"}:
-        return None
+    if not data.get("time_relevant"):
+        return None  # 时间只是顺带提及 → 不作为过滤条件
     start_raw, end_raw = data.get("start_iso"), data.get("end_iso")
     if not start_raw or not end_raw:
         return None
@@ -220,5 +193,4 @@ async def llm_parse_time_range(client, text: str, now: datetime | None = None) -
         end=end,
         granularity=str(data.get("granularity") or "custom"),
         confidence=confidence,
-        intent=intent,
     )

@@ -64,6 +64,7 @@
 - **对话页可视化重做（as-built）**: 对齐 ChatGPT 风格——助手平铺正文/用户右侧灰气泡/组合式输入框/空状态（research R11）；引用 chip 的 `citation:` 协议在 react-markdown v10 下需自定义 `urlTransform`（research R12）
 - **导航状态保真**: 列表/对话滚动位置与输入草稿 sessionStorage 记忆；返回链路（快照/阅读器→来源页）
 - **检索稳健性修补（R16-R19，2026-10-02）**: `retrieval_ef_search`（默认 200）对全部检索查询生效（HNSW 删改 churn 召回退化兜底；维护流程 REINDEX+VACUUM 见 R16）；`_terms` 剔除纯数字词项（SVG 坐标假性加成，R17）；回写守卫过滤失败回答（R18）；**低置信多查询重试**（R19：无强命中时改写扇出扩检，`app/retrieval/rewrite.py`）
+- **查询规划器（FR-022/R21，2026-10-03）**: 取数方式交 LLM 工具调用决定（`app/chat/planner.py`：search_library / list_browsing / web_search，≤3 个单轮，失败回退基线）；句式规则路由四套机制一体删除；**入库侧非语言性垃圾块过滤**（`app/ingestion/quality.py`，SVG/CSS 假强命中根治；存量清理待授权）
 
 ### 解析策略（R7，2026-10-01 事故复盘后调整）
 - **PDF 快通道（默认）**: `pdf_fast.py`（pypdfium2 直抽 + 段落/断词/页眉页脚/字号标题启发式）；实测 1240 页 49 秒、内存 <500MB —— 大文件不再有 OOM 风险（原 Docling 全量 ~14GB 曾致宿主崩溃）

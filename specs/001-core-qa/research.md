@@ -185,6 +185,16 @@
 - **修复**: ① `_LIST_HINTS` 扩至「浏览了什么/看了什么/浏览过什么…」17 条（LLM 兜底提示同步）；② 规则 2 补「若本次没有提供网页资料，如实说明没有查到，严禁编造任何浏览条目、时间或链接」；③ 守卫标记补「没有收到/没有查到」。
 - **验证**: 「我昨天浏览了什么内容」→ 清单直达：50 条真实记录、时间范围 2026-10-02~10-02、倒序、超限如实说明 ✓；单测 +6（意图 3 例 + 守卫变体 2 例等）。
 
+## R21 查询规划器：取数方式交由 LLM 决定（FR-022，2026-10-03，用户驱动）
+
+- **动因（用户批评）**: "每次出现问题只是在词表里加入一条"——句式规则路由（清单/语义意图词表连续两天被补两次、显式联网指令正则、回写守卫标记表补四次）是打地鼠；`_LIST_HINTS` 式分类永远追不全人类问法。
+- **决策**: 学联网决策器先例，把"怎么取数"整体交给 LLM——单次工具调用规划（`app/chat/planner.py`）：`search_library(query, time_range?)` / `list_browsing(time_range)` / `web_search(query)`，最多 3 个、单轮不循环；执行器组装上下文（编号连续：本地 1..N + web N+1..），流式作答不变；**规划失败/未选择 → 回退默认检索基线**（安全网）。
+- **一体化删除**: `_LIST_HINTS`/`_intent`/`TimeRange.intent`、清单 vs 语义分支、`_EXPLICIT_WEB_*` 正则、`websearch/planner.decide_search`（并入主规划器）——净减少四套脆断机制。
+- **业界依据（联网调研）**: 自适应路由为 2026 主流；规划器用轻量模型（推理型规划 p50 恶化 2.4x）；硬上限+超时+失败回退基线；工具类型化契约（[CallSphere](https://callsphere.ai/blog/vw6g-agentic-rag-vs-traditional-rag-2026)、[Paiteq](https://www.paiteq.com/blog/agentic-rag/)、[TheRoadToEnterprise](https://theroadtoenterprise.com/blog/agentic-rag-vs-static-rag)、[MachineLearningMastery](https://machinelearningmastery.com/the-complete-guide-to-tool-selection-in-ai-agents/)）。
+- **真机探针**: 浏览类→`list_browsing(昨天)` 3/3；联网指令→`web_search` 2/2；概念题（拜占庭/递归）→不联网 6/6；本地意图（"我的资料里的 React"）→不误判联网 ✓；裸指令/能力问句→不调用 ✓；康威题自动"语义×2 + 清单"并用 ✓。
+- **垃圾块根治（R17 遗留观察闭环）**: 探针暴露"假强命中"——**56.2% 的块是浏览器采集页的内联 SVG 坐标/CSS 数字海**（"你叫什么名字"多次命中垃圾块 ≥0.6）。根治：① 入库侧语言字符比 < 0.5 的块不索引（`app/ingestion/quality.py`，单测覆盖）；② 存量清理**已执行**（用户授权，2026-10-03：删除 8493 块、总块 14829→6336、零残留，仅删 chunks、文档保留，REINDEX+VACUUM 按 R16 流程）。清理后复测：假强命中消失，残余的"名称"类命中为**语义重叠**（正文含「用户名称」字段），属正常检索行为（回答端已正确识破）。
+- **验收联动**: sc003/sc004 的"库外题"三次被库内命中（句式误判→F4 语义→书内容真实覆盖+垃圾假命中）——清理后重选「光合作用」题（零语义钩子，4/4 稳定），全量验收 11 通过 / 1 跳过 ✓；经验：测试选题不得依赖"永远库外"，须按零钩子标准实测选取。
+
 ## 未决项（留给实现阶段）
 
 - 云 embedding 默认提供商最终拍板（硅基流动 vs 百炼，凭实际测试效果）

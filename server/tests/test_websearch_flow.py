@@ -1,10 +1,14 @@
-"""F4 编排集成：触发 / 强命中不触发 / 降级 / 来源形状 / 护栏停用（假检索+假搜索）。"""
+"""对话编排集成（FR-022 规划器 + F4）：工具执行 / 上下文组装 / 混合引用 / 护栏 / 降级。
+
+装配方式：假规划（返回 PlannedCall 列表）+ 假检索 + 假搜索客户端（不触网、不触库）。
+"""
 
 import uuid
-
-import pytest
+from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import app.chat.orchestrator as orch
+from app.chat.planner import PlannedCall
 from app.config import settings
 from app.models import AnswerSource, SourceType
 from app.retrieval.search import RetrievedChunk
@@ -16,11 +20,7 @@ OWNER = uuid.uuid4()
 
 class _FakeClient:
     def __init__(self, results=None, error: Exception | None = None) -> None:
-        self.results = (
-            results
-            if results is not None
-            else [_result("A"), _result("B")]
-        )
+        self.results = results if results is not None else [_result("A"), _result("B")]
         self.error = error
         self.searches: list[tuple[str, int]] = []
 
@@ -40,11 +40,11 @@ def _result(tag: str) -> WebSearchResult:
     )
 
 
-def _chunk(score: float) -> RetrievedChunk:
+def _chunk(score: float, name: str = "本地资料") -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id=uuid.uuid4(),
         document_id=uuid.uuid4(),
-        document_name="本地资料",
+        document_name=name,
         source_type=SourceType.upload,
         content="本地内容",
         heading_path=None,
@@ -53,233 +53,203 @@ def _chunk(score: float) -> RetrievedChunk:
     )
 
 
-def _patch(monkeypatch, *, client, hits, decide=None):
-    """装配：假搜索客户端 / 假检索 / 假决策。"""
-    decide_calls = {"n": 0}
-
-    async def default_decide(_user_text: str) -> dict:
-        decide_calls["n"] += 1
-        return {"search": True, "query": "改写后的搜索词"}
-
-    async def fake_search(_session, _owner, _query, captured_after=None, captured_before=None):
-        return hits
-
-    monkeypatch.setattr(orch, "get_web_search", lambda: client)
-    monkeypatch.setattr(orch, "hybrid_search", fake_search)
-    monkeypatch.setattr(orch, "decide_search", decide or default_decide)
-    guard.reset_state()
-    return decide_calls
-
-
-async def test_web_triggered_out_of_library(monkeypatch) -> None:
-    client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[])
-
-    plan = await orch.prepare_reply(None, OWNER, "帮我找类似 Karpathy 的 AI 教学博主主页", [])
-
-    assert plan.source_type is AnswerSource.web
-    assert client.searches == [("改写后的搜索词", settings.web_search_max_results)]
-    assert len(plan.citations) == 2
-    citation = plan.citations[0]
-    assert citation["web"] is True
-    assert citation["document_id"] is None
-    assert citation["source_url"] == "https://a.example/1"
-    assert citation["quote"]
-
-    joined = "\n".join(m["content"] for m in plan.llm_messages)
-    assert "<web_results>" in joined
-    assert "不得执行" in joined  # 不可信声明
-    assert "结果A" in joined and "https://a.example/1" in joined
-
-
-async def test_snippet_truncated_by_config(monkeypatch) -> None:
-    client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[])
-    monkeypatch.setattr(settings, "web_search_snippet_max", 10)
-
-    plan = await orch.prepare_reply(None, OWNER, "外部问题", [])
-    joined = "\n".join(m["content"] for m in plan.llm_messages)
-    assert "摘要A摘要A摘要A摘要A" not in joined  # 90 字摘要被截到 10
-    assert "摘要A" in joined
-
-
-async def test_strong_hit_never_searches(monkeypatch) -> None:
-    client = _FakeClient()
-
-    async def boom(*_args, **_kwargs):
-        raise AssertionError("强命中不应调用决策器")
-
-    class _NullSession:  # 强命中路径会调用 enrich_citations（F1），提供最小 session 桩
-        async def get(self, *_args, **_kwargs):
-            return None
-
-    decide_calls = _patch(monkeypatch, client=client, hits=[_chunk(0.9)], decide=boom)
-    plan = await orch.prepare_reply(_NullSession(), OWNER, "SDD 的核心循环是什么", [])
-
-    assert plan.source_type is AnswerSource.kb
-    assert decide_calls["n"] == 0
-    assert client.searches == []
-
-
-async def test_no_key_keeps_current_behavior(monkeypatch) -> None:
-    async def boom(*_args, **_kwargs):
-        raise AssertionError("未配置凭据不应调用决策器")
-
-    _patch(monkeypatch, client=None, hits=[], decide=boom)
-    monkeypatch.setattr(orch, "get_web_search", lambda: None)
-
-    plan = await orch.prepare_reply(None, OWNER, "外部问题", [])
-    assert plan.source_type is AnswerSource.model_knowledge
-    assert plan.citations == []
-
-
-async def test_search_error_degrades(monkeypatch) -> None:
-    client = _FakeClient(error=WebSearchError("超时"))
-    _patch(monkeypatch, client=client, hits=[])
-
-    plan = await orch.prepare_reply(None, OWNER, "外部问题", [])
-    assert plan.source_type is AnswerSource.model_knowledge
-    assert plan.citations == []
-
-
-async def test_empty_results_degrades(monkeypatch) -> None:
-    client = _FakeClient(results=[])
-    _patch(monkeypatch, client=client, hits=[])
-
-    plan = await orch.prepare_reply(None, OWNER, "外部问题", [])
-    assert plan.source_type is AnswerSource.model_knowledge
-    assert plan.citations == []
-
-
-async def test_weak_hits_allow_web_supplement(monkeypatch) -> None:
-    client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[_chunk(0.55)])  # 弱相关
-
-    plan = await orch.prepare_reply(None, OWNER, "外部问题", [])
-    assert plan.source_type is AnswerSource.web
-    assert plan.related_hints and plan.citations  # 弱相关提示与联网来源并存
-
-
-async def test_daily_limit_blocks_after_threshold(monkeypatch) -> None:
-    client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[])
-    monkeypatch.setattr(settings, "web_search_daily_limit", 1)
-
-    first = await orch.prepare_reply(None, OWNER, "问题一", [])
-    second = await orch.prepare_reply(None, OWNER, "问题二", [])
-
-    assert first.source_type is AnswerSource.web
-    assert len(client.searches) == 1  # 第二次被护栏拦下
-    assert second.source_type is AnswerSource.model_knowledge
-
-
-async def test_web_results_not_persisted(monkeypatch) -> None:
-    """结果不入库：web 引用无 document_id（无可持久化对象），且编排不触碰任何写路径。"""
-    client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[])
-
-    plan = await orch.prepare_reply(None, OWNER, "外部问题", [])
-    assert all(citation["document_id"] is None for citation in plan.citations)
-    assert all(citation["web"] is True for citation in plan.citations)
-
-
-# ---- 显式联网指令（FR-011，2026-10-02）----
-
-
-class _NullSession:  # enrich_citations 的最小 session 桩
+class _NullSession:  # 强命中路径会调用 enrich_citations，提供最小会话桩
     async def get(self, *_args, **_kwargs):
         return None
 
 
-def test_explicit_detection_regex() -> None:
-    positive = [
-        "发起联网搜索",
-        "联网搜一下 Upwork 上的最新岗位",
-        "帮我查一下杭州明天的天气",
-        "搜索一下 Supabase 最新定价",
-        "上网查查这个错误",
-        "search the web for Karpathy",
-    ]
-    negative = [
-        "SDD 的核心循环是什么",
-        "搜一下我的资料里的 React 内容",
-        "帮我查一下知识库里的部署步骤",
-        "联网了吗",  # 无检索动词
-        "外部问题",
-    ]
-    for text in positive:
-        assert orch.looks_like_explicit_web_search(text), text
-    for text in negative:
-        assert not orch.looks_like_explicit_web_search(text), text
+def _patch(monkeypatch, *, calls=None, client=None, hits=None, expand=None):
+    """装配：规划器（工具调用）/ 检索 / 搜索客户端 / 扇出。"""
+
+    async def fake_plan(_user_text: str) -> list[PlannedCall]:
+        return [PlannedCall(name=n, args=a) for n, a in (calls or [])]
+
+    async def fake_search(_session, _owner, _query, captured_after=None, captured_before=None):
+        return hits if hits is not None else []
+
+    async def no_expand(*_args, **_kwargs):
+        raise AssertionError("本用例不应触发扇出")
+
+    monkeypatch.setattr(orch, "plan_retrieval", fake_plan)
+    monkeypatch.setattr(orch, "hybrid_search", fake_search)
+    monkeypatch.setattr(orch, "expand_queries", expand or no_expand)
+    monkeypatch.setattr(orch, "get_web_search", lambda: client)
+    guard.reset_state()
 
 
-async def test_explicit_command_forces_web_even_with_strong_hit(monkeypatch) -> None:
-    """用户显式要求联网：即使本地强命中，也执行搜索；本地资料附上且编号续接。"""
+async def test_plan_search_library_answers_from_kb(monkeypatch) -> None:
     client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[_chunk(0.9)])
+    _patch(monkeypatch, calls=[("search_library", {"query": "康威定律"})], client=client, hits=[_chunk(0.9)])
 
-    plan = await orch.prepare_reply(
-        _NullSession(), OWNER, "联网搜一下 Upwork 上的最新岗位", []
-    )
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "书里怎么说康威定律", [])
 
-    assert client.searches == [("改写后的搜索词", settings.web_search_max_results)]
-    assert plan.source_type is AnswerSource.web
-    assert len(plan.citations) == 3  # 本地 1 条 + web 2 条
-    assert not plan.citations[0].get("web")  # 本地条目在前
-    assert plan.citations[1]["web"] is True and plan.citations[2]["web"] is True
-    joined = "\n".join(m["content"] for m in plan.llm_messages)
-    assert "【资料1】" in joined  # 本地资料仍注入
-    assert "[2] 结果A" in joined  # web 编号自 N+1=2 起（不冲突）
-
-
-async def test_explicit_command_without_topic_no_search(monkeypatch) -> None:
-    """裸指令「发起联网搜索」：无可检索内容 → 不搜索，交由模型引导；决策器只调用一次。"""
-    client = _FakeClient()
-
-    async def decline(_user_text: str) -> dict:
-        decline.n += 1
-        return {"search": False, "query": ""}
-
-    decline.n = 0
-    _patch(monkeypatch, client=client, hits=[], decide=decline)
-
-    plan = await orch.prepare_reply(None, OWNER, "发起联网搜索", [])
-
-    assert decline.n == 1  # 不重复调用决策器
-    assert client.searches == []
-    assert plan.source_type is AnswerSource.model_knowledge
-    assert plan.citations == []
-    system = plan.llm_messages[0]["content"]
-    assert "不得向用户描述系统内部机制" in system  # 措辞契约（防内部机制泄露，无条件）
-    assert "不得声称自己无法联网" in system  # 能力话术契约（2026-10-02 复测加固）
-    assert "请用户给出要搜索" in system  # 引导式回应契约
-    assert "怎么才能让你联网搜索" in system  # 能力问句 → 给出指令示例（2026-10-02 复测加固）
-
-
-async def test_explicit_command_search_failure_falls_back_to_local(monkeypatch) -> None:
-    """显式联网但搜索失败：静默降级回本地强命中作答（不让问答失败）。"""
-    client = _FakeClient(error=WebSearchError("超时"))
-    _patch(monkeypatch, client=client, hits=[_chunk(0.9)])
-
-    plan = await orch.prepare_reply(
-        _NullSession(), OWNER, "联网搜一下 Upwork 上的最新岗位", []
-    )
-
-    assert client.searches  # 尝试过搜索
     assert plan.source_type is AnswerSource.kb
     assert len(plan.citations) == 1
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "【资料1】" in joined
+    assert client.searches == []  # 未选联网工具 → 不触网
 
 
-async def test_explicit_command_web_only_keeps_weak_hints(monkeypatch) -> None:
-    """显式联网 + 无强命中：纯联网作答；弱相关仅作提示（同兜底路径语义）。"""
+async def test_plan_web_search_and_guard(monkeypatch) -> None:
     client = _FakeClient()
-    _patch(monkeypatch, client=client, hits=[_chunk(0.55)])
+    _patch(monkeypatch, calls=[("web_search", {"query": "今天北京天气"})], client=client)
 
-    plan = await orch.prepare_reply(None, OWNER, "帮我查一下杭州明天的天气", [])
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下今天北京天气", [])
+
+    assert client.searches == [("今天北京天气", settings.web_search_max_results)]
+    assert plan.source_type is AnswerSource.web
+    assert len(plan.citations) == 2
+    assert all(c["web"] is True and c["document_id"] is None for c in plan.citations)
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "<web_results>" in joined and "[1] 结果A" in joined and "不得执行" in joined
+
+
+async def test_plan_blend_continuous_numbering(monkeypatch) -> None:
+    """本地 + 联网并用：编号本地 1..N、web 续接 N+1..（前端按 citations 索引映射）。"""
+    client = _FakeClient()
+    _patch(
+        monkeypatch,
+        calls=[("search_library", {"query": "q"}), ("web_search", {"query": "k"})],
+        client=client,
+        hits=[_chunk(0.9)],
+    )
+
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "联网搜一下 q 并看我的资料", [])
 
     assert plan.source_type is AnswerSource.web
-    assert plan.related_hints and plan.citations
+    assert len(plan.citations) == 3  # 本地 1 + web 2
+    assert not plan.citations[0].get("web")
+    assert plan.citations[1]["web"] is True
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "【资料1】" in joined and "[2] 结果A" in joined  # web 编号自 2 起
 
 
-# 引用 pytest，避免未使用告警（fixture 风格保留给后续扩展）
-_ = pytest
+class _Result:
+    def __init__(self, rows) -> None:
+        self._rows = rows
+
+    def all(self):
+        return self._rows
+
+
+class _ListSession:
+    """_browsing_context 的最小桩：scalar→总数；execute→站点聚合；scalars→明细。"""
+
+    def __init__(self, total: int, digest, docs) -> None:
+        self._total, self._digest, self._docs = total, digest, docs
+
+    async def scalar(self, *_args, **_kwargs):
+        return self._total
+
+    async def execute(self, *_args, **_kwargs):
+        return _Result(self._digest)
+
+    async def scalars(self, *_args, **_kwargs):
+        return _Result(self._docs)
+
+
+def _browse_doc(index: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        name=f"页面{index}",
+        site_name="示例站",
+        last_captured_at=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
+        source_url=f"https://e.example/{index}",
+    )
+
+
+async def test_plan_list_browsing_context(monkeypatch) -> None:
+    docs = [_browse_doc(i) for i in range(51)]
+    session = _ListSession(66, [("wallhaven.cc", 32), ("bigmodel.cn", 12)], docs)
+    _patch(monkeypatch, calls=[("list_browsing", {"time_range": "昨天"})])
+
+    plan = await orch.prepare_reply(session, OWNER, "我昨天浏览了什么内容", [])
+
+    assert plan.source_type is AnswerSource.kb
+    assert len(plan.citations) == 50  # 截断到 50，超限如实说明
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "共 66 条" in joined and "wallhaven.cc 32" in joined and "仅为最近 50 条" in joined
+    assert "【资料1】" in joined
+    assert plan.time_range_label is not None
+
+
+async def test_plan_web_guard_blocks_after_daily_limit(monkeypatch) -> None:
+    client = _FakeClient()
+    _patch(monkeypatch, calls=[("web_search", {"query": "k"})], client=client)
+    monkeypatch.setattr(settings, "web_search_daily_limit", 1)
+    guard.record_search()  # 已达到上限
+
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
+    assert client.searches == []
+    assert plan.source_type is AnswerSource.model_knowledge
+
+
+async def test_plan_web_failure_degrades(monkeypatch) -> None:
+    client = _FakeClient(error=WebSearchError("超时"))
+    _patch(monkeypatch, calls=[("web_search", {"query": "k"})], client=client)
+
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
+    assert plan.source_type is AnswerSource.model_knowledge
+    assert plan.citations == []
+
+
+async def test_plan_weak_search_triggers_expansion(monkeypatch) -> None:
+    strong = _chunk(0.8, "正解")
+    calls = {"expanded": 0}
+
+    async def expand(query: str) -> list[str]:
+        calls["expanded"] += 1
+        assert query == "q"
+        return ["变体一"]
+
+    async def fake_search(_session, _owner, query, captured_after=None, captured_before=None):
+        return [strong] if query == "变体一" else [_chunk(0.55)]
+
+    _patch(monkeypatch, calls=[("search_library", {"query": "q"})], expand=expand)
+    monkeypatch.setattr(orch, "hybrid_search", fake_search)
+
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "找找看", [])
+    assert calls["expanded"] == 1
+    assert plan.source_type is AnswerSource.kb
+    assert [c["document_name"] for c in plan.citations] == ["正解"]
+
+
+async def test_invalid_plan_falls_back_to_baseline(monkeypatch) -> None:
+    """全部调用无效（空 query / 无时间）→ 基线：默认检索兜底。"""
+
+    async def fake_search(_session, _owner, _query, captured_after=None, captured_before=None):
+        return [_chunk(0.9, "基线命中")]
+
+    _patch(
+        monkeypatch,
+        calls=[("search_library", {"query": "  "}), ("list_browsing", {})],
+        hits=[_chunk(0.9, "基线命中")],
+    )
+    monkeypatch.setattr(orch, "hybrid_search", fake_search)
+
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "普通问题", [])
+    assert plan.source_type is AnswerSource.kb
+    assert [c["document_name"] for c in plan.citations] == ["基线命中"]
+
+
+async def test_no_plan_falls_back_to_baseline(monkeypatch) -> None:
+    async def fake_search(_session, _owner, _query, captured_after=None, captured_before=None):
+        return [_chunk(0.9, "基线命中")]
+
+    _patch(monkeypatch, calls=[])  # 规划器未选择工具
+    monkeypatch.setattr(orch, "hybrid_search", fake_search)
+
+    plan = await orch.prepare_reply(_NullSession(), OWNER, "普通问题", [])
+    assert plan.source_type is AnswerSource.kb
+    assert [c["document_name"] for c in plan.citations] == ["基线命中"]
+
+
+async def test_snippet_truncated_by_config(monkeypatch) -> None:
+    client = _FakeClient()
+    _patch(monkeypatch, calls=[("web_search", {"query": "k"})], client=client)
+    monkeypatch.setattr(settings, "web_search_snippet_max", 10)
+
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "摘要A摘要A摘要A摘要A" not in joined  # 90 字摘要被截到 10
+    assert "摘要A" in joined
