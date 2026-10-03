@@ -1,6 +1,6 @@
 {
   "verdict": "PASS",
-  "hit_rate": 0.9333333333333333,
+  "hit_rate": 1.0,
   "results": [
     {
       "id": "f01",
@@ -9,8 +9,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.7,
-      "answer_head": "根据资料，书里对“大泥球”的描述和建议如下：\n\n**它是什么**\n\n- 一种因**缺乏架构**而出现的反模式（antipattern）[2]；架构师把“看不出任"
+      "seconds": 3.9,
+      "answer_head": "根据资料，书里对「大泥球」的描述如下：\n\n**它是什么**\n- 一种缺乏可辨识架构结构的状态，被归为反模式（antipattern），名字来自 Brian Fo"
     },
     {
       "id": "f02",
@@ -19,8 +19,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.0,
-      "answer_head": "根据资料，“隔离层”（layers of isolation）的含义可以归纳为以下几点：\n\n**核心定义**\n\n- 它指的是：只要层与层之间的**契约（cont"
+      "seconds": 3.6,
+      "answer_head": "根据资料，「隔离层」（layers of isolation）的含义如下：\n\n**核心定义**\n它指的是：只要各层之间的契约（contracts）保持不变，在某"
     },
     {
       "id": "f03",
@@ -29,8 +29,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.5,
-      "answer_head": "根据资料，管道（pipeline）架构适合处理以下类型的系统：\n\n**处理步骤特征**\n\n- 适合**任意复杂度**的系统，只要其处理步骤是**明确的、有序的、"
+      "seconds": 4.2,
+      "answer_head": "根据资料，管道（pipeline，又称 pipes and filters）架构适合处理的系统如下：\n\n**任务特征上**\n- 适合具有**清晰、有序、确定性、"
     },
     {
       "id": "f04",
@@ -39,8 +39,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.7,
-      "answer_head": "根据资料，书中引用康威定律主要想说明以下几个道理：\n\n**1. 架构与组织结构相互映射**\n\n康威定律是 Melvin Conway 在 1960 年代末提出的"
+      "seconds": 3.8,
+      "answer_head": "根据资料，书中引用康威定律想说明的道理有以下几层：\n\n**1. 定律本身的内容**\n康威在 1960 年代末提出这一观察：当一群人设计某个技术产物时，其设计的结"
     },
     {
       "id": "f05",
@@ -49,18 +49,18 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.2,
-      "answer_head": "根据资料，书中之所以说软件架构决策本质上是权衡（trade-off），核心依据是几条定律和它们的推论：\n\n**1. 第一定律本身就是这句话**\n\n软件架构的第一"
+      "seconds": 5.2,
+      "answer_head": "根据资料，架构决策之所以本质上是权衡，书中给出的理由如下：\n\n**1. 这是软件架构的第一定律**\n「软件架构中的一切都是权衡」（Everything in s"
     },
     {
       "id": "f06",
       "category": "hit",
       "question": "Why does the book recommend a “database per service” data topology for microservices?",
-      "passed": false,
-      "note": "回答未含关键词 ['上下文', '变更', '解耦']",
+      "passed": true,
+      "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.0,
-      "answer_head": "The book recommends the *Database-per-Service* topology for microservices for se"
+      "seconds": 4.1,
+      "answer_head": "依据资料，书中推荐微服务采用「Database-per-Service」数据拓扑，理由如下：\n\n**1. 微服务本质上「必须」拆分数据**\n微服务是唯一一种*要"
     },
     {
       "id": "f07",
@@ -69,8 +69,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.1,
-      "answer_head": "根据资料，风险风暴**不是一次性活动**。\n\n书中明确指出：风险风暴不是一个一次性的过程，它会**贯穿整个系统生命周期**持续进行，因为团队需要努力在风险领域出"
+      "seconds": 4.1,
+      "answer_head": "不是，风险风暴不是一次性活动。书里是这么说的：\n\n**它是一个贯穿系统生命周期的持续过程**\n风险风暴不是一次性流程，而是贯穿系统整个生命周期持续进行，团队据此"
     },
     {
       "id": "f08",
@@ -79,8 +79,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.2,
-      "answer_head": "根据资料，事件驱动架构中避免数据丢失，主要有两个层面的办法：一是通用的 **Event Forwarding 模式**，二是针对具体丢失环节的具体技术手段。\n\n"
+      "seconds": 5.5,
+      "answer_head": "根据资料，事件驱动架构中避免数据丢失主要有两类办法，取决于事件通道的实现方式：\n\n**一、用 Event Forwarding 模式（针对消息队列/代理）**\n"
     },
     {
       "id": "g01",
@@ -89,8 +89,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.3,
-      "answer_head": "根据资料，游戏引擎的运行时架构大致由以下部分构成：\n\n**1. 游戏玩法基础系统（Gameplay Foundation Systems）**\n\n资料把游戏玩法"
+      "seconds": 5.3,
+      "answer_head": "根据资料，游戏引擎的运行时架构大致可分为以下几个层次与部分：\n\n**一、游戏引擎的主体分层**\n\n**1. Engine Support Systems（引擎支"
     },
     {
       "id": "g02",
@@ -99,8 +99,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.9,
-      "answer_head": "根据资料，游戏循环实现不当会带来以下副作用：\n\n**1. Windows 消息优先于渲染和模拟，导致游戏短暂冻结**\n\n如果按那种方式实现游戏循环，一个副作用是"
+      "seconds": 5.7,
+      "answer_head": "根据资料，游戏循环实现不当会有以下副作用：\n\n**1. Windows 消息优先导致卡顿**\n如果游戏循环按资料中的方式实现，Windows 消息会被优先处理，"
     },
     {
       "id": "g03",
@@ -109,8 +109,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 4.6,
-      "answer_head": "根据资料，游戏引擎要专门处理字符串，是因为字符串表面简单、实际暗藏一系列设计问题与约束，必须仔细应对；而 `std::string` 这类通用方案并不能满足引擎"
+      "seconds": 6.9,
+      "answer_head": "根据资料，游戏引擎确实需要专门处理字符串，直接依赖 `std::string` 这类通用字符串方案是不够的。原因如下：\n\n**一、字符串本身就有大量设计约束**"
     },
     {
       "id": "g04",
@@ -119,8 +119,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.0,
-      "answer_head": "根据资料，渲染管线针对“单个全帧图像应如何渲染”所做的定义，通常包括以下内容：\n\n- **对顶点着色器、几何着色器和/或像素着色器程序 `main` 函数的引用"
+      "seconds": 3.4,
+      "answer_head": "根据资料，渲染管线（rendering pipeline）对「单张全帧图像应如何渲染」的定义是：它通常包含一个对顶点、几何和/或像素着色器程序「main」函数的"
     },
     {
       "id": "g05",
@@ -129,8 +129,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.2,
-      "answer_head": "根据资料，环境映射中查找某表面点对应的贴图纹素，做法如下：\n\n**核心步骤：反射光线**\n\n要读取物体表面某点 P 对应的环境贴图纹素，我们取一条从**摄像机到"
+      "seconds": 3.2,
+      "answer_head": "根据资料，环境映射里找到某表面点 P 对应纹素的过程如下：\n\n从摄像机到表面点 P 连一条射线，再让它围绕 P 点处的表面法线做反射。这条反射射线继续延伸，直到"
     },
     {
       "id": "g06",
@@ -139,8 +139,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 2.0,
-      "answer_head": "根据这些资料，**无法回答** OpenAL 在书中被提到时的许可状况——本批资料只涉及渲染与动画相关章节（环境映射、3D 纹理、高光贴图、环境光遮蔽、反射、视"
+      "seconds": 3.4,
+      "answer_head": "根据本次提供的资料，**没有找到任何关于 OpenAL 许可状况的内容**，因此无法回答 OpenAL 在书中被提及时的许可状况。\n\n需要说明的是，资料中确实有"
     },
     {
       "id": "g07",
@@ -149,8 +149,8 @@
       "passed": true,
       "note": "kb ＋ 出处匹配",
       "source_type": "kb",
-      "seconds": 3.3,
-      "answer_head": "根据资料，当时间缩放（time scale）设为 0.5 时，播放会发生以下变化：\n\n**1. 慢放：动画以原速的一半播放**\n\n时间缩放会让动画看起来比最初制"
+      "seconds": 4.1,
+      "answer_head": "根据资料，当动画的时间缩放（time scale）设为 0.5 时，播放会变为**半速播放**，也就是动画看起来比原本动画制作时的速度更慢。\n\n具体机制是：要让"
     },
     {
       "id": "b01",
@@ -159,18 +159,18 @@
       "passed": false,
       "note": "应为兜底，实为 kb",
       "source_type": "kb",
-      "seconds": 2.2,
-      "answer_head": "资料里没有提到量子计算或表面码（surface code）的内容，因此无法据此回答。\n\n【资料1】讲的是**软件架构中的圈复杂度（Cyclomatic Comp"
+      "seconds": 3.5,
+      "answer_head": "根据本次提供的资料，**没有找到关于量子计算中表面码（surface code）纠错阈值的任何内容**，因此无法回答该数值。\n\n需要说明的是，资料里的「surf"
     },
     {
       "id": "b02",
       "category": "fallback",
       "question": "2026 年世界杯在哪些城市举办？",
-      "passed": false,
-      "note": "应为兜底，实为 kb",
-      "source_type": "kb",
+      "passed": true,
+      "note": "非库来源（web）✓",
+      "source_type": "web",
       "seconds": 3.6,
-      "answer_head": "资料里没有直接列出 2026 年世界杯的全部举办城市——提供的网页资料只涉及伊朗队在 2026 年美加墨世界杯的参赛情况：\n\n- 2026 年 3 月，伊朗体育"
+      "answer_head": "依据网络搜索结果，2026 年世界杯由美国、加拿大、墨西哥三国联合举办，共 16 座举办城市（首届扩军至 48 支球队、首次三国联办）[1][2][4]。\n\n*"
     },
     {
       "id": "b03",
@@ -179,28 +179,28 @@
       "passed": true,
       "note": "非库来源（model_knowledge）✓",
       "source_type": "model_knowledge",
-      "seconds": 8.5,
-      "answer_head": "资料里没有提到 Rust 或无锁队列，提供的网页资料与软件架构相关，无法作为依据：\n\n- 【资料1】讲的是 **premortem（事前验尸）**：在项目开始时"
+      "seconds": 12.3,
+      "answer_head": "关于「如何用 Rust 实现一个无锁队列」，本次**没有提供任何资料**（既无本地资料，也无联网结果），所以以下内容来自我的通用知识，供你参考。\n\n## 核心思"
     },
     {
       "id": "b04",
       "category": "fallback",
       "question": "正宗的法式可颂怎么做？",
-      "passed": false,
-      "note": "应为兜底，实为 kb",
-      "source_type": "kb",
-      "seconds": 6.4,
-      "answer_head": "资料里没有提到可颂或任何烘焙内容，无法据此回答——本次提供的六份资料全部来自《Game Engine Architecture》第 4.9 节「Lock-Fre"
+      "passed": true,
+      "note": "非库来源（prior_conversation）✓",
+      "source_type": "prior_conversation",
+      "seconds": 7.4,
+      "answer_head": "你的问题是「正宗的法式可颂怎么做」，而本次提供的资料是**我此前关于「Rust 实现无锁队列」的答复**，与可颂烘焙完全无关，因此：\n\n**资料无法回答这个问题"
     },
     {
       "id": "b05",
       "category": "fallback",
       "question": "太阳系里木星目前有多少颗已确认的卫星？",
-      "passed": false,
-      "note": "应为兜底，实为 kb",
-      "source_type": "kb",
-      "seconds": 3.4,
-      "answer_head": "资料里没有提到木星或任何卫星数量，无法据此回答——提供的这份网页资料讲的是 SpaceX 星舰（ITS/BFR）的设计与测试进展，与木星无关 [1]。\n\n以下基"
+      "passed": true,
+      "note": "非库来源（web）✓",
+      "source_type": "web",
+      "seconds": 5.0,
+      "answer_head": "依据网络搜索结果，木星已确认卫星的数量在不同来源中有差异，且随时间更新：\n\n- 截至 **2025 年 12 月**，木星的已知卫星增至 **95 颗**[1]"
     },
     {
       "id": "r01",
@@ -209,8 +209,8 @@
       "passed": false,
       "note": "应为 prior_conversation，实为 kb",
       "source_type": "kb",
-      "seconds": 1.7,
-      "answer_head": "资料里没有提到量子计算或表面码（surface code）的内容，因此无法据此回答。\n\n【资料1】讲的是**软件架构中的圈复杂度（Cyclomatic Comp"
+      "seconds": 4.7,
+      "answer_head": "根据本次提供的资料，**没有找到关于量子计算中表面码（surface code）纠错阈值的内容**，因此无法回答该数值。\n\n资料中出现的「surface」一词与"
     },
     {
       "id": "r02",
@@ -219,8 +219,8 @@
       "passed": false,
       "note": "应为 prior_conversation，实为 kb",
       "source_type": "kb",
-      "seconds": 3.4,
-      "answer_head": "问题与本次【资料】的主题不一致——你问的是「如何用 Rust 实现无锁队列」，但两份资料都不涉及 Rust 或无锁队列：\n\n- 【资料1】是既往对话答复，本身已"
+      "seconds": 6.9,
+      "answer_head": "这次提供了 5 份资料，其中**资料 1** 正是我此前给你的那份「Rust 实现无锁队列」答复。按要求，它仅作参考、可能过时或有误，我不把它当作事实依据；其余"
     }
   ]
 }

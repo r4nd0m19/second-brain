@@ -20,6 +20,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.ingestion.embedding import EmbeddingError, get_embedding_provider
 from app.ingestion.parser import ParseInfraError, UnparseableError, iter_parse_document
+from app.ingestion.quality import is_indexable
 from app.ingestion.webpage import chunk_markdown
 from app.models import Chunk, Document, DocumentStatus, SourceType
 from app.storage import get_blob_store
@@ -50,6 +51,13 @@ def _table_hint(meta: dict | None) -> str | None:
 
 async def _embed_and_store(session, doc: Document, drafts: list, meta: dict | None) -> None:
     """embedding + 落块（上传与网页来源共用）；进度写 status_reason（x/y 块）。"""
+    # 非语言性垃圾块（SVG 坐标/CSS 数字海）不索引——防"假强命中"（R17 根治，2026-10-03）
+    drafts = [d for d in drafts if is_indexable(d.content)]
+    if not drafts:
+        doc.status = DocumentStatus.indexed
+        doc.status_reason = "正文无可索引文本（已过滤非语言性块）"
+        logger.info("ingest junk-filtered (0 usable chunks): %s", doc.name)
+        return
     total_blocks = len(drafts)
     doc.status_reason = f"索引中 0/{total_blocks} 块"
     await session.commit()

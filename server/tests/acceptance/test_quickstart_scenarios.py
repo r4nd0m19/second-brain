@@ -41,11 +41,12 @@ async def test_sc001_upload_index_and_cited_answer(client):
 async def test_sc003_sc004_fallback_and_recall(client):
     """SC-003：库外问题兜底（通用知识作答）；SC-004：二次提问命中 prior_conversation。
 
-    选题约束（2026-10-02 修复）：① 通用知识可稳定回答类——F4 后外部信息类问题会先触发联网，
-    破坏本用例的"模型知识兜底"语义；② 实测全库最高相似度 <0.5（无弱/强命中）；③ 带随机编号防跨次污染。
+    选题约束（2026-10-03 第三次修正，前两题均被演进中的库内命中）：① 通用知识类：
+    F4 后外部信息类问题会触发联网、且改进后的检索能从近邻书目召到相关片段（旧题"拜占庭"、
+    "Rust 无锁队列"均被架构书命中）；② 选题须**全库零语义钩子**——实测 4/4 稳定兜底（R21）。
     """
     nonce = uuid.uuid4().hex[:6]
-    question = f"拜占庭将军问题里，信使可能叛变的情形是如何解决的？（问题编号 {nonce}）"
+    question = f"光合作用的暗反应阶段发生在叶绿体的哪个部位？（问题编号 {nonce}）"
     conv_id = None
     try:
         first = await ask(client, question, None)
