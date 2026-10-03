@@ -123,6 +123,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  font-family: inherit; /* 按钮默认不继承页面字体：<button>（退出）与 <a>（对话）字形不一致的根因（2026-10-03） */
   text-decoration: none; /* <a>/<Link> 实现的按钮去掉默认下划线（浏览/下载等） */
   display: inline-block;
 }
