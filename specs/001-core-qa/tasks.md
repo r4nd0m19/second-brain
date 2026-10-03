@@ -391,6 +391,12 @@ Task: "T022 前端-对话页 web/app/chat/"
 - [x] **T087 网页引用「引文小窗」（R41，2026-10-03 用户实测驱动）**：回答内 [N] 角标点击不再直接跳浏览器 → `WebCitePreview` 小窗（复用 conv-preview 样式：标题/域名/`quote` 原文摘录（读页产物；无摘录给提示文案）/「↗ 打开原文」显式新标签；Escape/点背景关闭）；`renderAssistant` 增 `onOpenWeb` 回调（href 保留供中键/新标签；对话预览窗内退回直开）；出处列表维持直开（用户约定）；i18n 增 `chat.webNoQuote`；零后端改动
   - Deps: 无（纯前端；复用既有 citations.quote 数据）
   - DoD: `tsc`/`eslint`/`next build` 通过 ✓（/chat 53.6 kB）；真机复核（用户）
+- [x] **T088 模型迁移 + 思考档（R42，2026-10-03 用户驱动）**：`.env` LLM_MODEL `deepseek-chat`（官方停用名单旧别名）→ **`deepseek-flash`**（V4.1）；`llm.py` 分调用策略——答案调用 `stream_chat(..., thinking=True)`（`thinking:{"type":"enabled"}` + `llm_answer_effort=high`；reasoning_content 增量 → 新 `thinking` 流事件）、小调用与 `complete_with_tools` 恒 `thinking:{"type":"disabled"}`（否则思维链吃满小 max_tokens、规划器返回空；`thinking:false` 会 422）；router 转发 `thinking` SSE（不持久化）；前端 `ThinkingBlock` 折叠展示（生成时展开实时刷新、首正文 token 自动折叠为「已思考 Ns·点开查看」；i18n + CSS）；`OpenAICompatLLM` 补 transport 注入（测试）
+  - Deps: 无（独立迁移）
+  - DoD: 单测 +3（小调用关思考/答案开思考+reasoning 事件/工具调用关思考）✓；**真机 E2E**：thinking 事件 102 个/思维链 279 字流式透传、答案正确（96% 题）、总成本 ¥0.0054 ✓（会话已清理）；`tsc`/`eslint`/`build` ✓；**全量 161 通过 / 1 跳过** ✓；ruff 触及文件全清 ✓；真机复核（用户）
+- [x] **T089 验收基建修复：wait_browser_indexed 全量翻页（2026-10-03 数据量驱动）**：真实浏览库长大后的确定性失败——sc007（唯一回填 20 天前条目的用例）连续 3 次 180s 超时；根因：helper 只轮询第一页（page_size=100 上限、按 last_captured_at 倒序），实测 browser 文档 105 条（近 20 天 104 条）→ 第一页仅覆盖最近 ~35 小时，旧条目永远不可见（入库本身正常，只是看不到）。修复：helper 循环翻页直至找到或到末页（含 50 页保险）
+  - Deps: 无（测试基建；非产品缺陷、与本批代码无关）
+  - DoD: capture 场景单跑 **5 通过 / 46.6s** ✓（修复前 4 通过+1 失败/214s，其中 180s 为空等）；全量 161 通过 ✓
 - [x] **T067 日期控件替换（R26 追补，2026-10-03 用户实测）**：原生 `<input type="date">` 显示格式随浏览器语言、无法随界面切换（Chrome 官方 FAQ 确认无作者接口）→ 新增 `web/app/_components/date-field.tsx`（业界组件 react-day-picker v10：触发钮按界面语言格式化显示所选日期、弹层日历跟随 zh/en locale、外部点击/Escape 关闭、有值时提供「清除」）；接入 `docs` 页清理区两处（value 契约保持 "YYYY-MM-DD"，后端参数与 UTC 语义不变）；组件与中文 locale 经 `next/dynamic` 按需加载，不进页面首包
   - Deps: 无（独立前端组件替换）
   - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过、`/` 首包 122 kB（与改造前持平）✓；rdp 样式已入导出 CSS ✓；真机复核（用户）

@@ -51,6 +51,7 @@
 |------|------|------|
 | `status` | `{phase}` | **2026-10-03**：生成阶段进度——`planning`（规划）/`retrieving`（检索资料库）/`listing`（浏览记录）/`expanding`（低置信扩检）/`web_search`（联网）/`generating`（生成中）。发生在首个 token 之前的规划与取数阶段经此即时透出（队列转发）；前端据此显示阶段文案 + 实时用时 + 已输出字数 |
 | `meta` | `{conversation_id, source_type, citations?, related_hints?, time_range_label?}` | `kb`=命中（带 citations，FR-006）；`model_knowledge`=兜底（FR-007）；弱相关附 related_hints；**F2**：含时间表达的问题附 `time_range_label` 回显（浏览来源 citations 另含 `source_url`/`last_captured_at`）；**2026-10-02**：对话回写来源的 citation 另含 `conversation_id` / `message_id` / `inherited_citations`（旧引用标记的出处继承，FR-020；读取历史消息时同样富化）；**F4**：联网来源 citation `{web:true, document_id:null, source_url, quote}`，`source_type` 新增 `web`（「来自网络」；外链新标签直开）；**2026-10-03/T082**：quote 为**页面正文摘录**（读页成功）或搜索摘要（读页失败回退）；**T083**：`meta` 另含 `web_failed`（联网被规划但未取得任何结果——供应商失败/额度用尽；前端附显式提示）与 `web_error` 原因码（`balance`/`ratelimit`/`quota`/`unavailable`，前端按语言映射文案） |
+| `thinking` | `{text}` | **2026-10-03/T088**：思维链增量（答案调用开启思考档；仅当次生成、**不持久化**——历史消息不含）；思考期间持续有帧，兼作 60s 静默看门狗心跳 |
 | `token` | `{text}` | 增量文本（流式） |
 | `done` | `{message_id, usage, cost_cny}` | 完成；usage 含回答调用 prompt/completion tokens + **全成本** `cost_cny`（合计）与 `cost_breakdown {llm, web, retrieval}`（**2026-10-03/T079**：模型调用含规划/扩检小调用、联网按次、embedding/重排按 tokens——FR-017/R36；此前 cost_cny 为回答单调用口径） |
 | `error` | `{code, message}` | 模型故障等，可重试；历史与资料不受影响 |
