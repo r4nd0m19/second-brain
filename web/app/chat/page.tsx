@@ -153,7 +153,8 @@ function renderAssistant(
   content: string,
   citations?: Citation[],
   onNavigate?: () => void,
-  onOpenConversation?: (conversationId: string, messageId?: string) => void
+  onOpenConversation?: (conversationId: string, messageId?: string) => void,
+  onOpenWeb?: (citation: Citation) => void
 ): React.ReactNode {
   const prepared =
     citations && citations.length > 0
@@ -173,7 +174,23 @@ function renderAssistant(
               const citation = citations?.[Number(href.slice(CITATION_SCHEME.length)) - 1];
               if (citation) {
                 if (citation.web) {
-                  // 联网来源（F4）：外部网页链接直接新标签打开（不经本地路由）
+                  // 联网来源（F4）：点 [N] 弹「引文小窗」（2026-10-03 用户反馈），浏览器访问改由窗内显式按钮；
+                  // 保留 href 以支持中键/新标签；未接入小窗的场合（如对话预览窗内）退回直开
+                  if (onOpenWeb) {
+                    return (
+                      <a
+                        className="citation-chip"
+                        href={citationHref(citation)}
+                        title={citation.document_name}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onOpenWeb(citation);
+                        }}
+                      >
+                        {children}
+                      </a>
+                    );
+                  }
                   return (
                     <a
                       className="citation-chip"
@@ -482,6 +499,76 @@ function ConvPreview({
   );
 }
 
+/** 网页引用「引文小窗」（2026-10-03 用户反馈）：点 [N] 先看回答所依据的原文摘录（回答时从页面正文提取，
+ *  失败回退搜索摘要），浏览器访问改由窗内「↗ 打开原文」显式触发——业界同款卡片形态
+ *  （iframe 直嵌原页会被站点 X-Frame-Options/CSP 拒绝，实测常引来源约半数不可嵌）。 */
+function WebCitePreview({
+  citation,
+  onClose,
+}: {
+  citation: Citation;
+  onClose: () => void;
+}) {
+  const { t } = useLang();
+  // Escape 关闭
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  let host = "";
+  try {
+    host = citation.source_url ? new URL(citation.source_url).hostname : "";
+  } catch {
+    host = "";
+  }
+  return (
+    <div className="conv-preview-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="conv-preview"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="conv-preview-head">
+          <div className="conv-preview-title">
+            {citation.document_name}
+            {host && (
+              <span className="muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>
+                {t("chat.sourceWeb")} · {host}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 6, flex: "0 0 auto" }}>
+            {citation.source_url && (
+              <a className="btn" href={citation.source_url} target="_blank" rel="noreferrer">
+                {t("chat.openOriginal")}
+              </a>
+            )}
+            <button className="btn" onClick={onClose} aria-label={t("chat.previewClose")}>
+              ✕
+            </button>
+          </div>
+        </div>
+        <div className="conv-preview-body">
+          {citation.quote ? (
+            <blockquote className="muted">“{citation.quote}”</blockquote>
+          ) : (
+            <p className="muted">{t("chat.webNoQuote")}</p>
+          )}
+          {citation.source_url && (
+            <p className="muted" style={{ fontSize: 12, wordBreak: "break-all", marginTop: 8 }}>
+              {citation.source_url}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const { t, lang } = useLang();
   const router = useRouter();
@@ -517,6 +604,7 @@ export default function ChatPage() {
   const [searching, setSearching] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null); // 跳转后的短暂高亮消息
   const [preview, setPreview] = useState<{ convId: string; msgId: string | null } | null>(null); // 对话引用预览小窗
+  const [webPreview, setWebPreview] = useState<Citation | null>(null); // 网页引用「引文小窗」
   const jumpRef = useRef<string | null>(null); // 待定位消息（渲染后消费）
   const searchSeq = useRef(0);
   const convOpenSeq = useRef(0);
@@ -701,6 +789,11 @@ export default function ChatPage() {
   /** 引用角标（对话类）：弹出预览小窗，不离开当前对话（用户反馈：直接整页跳转太突兀） */
   function openConversationPreview(conversationId: string, messageId?: string) {
     setPreview({ convId: conversationId, msgId: messageId ?? null });
+  }
+
+  /** 引用角标（网页类）：弹出「引文小窗」显示回答所依据的原文摘录（用户反馈：不要直接丢去浏览器） */
+  function openWebPreview(citation: Citation) {
+    setWebPreview(citation);
   }
 
   /** 「回到原对话」按钮 / 预览窗「在对话中打开」：同路由软导航不重挂载（挂载期深链解析不会重跑）
@@ -1008,7 +1101,8 @@ export default function ChatPage() {
                       msg.content,
                       chipCitations(msg),
                       rememberScroll,
-                      openConversationPreview
+                      openConversationPreview,
+                      openWebPreview
                     )
                     : msg.content
                   : ""}
@@ -1168,6 +1262,9 @@ export default function ChatPage() {
             openConversationFromCitation(id, mid);
           }}
         />
+      )}
+      {webPreview && (
+        <WebCitePreview citation={webPreview} onClose={() => setWebPreview(null)} />
       )}
     </main>
   );
