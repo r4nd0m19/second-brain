@@ -45,7 +45,7 @@ def get_web_search() -> WebSearchClient | None:  # 未配置凭据 → None（�
 
 - `source_type` 新增取值 **`web`**（联网作答；前端文案"来自网络"）
 - `citations[]` 新增 web 形状：`{"document_id": null, "document_name", "source_url", "quote"(摘要), "web": true, "chunk_id": null, "heading_path": null, "page": null}`
-- 前端行为契约：`web: true` 的来源 → 链接指向 `source_url`，**新标签打开**；出处列表按钮文案「↗ 打开网页」；不经过本地快照/阅读器路由
+- 前端行为契约：`web: true` 的来源 → 链接指向 `source_url`，**新标签打开**；出处列表按钮文案「↗ 打开网页」；不经过本地快照/阅读器路由（**2026-10-03/T087 补记**：回答内 `[N]` 角标点击改为弹「引文小窗」——展示标题/域名/`quote` 摘录与「↗ 打开原文」显式新标签；出处列表条目与「↗ 打开网页」按钮维持直开；小窗零新增接口）
 - **混合引用**（2026-10-02 增补）：显式联网指令命中本地强相关时，同一条消息的 `citations` 可同时含本地与 web 条目——**本地在前（1..N）、web 续接（N+1..）**，`source_type=web`；前端按 `citations[N-1]` 映射编号，无需改动
 
 ## 4. 配置契约（.env）

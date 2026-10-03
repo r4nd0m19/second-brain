@@ -388,6 +388,9 @@ Task: "T022 前端-对话页 web/app/chat/"
   - Deps: T085（在源抽象上新增实现并切换默认）
   - DoD: 单测 +8（deepseek 7：解析去重/请求形状/token 计费/工具错误/HTTP 超时/无搜索块/paid 标记；成本映射 1）✓；**全量 158 通过 / 1 跳过** ✓；ruff 触及文件全清 ✓；**真实 key 冒烟**：13 条结果（Upwork 官方报告在内）、单查询 ¥0.014 ✓；**同题对比评测**：`websearch_provider_eval.py` + 报告 JSON（DeepSeek 3.1–3.6s/≈1 分 vs SearXNG 0.2–0.4s/¥0，质量对照见 R40）✓
   - 备注：**默认源已切至 deepseek**（用户当日确认；config 默认值 + .env，服务已重启）；**真机 E2E ✓**：planning→web_search→generating、5 条 web 引用（Upwork 官方新闻稿/研究页）、`web ¥0.021`＞0（token 计费生效）、总成本 ¥0.0289/轮、会话已清理；服务端搜索为模型轮次（自动改写查询）、时延约为直连源的 10×；评测实证 SearXNG 重排分 0.92–0.99（闸门对门户页盲区——"低分才升级"不适用于 searxng 打底）
+- [x] **T087 网页引用「引文小窗」（R41，2026-10-03 用户实测驱动）**：回答内 [N] 角标点击不再直接跳浏览器 → `WebCitePreview` 小窗（复用 conv-preview 样式：标题/域名/`quote` 原文摘录（读页产物；无摘录给提示文案）/「↗ 打开原文」显式新标签；Escape/点背景关闭）；`renderAssistant` 增 `onOpenWeb` 回调（href 保留供中键/新标签；对话预览窗内退回直开）；出处列表维持直开（用户约定）；i18n 增 `chat.webNoQuote`；零后端改动
+  - Deps: 无（纯前端；复用既有 citations.quote 数据）
+  - DoD: `tsc`/`eslint`/`next build` 通过 ✓（/chat 53.6 kB）；真机复核（用户）
 - [x] **T067 日期控件替换（R26 追补，2026-10-03 用户实测）**：原生 `<input type="date">` 显示格式随浏览器语言、无法随界面切换（Chrome 官方 FAQ 确认无作者接口）→ 新增 `web/app/_components/date-field.tsx`（业界组件 react-day-picker v10：触发钮按界面语言格式化显示所选日期、弹层日历跟随 zh/en locale、外部点击/Escape 关闭、有值时提供「清除」）；接入 `docs` 页清理区两处（value 契约保持 "YYYY-MM-DD"，后端参数与 UTC 语义不变）；组件与中文 locale 经 `next/dynamic` 按需加载，不进页面首包
   - Deps: 无（独立前端组件替换）
   - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过、`/` 首包 122 kB（与改造前持平）✓；rdp 样式已入导出 CSS ✓；真机复核（用户）
