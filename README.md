@@ -93,7 +93,20 @@ cd ../web && npm install && npm run build
 cd ../extension && npm install && npm run build   # dist/ → load unpacked at chrome://extensions
 ```
 
+> Note: if you change `POSTGRES_PASSWORD` in `deploy/.env`, update the password part of `DATABASE_URL` in `server/.env` to match (the two must agree).
+
 Open `http://localhost:8000` and log in with `ADMIN_USERNAME / ADMIN_PASSWORD` from `.env`.
+
+### Which API keys do I need?
+
+| Variable | Used for | Required? | Where to get it |
+|---|---|---|---|
+| `LLM_API_KEY` | Chat model (DeepSeek) — the **default web search** (server-side `web_search`) reuses the same account, no extra key | ✅ | [platform.deepseek.com](https://platform.deepseek.com) → API keys (pay-as-you-go, a few dollars/month for personal use) |
+| `EMBEDDING_API_KEY` | Embeddings (SiliconFlow bge-m3, free) + **reranking** (Qwen3-Reranker, same key) | ✅ | [siliconflow.cn](https://siliconflow.cn) → API keys |
+| `ADMIN_PASSWORD` / `SECRET_KEY` | Login password / session-signing secret | ✅ (fail-closed: the server refuses to boot on default or weak values) | Generate locally: `openssl rand -hex 32` |
+| Web search (optional swap) | Self-hosted SearXNG as a zero-cost alternative: `docker compose -f deploy/docker-compose.yml up -d searxng`, then set `WEB_SEARCH_PROVIDER=searxng` | — | no key needed |
+
+Both providers are OpenAI-compatible — `LLM_BASE_URL` / `EMBEDDING_BASE_URL` and the model names can be swapped for any compatible service (OpenAI, other vendors).
 
 ## Tests & evals
 

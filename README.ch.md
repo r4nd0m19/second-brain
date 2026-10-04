@@ -87,7 +87,20 @@ cd ../web && npm install && npm run build
 cd ../extension && npm install && npm run build   # 产物 dist/ → chrome://extensions 开发者模式加载
 ```
 
+> 提示：若把 `deploy/.env` 的 `POSTGRES_PASSWORD` 改成随机值，记得同步改 `server/.env` 的 `DATABASE_URL` 口令段（两处必须一致）。
+
 打开 `http://localhost:8000`，用 `.env` 里的 `ADMIN_USERNAME / ADMIN_PASSWORD` 登录。
+
+### 需要哪些 API Key？
+
+| 变量 | 用途 | 必须？ | 去哪里拿 |
+|---|---|---|---|
+| `LLM_API_KEY` | 对话模型（DeepSeek）——**默认联网搜索**（服务端 web_search）复用同一账户，无需额外 key | ✅ | [platform.deepseek.com](https://platform.deepseek.com) → API keys（按量计费，个人用量约每月几元） |
+| `EMBEDDING_API_KEY` | Embedding（硅基流动 bge-m3，免费）+ **重排**（Qwen3-Reranker，同一 key） | ✅ | [siliconflow.cn](https://siliconflow.cn) → API 密钥 |
+| `ADMIN_PASSWORD` / `SECRET_KEY` | 登录口令 / 会话签名密钥 | ✅（启动 fail-closed 校验，默认/弱值拒绝启动） | 本地生成：`openssl rand -hex 32` |
+| 联网搜索（可选替换） | 自建 SearXNG 零成本备选：`docker compose -f deploy/docker-compose.yml up -d searxng` 后设 `WEB_SEARCH_PROVIDER=searxng` | — | 无需 key |
+
+两家都是 OpenAI 兼容 API——`LLM_BASE_URL` / `EMBEDDING_BASE_URL` 与模型名均可替换为任意兼容服务（如 OpenAI、其他厂商）。
 
 ## 测试与评测
 
