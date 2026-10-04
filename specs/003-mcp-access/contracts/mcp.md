@@ -6,7 +6,7 @@
 
 - `POST/GET /mcp`：同进程挂载于现有服务（`json_response` 模式）。
 - 鉴权：`Authorization: Bearer <凭据>`——scope 必须为 `read` 或 `write`；`capture` 凭据拒绝（401，响应体为 JSON 错误、不带 `WWW-Authenticate`）。
-- DNS-rebinding 白名单：`localhost` / `127.0.0.1` / `your-server-lan-ip`（含 `:8000`）。
+- DNS-rebinding 白名单：默认 `localhost` / `127.0.0.1`（含 `:8000`）；局域网/域名 host 经 `MCP_ALLOWED_HOSTS` 配置追加（T093，2026-10-04；公开仓库不再硬编码作者内网 IP）。
 - 协议：MCP Streamable HTTP（官方 python-sdk 2.x；initialize → notifications/initialized → tools/list → tools/call；会话 id 经 `mcp-session-id` 头）。
 
 ## 工具

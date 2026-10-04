@@ -1,5 +1,7 @@
 # second-brain systemd 单元（T035）
 # 安装：sudo cp deploy/second-brain.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now second-brain
+# 首次安装（T093 降权运行）：sudo useradd --system --home /opt/second-brain --shell /usr/sbin/nologin second-brain
+#   && sudo chown -R second-brain:second-brain /opt/second-brain/server/data
 [Unit]
 Description=second-brain (FastAPI single-process: API + PWA static hosting)
 After=network-online.target docker.service
@@ -8,6 +10,9 @@ Requires=docker.service
 
 [Service]
 Type=simple
+# 专用低权限账号（T093 审计：原单元未设 User= → 进程以 root 运行，RCE 即失守宿主）
+User=second-brain
+Group=second-brain
 WorkingDirectory=/opt/second-brain/server
 # 反代（Caddy）之后运行：启用代理头，让登录限速/日志按真实访客 IP 统计
 ExecStart=/opt/second-brain/server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
@@ -18,6 +23,7 @@ RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
+ProtectHome=true
 ReadWritePaths=/opt/second-brain/server/data
 
 [Install]

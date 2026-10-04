@@ -28,12 +28,12 @@ class _FakeStore:
     def __init__(self) -> None:
         self.saved: dict[str, bytes] = {}
 
-    def save(self, owner: str, doc: str, filename: str, fileobj):  # noqa: ANN001
+    def save(self, owner: str, doc: str, filename: str, fileobj):
         data = fileobj.read()
         self.saved[f"{owner}/{doc}/{filename}"] = data
         return f"{owner}/{doc}/{filename}", hashlib.sha256(data).hexdigest(), len(data)
 
-    def delete_document_dir(self, owner: str, doc: str) -> None:  # noqa: ARG002
+    def delete_document_dir(self, owner: str, doc: str) -> None:
         pass
 
 
@@ -103,7 +103,7 @@ async def client(engine, maker, monkeypatch, fake_store, mcp_running):
     monkeypatch.setattr(notes_module, "enqueue_ingestion", lambda *a, **k: None)
     # 检索层嵌入：假 provider（不调云 API）
     class _Embed:
-        async def embed(self, texts, on_progress=None):  # noqa: ANN001, ANN201
+        async def embed(self, texts, on_progress=None):
             return [[1.0] * settings.embedding_dim for _ in texts]
 
     monkeypatch.setattr(search_module, "get_embedding_provider", lambda: _Embed())
@@ -306,3 +306,12 @@ async def test_get_document_fallback_chunks(client, maker, account):
             raise AssertionError("应抛 ToolError")
         except ToolError as exc:
             assert "不存在" in str(exc)
+
+
+def test_mcp_allowed_hosts_from_config(monkeypatch):
+    """T093：DNS-rebinding 白名单 = 本机默认 + 配置追加（公开仓库不再硬编码作者内网 IP）。"""
+    monkeypatch.setattr(settings, "mcp_allowed_hosts", "192.168.1.5:8000, example.test")
+    hosts = mcp_server_module._allowed_hosts()
+    assert "localhost" in hosts and "127.0.0.1" in hosts  # 默认本机保留
+    assert "192.168.1.5:8000" in hosts
+    assert "example.test" in hosts

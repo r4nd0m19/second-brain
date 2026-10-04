@@ -38,7 +38,15 @@ async def lifespan(_: FastAPI):
         yield
 
 
-app = FastAPI(title="second-brain", version="0.1.0", lifespan=lifespan)
+_docs = "/openapi.json" if settings.docs_enabled else None  # T093：默认关闭（未认证信息暴露面）
+app = FastAPI(
+    title="second-brain",
+    version="0.1.0",
+    lifespan=lifespan,
+    openapi_url=_docs,
+    docs_url="/docs" if settings.docs_enabled else None,
+    redoc_url="/redoc" if settings.docs_enabled else None,
+)
 app.add_middleware(ApiAuthMiddleware)
 app.include_router(router_auth)
 app.include_router(router_me)
@@ -65,9 +73,14 @@ if WEB_DIR.exists():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str) -> FileResponse:
-        candidate = WEB_DIR / full_path
+        # 路径穿越防护（T092 审计实测：修复前 /%2e%2e/… 可未认证读 .env 等任意文件）：
+        # resolve 后做边界校验，越界一律回退 index（等价 Django safe_join 语义）
+        root = WEB_DIR.resolve()
+        candidate = (root / full_path).resolve()
+        if not candidate.is_relative_to(root):
+            return FileResponse(root / "index.html")
         if candidate.is_dir():  # 目录路由（如 /login/）→ 目录内 index.html
             candidate = candidate / "index.html"
         if candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(WEB_DIR / "index.html")
+        return FileResponse(root / "index.html")

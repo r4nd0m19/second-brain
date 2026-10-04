@@ -4,7 +4,7 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: secondbrain
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secondbrain}  # 服务器上务必在 deploy/.env 覆盖为强密码（T035）
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 deploy/.env 设置 POSTGRES_PASSWORD（无默认值，T093 防弱口令部署）}
       POSTGRES_DB: secondbrain
     ports:
       # 仅绑定 127.0.0.1（数据库不对公网；本机 WSL 已有系统 Postgres 占 5432，故映射 5433）
@@ -27,8 +27,8 @@ services:
       - "127.0.0.1:8888:8080"
     environment:
       - SEARXNG_BASE_URL=http://localhost:8888/
-      # 仅本机服务；仓库内默认值即可（服务器部署如需可经 deploy/.env 覆盖）
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-local-only-searxng-secret}
+      # 仅本机服务；值需在 deploy/.env 提供（T093 防默认密钥部署）
+      - SEARXNG_SECRET=${SEARXNG_SECRET:?请在 deploy/.env 设置 SEARXNG_SECRET（可 openssl rand -hex 32）}
     restart: unless-stopped
 
 volumes:

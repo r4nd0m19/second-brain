@@ -201,7 +201,10 @@
 - [ ] T029 [US4] PWA 支持：`web/public/`（manifest + Service Worker + 图标）
   - Deps: T012
   - DoD: Windows"安装"为独立窗口；Android 添加主屏后以应用形态（无地址栏）可用（SC-005）
+  - 进展（2026-10-03）：PWA 件已齐（`manifest.webmanifest` + SW v2 + 192/512/maskable/Apple 图标 + `viewport-fit=cover` + 安全区适配）——**待 Android 真机"添加到主屏"验证后勾选**（与 005 F3 的移动端结清联动）
 - [ ] T030 [US4] 移动端适配：`web/app/`（对话/资料页响应式）
+  - 进展（2026-10-03）：移动端（390px）截图巡检驱动一批修复——**主题切换图标 emoji→SVG**（部分字体环境渲染为豆腐块）；**对话页会话条手机常驻**（桌面"收起"的 CSS+内联 style 双通道在移动端失效，防"整条消失丢切换能力"）+ 收起箭头钮仅桌面 + 搜索框收缩进视口不再被屏幕缘裁切；**快照页桌面宽渲染 + 外层横向滚动**（原排版不裁切、可平移）；**输入框重做**（中性黑白发送键 / SVG 图标 / 单点焦点，对齐 ChatGPT 观感）。巡检覆盖：登录 / 资料（上传·浏览两来源）/ 对话（空态·有会话）/ 阅读器 / 快照。**待真机复核（用户）后勾选**
+  - 进展（2026-10-04，范式改造，用户选定"一套代码 + 手机范式改造"，调研见 R44）：① 对话页会话条退役 → **左上角汉堡 + 左侧滑出会话抽屉**（ChatGPT 同款：240ms 滑入、遮罩 42%、点选/点遮罩/新建均自动收起；桌面侧栏收起改回 CSS 属性单通道，内联 style 双通道移除）；② 资料页排序控件收进**「筛选」底部弹层**（拖拽柄+标题+✕+排序方式单选+方向 chips+底部「完成」；选中即生效、列表即时刷新；桌面 select/方向钮不变）＋「按时间清理」卡片手机默认折叠（桌面恒展开）；③ 引文小窗/对话预览 → **底部弹层**（圆角顶+拖拽柄+92vh+上滑入场+safe-area；桌面仍居中卡片）；④ 触控目标 ≥40px（.btn/.list-search/.sidebar-item）。Playwright 实测：抽屉开合/遮罩/选中收起、弹层开合/排序落 URL、小窗贴底 16px 圆角、桌面回归零变化（sidebar 260px 静态、排序控件在、汉堡隐藏）。**待真机复核（用户）后勾选**
   - Deps: T029
   - DoD: 手机上完成 上传/提问/看出处 全流程可用
 
@@ -397,6 +400,18 @@ Task: "T022 前端-对话页 web/app/chat/"
 - [x] **T089 验收基建修复：wait_browser_indexed 全量翻页（2026-10-03 数据量驱动）**：真实浏览库长大后的确定性失败——sc007（唯一回填 20 天前条目的用例）连续 3 次 180s 超时；根因：helper 只轮询第一页（page_size=100 上限、按 last_captured_at 倒序），实测 browser 文档 105 条（近 20 天 104 条）→ 第一页仅覆盖最近 ~35 小时，旧条目永远不可见（入库本身正常，只是看不到）。修复：helper 循环翻页直至找到或到末页（含 50 页保险）
   - Deps: 无（测试基建；非产品缺陷、与本批代码无关）
   - DoD: capture 场景单跑 **5 通过 / 46.6s** ✓（修复前 4 通过+1 失败/214s，其中 180s 为空等）；全量 161 通过 ✓
+- [x] **T090 联网零结果归因修正（2026-10-04 用户实测驱动）**：用户手机端提问（Upwork 职位评估）得到「联网检索失败：**服务不可用**」——但 DeepSeek 搜索服务实际正常（现场探针：同端点 200、普通查询 10 条结果；该规划查询本身搜到 0 条）。根因三连锁：① `deepseek.py` 客户端"HTTP 200 且无工具错误但零结果"静默返回 `[]`（设计如此）；② orchestrator 把"全部查询零结果"与"全部查询失败"合并标 `unavailable`；③ 该路径**零日志**（server log 无 "web search failed" 佐证——没走异常分支）。**修复**：orchestrator 拆分两分支——有错误 → `error_code`（原样）；无错误零结果 → 新原因码 **`no_results`** + `logger.info` 留痕（业界惯例：搜索"无结果"与"服务故障"必须区分文案）；前端 `webFailedText` 对 `no_results` 输出专用文案「联网检索未找到相关结果」（不套用"失败：{reason}"模板）；i18n zh/en 各 +1 键。**候选（未实施，留档）**：零结果自动改写重试（疑似值得但按 R43 教训须先评测再上）；搜索调用关思考（探针显示开思考时同查询 3 轮搜索、改写更充分，关思考省 token 但结果质量存疑——不动）
+  - Deps: 无（T083/T086 收尾修正）
+  - DoD: 单测 +1（零结果→no_results 且确已发起搜索）✓；websearch_flow 18 通过 ✓；全量 151 通过 ✓；`tsc`/`eslint`/`build` ✓；真机复核（用户）
+- [x] **T091 输出上限治理（R45，2026-10-04 用户驱动）**：动因："这些上限上线会不会有问题"→ 逐项评估（实测：规划器最坏形态 129–156/240 tokens，余量 35% 但只是碰巧没咬到）+ 业界调研四源（见 R45）→ **决策（用户选定）：小调用 max_tokens 整体移除**（交供应商默认 8K/64K 兜底）。落地：`complete_with_tools` 去掉 `max_tokens` 参数与 payload 字段（回归基类 Protocol 原签名）+ planner 去 240；`DeepSeekWebSearch` 去 256（含 config `deepseek_search_max_tokens` 与工厂传参）；**截断可见（AWS 范式）**：三处 `finish_reason==length` / `stop_reason==max_tokens` → warning（stream_chat / complete_with_tools / DeepSeek 搜索）；config 关思考注释同步改写
+  - Deps: 无（T088/T086 配置收尾）
+  - DoD: 单测 +3（流式截断告警/工具截断告警/搜索截断告警）+ 改 2（payload 断言"不含 max_tokens"、fake 签名对齐）✓；全量 **154 通过** ✓；ruff 触及文件全清 ✓；真机复核（用户）
+- [x] **T092 安全修复：SPA 回退路径穿越（2026-10-04 公开前审计，Critical）**：`main.py` 回退路由 `WEB_DIR / full_path` 无边界校验 → `/%2e%2e/%2e%2e/server/.env` 可**未认证读取任意文件**（.env=SECRET_KEY/口令/API key）；在运行中的服务实锤（config.py 8751B 直出，正常回退 8436B）。修复：`resolve()` + `is_relative_to(root)`，越界一律回退 index（等价 Django safe_join 语义，业界标准）；回归测试 2 例 + **变异验证**（还原旧代码测试必失败）；线上复验：穿越→8436B index、`/`+`/login/` 正常；全量 **156 通过** ✓
+  - Deps: 无
+  - DoD: 见上 ✓；⚠️ 配套（用户决定）：凭据轮换——暴露窗口为局域网（0.0.0.0:8000；公网/Caddy 未部署）
+- [x] **T093 公开前安全加固：审计批次（2026-10-04 用户选定"四件套+隐私部署项"）**：三路只读审计（认证面/SSRF 面/前端扩展部署面）合并 + 关键断言人工复现。落地七项：① **登录 DoS 双连**——限速改**双键**（单账号 5 次 + 单 IP 10 次/15 分钟，防随机用户名绕过）+ 全键过期清理（原只清"空 deque"永不命中、内存无界）+ username/password 长度上限（64/256）；② **fail-closed 强化**——SECRET_KEY≥32 字符、ADMIN_PASSWORD≥8 且非空（原仅比对哨兵常量，空值可静默通过）；③ **读页 SSRF**——预检解析全部地址记录拒非公网（本地/回环/链路本地/保留段）、重定向手动逐跳校验（follow_redirects=False）、禁 https→http 降级；④ **zip 炸弹**——"先全量入内存再查上限"改**流式**累计解码字节超限即断；⑤ **慢速滴流**——单页抓取总时限（wait_for；新配置 `web_search_page_total_timeout_s=15`）；⑥ **隐私**——MCP 白名单硬编码内网 IP → `MCP_ALLOWED_HOSTS` 配置（默认仅本机；用户 .env 已迁移原值）；003 spec/契约脱敏；⑦ **部署件**——systemd 加 User/Group/ProtectHome（专用账号安装说明）、compose 口令**必填无默认**（deploy/.env + SECURITY.md 步骤）、`/docs /redoc /openapi.json` 默认关闭（`DOCS_ENABLED` 调试开关）。**凭据轮换：用户判定未泄露不做**（全量日志扫描仅本机审计探针痕迹）
+  - Deps: 无（T090–T092 审计批次收口）
+  - DoD: 单测 +12（IP 键/单账号键/成功清零/schema 上限/fail-closed 空弱值/读页 6 例/MCP 白名单/文档端点关闭）✓；全量 **168 通过** ✓；ruff 触及文件全清 ✓；线上复验：docs/openapi 关闭（SPA 回退 8436B）、登录 204+me 200、穿越仍拦、MCP 白名单已加载 ✓
 - [x] **T067 日期控件替换（R26 追补，2026-10-03 用户实测）**：原生 `<input type="date">` 显示格式随浏览器语言、无法随界面切换（Chrome 官方 FAQ 确认无作者接口）→ 新增 `web/app/_components/date-field.tsx`（业界组件 react-day-picker v10：触发钮按界面语言格式化显示所选日期、弹层日历跟随 zh/en locale、外部点击/Escape 关闭、有值时提供「清除」）；接入 `docs` 页清理区两处（value 契约保持 "YYYY-MM-DD"，后端参数与 UTC 语义不变）；组件与中文 locale 经 `next/dynamic` 按需加载，不进页面首包
   - Deps: 无（独立前端组件替换）
   - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过、`/` 首包 122 kB（与改造前持平）✓；rdp 样式已入导出 CSS ✓；真机复核（用户）

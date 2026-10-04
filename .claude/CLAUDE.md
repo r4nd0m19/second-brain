@@ -24,4 +24,7 @@
 - 本机服务：手动拉起（`cd server && .venv/bin/uvicorn app.main:app --port 8000 --host 0.0.0.0`）；**不做持久化**（2026-10-01 决定，测试期；上线时随 T035 配 systemd）
 - 备份：`deploy/backup/`（本地加密备份 + 恢复脚本 + 演练；异地对象存储同步延后至部署阶段，见 research R8）
 - 索引维护：删除量大或出现"库里有的检索不到"时，`REINDEX INDEX ix_chunks_embedding_hnsw` + `VACUUM chunks`（HNSW 删改 churn 召回退化，见 001 research R16；检索已配 `retrieval_ef_search=200` 兜底）
+- 密码重置：`server/scripts/set_admin_password.py`（`SB_NEW_PASSWORD='…' .venv/bin/python scripts/set_admin_password.py`）——更新哈希并**吊销全部已登录会话**；完成后同步 `.env` 的 `ADMIN_PASSWORD`（哨兵校验/重种子用）
+- API 文档与 MCP（T093）：`/docs` `/redoc` `/openapi.json` 默认关闭（本地调试 `DOCS_ENABLED=true` 临时开）；MCP 局域网访问需在 `server/.env` 配 `MCP_ALLOWED_HOSTS`（逗号分隔 `host:port`；默认仅本机 localhost/127.0.0.1）
+- compose 必填项（T093）：`deploy/.env` 提供 `POSTGRES_PASSWORD` / `SEARXNG_SECRET`（无默认值，缺则 `docker compose` 拒绝启动）
 - 联网检索：默认 **DeepSeek 服务端搜索**（T086：`WEB_SEARCH_PROVIDER=deepseek`——官方 Anthropic 兼容端点 + web_search 服务端工具，复用 llm key、token 计费（联网轮 ≈2–5 分）、质量=官方索引级，见 R40）；**自建 SearXNG** 保留为免费可切换源（deploy compose 内 searxng 服务——`docker compose -f deploy/docker-compose.yml up -d searxng`；127.0.0.1:8888，JSON 接口；引擎集见 `deploy/searxng/settings.yml`：实机裁剪为 sogou + bing@cn.bing.com + 360search；R39/T085）；付费源（智谱）默认关闭（`web_search_paid_fallback`）

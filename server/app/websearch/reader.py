@@ -12,7 +12,10 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
+import socket
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import trafilatura
@@ -27,21 +30,72 @@ _UA = (
     "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 )
 
+_MAX_REDIRECTS = 5  # 手动重定向逐跳校验（T093）
+
+
+def _host_is_public(host: str) -> bool:
+    """SSRF 防护（T093）：解析全部地址记录，任一非公网（私有/回环/链路本地/CGNAT/保留）即拒。"""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not addr.is_global:
+            return False
+    return True
+
+
+async def _url_allowed(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    return await asyncio.to_thread(_host_is_public, parsed.hostname)
+
 
 async def fetch_html(client: httpx.AsyncClient, url: str) -> str | None:
-    """抓取单页 HTML（仅 text/html；字节上限；失败 → None）。"""
-    try:
-        resp = await client.get(url)
-        if resp.status_code != 200:
+    """抓取单页 HTML。防护（T093 审计）：仅 http/https；每跳（含重定向目标）解析 IP 拒绝
+    非公网地址；禁 https→http 降级；**流式**累计解码后字节（gzip 炸弹在展开计数、超限即断，
+    不再"先全量入内存再检查"）；失败 → None（上层回退搜索摘要）。
+    注意：client 需以 follow_redirects=False 构建（重定向由此处手动处理）。"""
+    current = url
+    for _ in range(_MAX_REDIRECTS + 1):
+        if not await _url_allowed(current):
+            logger.info("reader: blocked url (non-public address or bad scheme)")
             return None
-        ctype = (resp.headers.get("content-type") or "").lower()
-        if "html" not in ctype:
-            return None  # PDF/二进制等：回退搜索摘要
-        if len(resp.content) > settings.web_search_page_max_bytes:
+        try:
+            async with client.stream("GET", current) as resp:
+                if resp.is_redirect:
+                    location = resp.headers.get("location")
+                    if not location:
+                        return None
+                    target = urljoin(current, location)
+                    if urlparse(current).scheme == "https" and urlparse(target).scheme == "http":
+                        return None  # 禁降级（T093）
+                    current = target
+                    continue
+                if resp.status_code != 200:
+                    return None
+                ctype = (resp.headers.get("content-type") or "").lower()
+                if "html" not in ctype:
+                    return None  # PDF/二进制等：回退搜索摘要
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in resp.aiter_bytes():  # 解码后字节：压缩炸弹在展开侧计数
+                    total += len(chunk)
+                    if total > settings.web_search_page_max_bytes:
+                        logger.info("reader: page exceeds byte cap; aborted mid-stream")
+                        return None
+                    chunks.append(chunk)
+                return b"".join(chunks).decode(resp.charset_encoding or "utf-8", errors="replace")
+        except httpx.HTTPError:
             return None
-        return resp.text
-    except httpx.HTTPError:
-        return None
+    return None  # 重定向超过上限
 
 
 def extract_main_text(html: str) -> str | None:
@@ -98,12 +152,22 @@ async def read_pages(user_text: str, urls: list[str]) -> dict[str, str]:
     timeout = httpx.Timeout(settings.web_search_page_timeout_s)
 
     async with httpx.AsyncClient(
-        follow_redirects=True, timeout=timeout, headers={"User-Agent": _UA}
+        follow_redirects=False,  # 重定向由 fetch_html 手动逐跳校验（T093，防绕过 SSRF 检查）
+        timeout=timeout,
+        headers={"User-Agent": _UA},
     ) as client:
 
         async def one(url: str) -> tuple[str, str] | None:
             async with semaphore:
-                html = await fetch_html(client, url)
+                try:
+                    # 总时限（T093）：per-phase 超时会被慢速滴流无限续命；此处兜底整次抓取
+                    html = await asyncio.wait_for(
+                        fetch_html(client, url),
+                        timeout=settings.web_search_page_total_timeout_s,
+                    )
+                except TimeoutError:
+                    logger.info("reader: fetch exceeded total timeout; skipped")
+                    return None
             if not html:
                 return None
             text = await asyncio.to_thread(extract_main_text, html)  # 提取是同步 CPU 活

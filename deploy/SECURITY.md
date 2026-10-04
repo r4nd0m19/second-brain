@@ -16,11 +16,30 @@
 | `~/.config/second-brain/backup.key` | 服务器本地（600）+ **密码管理器离线副本** | 备份加密（零知识） | **丢失 = 全部备份作废（不可再生！）** —— 唯一需要"离线多处"的凭据 |
 | （部署阶段）对象存储子账号密钥 | 部署时新增 | 异地备份 | 用最小权限子账号（仅目标桶读写）；见 R8 |
 
-## 登录限速（T034 已实现）
+## 登录限速（T034 已实现；T093 加固）
 
-- 默认：同一 `IP + 用户名` 在 **15 分钟内失败 5 次** → HTTP 429 + `Retry-After`（可用 `LOGIN_RATE_LIMIT` / `LOGIN_RATE_WINDOW_MIN` 配置）
+- 默认**双键**：同一 `IP + 用户名` 15 分钟内失败 **5** 次；同一 **IP** 15 分钟内失败 **10** 次（**防随机用户名绕过**）→ HTTP 429 + `Retry-After`（`LOGIN_RATE_LIMIT` / `LOGIN_RATE_LIMIT_IP` / `LOGIN_RATE_WINDOW_MIN` 配置）
+- 用户名/密码长度上限（64/256 字符，超长 → 422）——防限速器键膨胀与 argon2 开销放大
 - 实现：进程内滑动窗口（`server/app/auth/ratelimit.py`）；多进程/多用户化时替换为 Redis（接口已隔离）
 - ⚠️ 反代后方：uvicorn 需以 `--proxy-headers --forwarded-allow-ips=<反代IP>` 启动，否则按反代 IP 限速全局
+
+## 信息暴露面（T093）
+
+- `/docs` `/redoc` `/openapi.json` **默认关闭**（未认证的 API 结构暴露）；本地调试 `DOCS_ENABLED=true` 临时开启，生产保持关闭
+- MCP DNS-rebinding 白名单默认仅本机（`localhost`/`127.0.0.1`）；局域网/域名访问经 `MCP_ALLOWED_HOSTS`（逗号分隔、含端口）显式配置
+- SPA 回退路由已做路径边界校验（T092，防 `..` 穿越读任意文件）
+
+## deploy/.env（compose 必填项，T093）
+
+`deploy/docker-compose.yml` 的 `POSTGRES_PASSWORD` / `SEARXNG_SECRET` **无默认值**（防弱口令部署）——
+先在 `deploy/.env`（已 gitignore）设置，再 `docker compose up`：
+
+```sh
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)" > deploy/.env
+echo "SEARXNG_SECRET=$(openssl rand -hex 32)" >> deploy/.env
+```
+
+（已初始化过的数据库：`POSTGRES_PASSWORD` 改动不会生效——initdb 只在首次建卷时写入；保持原值或重建卷。）
 
 ## HTTPS 完整步骤（部署执行，T035 展开细节）
 
@@ -40,8 +59,10 @@
 ## 安全检查清单（部署核对）
 
 - [ ] `ADMIN_PASSWORD` 已改为强密码
-- [ ] `SECRET_KEY` 已随机化（非默认值）
-- [ ] 登录限速生效（连续失败 5 次收到 429）
+- [ ] `SECRET_KEY` 已随机化（非默认值，≥32 字符——启动 fail-closed 校验）
+- [ ] `deploy/.env` 已设置（compose 必填：POSTGRES_PASSWORD / SEARXNG_SECRET）
+- [ ] `/docs` `/openapi.json` 生产环境不可访问（默认关闭）
+- [ ] 登录限速生效（连续失败 5 次收到 429；换随机用户名后失败 10 次同样 429）
 - [ ] HTTPS 生效 + Cookie `Secure` 标志
 - [ ] 防火墙最小开放（80/443）
 - [ ] 备份密钥离线副本已存（密码管理器 + 手写）

@@ -14,6 +14,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.routing import Match, Mount, get_route_path
 
+from app.config import settings
 from app.db import SessionLocal
 from app.mcp import tools
 from app.mcp.auth import MCPAuthMiddleware, current_mcp_owner, current_mcp_scope
@@ -67,27 +68,28 @@ async def save_note(title: str, content: str, source: str = "Claude Code (MCP)")
         return await _save_note(session, _owner(), title, content, source)
 
 
-# DNS-rebinding 防护：放行本机与局域网访问（凭据鉴权仍为硬门槛）
-_ALLOWED_HOSTS = [
-    "localhost",
-    "localhost:8000",
-    "127.0.0.1",
-    "127.0.0.1:8000",
-    "your-server-lan-ip",
-    "your-server-lan-ip:8000",
-]
+# DNS-rebinding 防护：默认仅放行本机（T093 审计：原实现硬编码某内网 IP——换网段失效且公开仓库
+# 泄露作者网络信息）；局域网/自定义域名经 MCP_ALLOWED_HOSTS 环境变量追加（逗号分隔，含端口），
+# 凭据鉴权始终为硬门槛
+_DEFAULT_ALLOWED_HOSTS = ["localhost", "localhost:8000", "127.0.0.1", "127.0.0.1:8000"]
+
+
+def _allowed_hosts() -> list[str]:
+    extra = [h.strip() for h in settings.mcp_allowed_hosts.split(",") if h.strip()]
+    return _DEFAULT_ALLOWED_HOSTS + extra
 
 
 def build_mcp_asgi_app():
     """构建挂载用 ASGI 应用（streamable HTTP，路径 /，鉴权包装在外层）。"""
+    allowed = _allowed_hosts()
     app = mcp.streamable_http_app(
         streamable_http_path="/",
         json_response=True,  # 工具无流式进度：JSON 响应更利于调试与客户端解析
         transport_security=TransportSecuritySettings(
             enable_dns_rebinding_protection=True,
-            allowed_hosts=_ALLOWED_HOSTS,
-            allowed_origins=[f"http://{h}" for h in _ALLOWED_HOSTS]
-            + [f"https://{h}" for h in _ALLOWED_HOSTS],
+            allowed_hosts=allowed,
+            allowed_origins=[f"http://{h}" for h in allowed]
+            + [f"https://{h}" for h in allowed],
         ),
     )
     return MCPAuthMiddleware(app)
@@ -103,15 +105,18 @@ class ExactMount(Mount):
 
     def matches(self, scope):
         match, child_scope = super().matches(scope)
-        if match == Match.NONE and scope["type"] in ("http", "websocket"):
-            if get_route_path(scope) == self.path:
-                root_path = scope.get("root_path", "")
-                child_scope = {
-                    "path": scope["path"] + "/",  # 规范化尾斜杠（root_path 剥离后为 "/"）
-                    "path_params": dict(scope.get("path_params", {})),
-                    "app_root_path": scope.get("app_root_path", root_path),
-                    "root_path": root_path + self.path,
-                    "endpoint": self.app,
-                }
-                return Match.FULL, child_scope
+        if (
+            match == Match.NONE
+            and scope["type"] in ("http", "websocket")
+            and get_route_path(scope) == self.path
+        ):
+            root_path = scope.get("root_path", "")
+            child_scope = {
+                "path": scope["path"] + "/",  # 规范化尾斜杠（root_path 剥离后为 "/"）
+                "path_params": dict(scope.get("path_params", {})),
+                "app_root_path": scope.get("app_root_path", root_path),
+                "root_path": root_path + self.path,
+                "endpoint": self.app,
+            }
+            return Match.FULL, child_scope
         return match, child_scope

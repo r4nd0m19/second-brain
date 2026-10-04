@@ -40,7 +40,7 @@
 - **无凭据 / capture 凭据**访问 `/mcp` → 401（明确 JSON 错误体）。
 - **read 凭据调用 save_note** → 工具级错误（`ToolError`，消息透传模型可自我纠正）。
 - **服务未启动**：harness 侧连接失败并提示——不影响第二大脑自身（解耦，constitution VI）。
-- **Windows 端经局域网访问**：`http://your-server-lan-ip:8000/mcp` 在白名单内（凭据同）。
+- **Windows 端经局域网访问**：`http://<服务器局域网IP>:8000/mcp` —— 需在 `server/.env` 的 `MCP_ALLOWED_HOSTS` 显式列出该 host（含端口；默认白名单仅本机，T093 起不再硬编码）；凭据同。
 - **无尾斜杠 `/mcp`**：必须直接命中（Starlette Mount 默认只认 `/mcp/`，已用 `ExactMount` 修正，否则落到 SPA 通配 405）。
 - **笔记管理**：当前不进资料列表、无 UI 删除入口（可经 API 删除）；后续增强时再放开。
 
