@@ -16,7 +16,7 @@
 └─────────────┘                           └─────────────────┘
                                                   │
                                                   ├─▶ 云 LLM（deepseek-flash）· 云 Embedding（bge-m3）
-                                                  ├─▶ Rerank（bge-reranker-v2-m3）· 联网搜索（智谱，可关）
+                                                  ├─▶ Rerank（Qwen3-Reranker-4B）· 联网搜索（DeepSeek 服务端 / 自建 SearXNG）
 ```
 
 ## 能力总览
@@ -26,10 +26,10 @@
 | **F1 核心问答** | 上传（PDF / EPUB / TXT / MD / DOCX）→ 解析分块 → 混合检索 → 带出处回答（正文 [N] 角标可跳原文）；模型兜底 + **LLM 判定的问答回写**（写前近似查重防重复） |
 | **F2 浏览器采集** | 扩展按"阅读行为"自动采集（停留/滚动阈值）；单文件快照回放（CSP 沙箱隔离）；黑名单源头不采；断网排队重传 |
 | **F3 MCP 接入** | 以 MCP（Streamable HTTP）把资料库接给 Claude Code 等 harness：检索 / 读文档 / 存笔记 |
-| **F4 联网检索** | 库外问题可联网答题（智谱搜索，默认关闭、按日限次）；来源标注"来自网络"并附外链 |
+| **F4 联网检索** | 库外问题可联网答题（默认 **DeepSeek 服务端搜索**；自建 SearXNG 免费可切换；付费源兜底默认关；按日限次护栏）；来源标注"来自网络"并附外链 |
 | 阅读器 | EPUB 目录 / 页码（估算）/ 按页跳转 / 键盘翻页；PDF 内置预览；出处一键定位原文（PDF 页码 / 文本高亮 / EPUB CFI） |
 
-检索链路的若干设计（评测驱动）：LLM 工具调用查询规划器（取代词表路由）、**二段式重排**（正确块分 0.77+ vs 噪声 ≤0.38，分离间隔 +0.39）、HNSW 维护流程、防编造回答守则——均留有调研与验收记录（见 `specs/`）。
+检索链路的若干设计（评测驱动）：LLM 工具调用查询规划器（取代词表路由）、**二段式重排**（正确块分 0.79+ vs 噪声 ≤0.35，分离间隔 +0.643）、HNSW 维护流程、防编造回答守则——均留有调研与验收记录（见 `specs/`）。
 
 ## 技术栈
 
@@ -37,8 +37,8 @@
 |----|------|
 | 服务端 | Python 3.12 · FastAPI · SQLAlchemy(async) · Alembic |
 | 存储 | PostgreSQL 16 + pgvector（HNSW）· pg_trgm；原文件按归属落盘 |
-| 检索 | 向量召回 + 关键词加成 → cross-encoder 重排（硅基流动 bge-reranker-v2-m3） |
-| 模型 | 对话 deepseek-flash · Embedding BAAI/bge-m3 · 联网 智谱 Web Search（均可替换） |
+| 检索 | 向量召回 + 关键词加成 → cross-encoder 重排（硅基流动 Qwen3-Reranker-4B） |
+| 模型 | 对话 deepseek-flash（V4，答案开思考档）· Embedding BAAI/bge-m3 · 联网 DeepSeek 服务端搜索（均可替换） |
 | 前端 | Next.js 15（静态导出，由 FastAPI 同端口托管）· PWA 双端 |
 | 采集 | Chrome MV3 扩展（esbuild + vitest） |
 | 部署 | Docker（db）+ systemd + Caddy（见 `deploy/`）· 备份加密脚本 |
@@ -48,23 +48,26 @@
 前置：Python 3.12、Node ≥ 20、Docker、Chrome/Edge。
 
 ```bash
-# 1. 数据库（pgvector，映射 127.0.0.1:5433）
+# 1. 数据库口令（compose 必填项；本机可留示例值，对外部署务必换随机值）
+cp deploy/.env.example deploy/.env
+
+# 2. 数据库（pgvector，映射 127.0.0.1:5433）
 docker compose -f deploy/docker-compose.yml up -d db
 
-# 2. 环境变量（复制模板，填入真实值；ADMIN_PASSWORD / SECRET_KEY 必须改，
-#    仍为默认值时服务会 fail-closed 拒绝启动）
+# 3. 环境变量（复制模板，填入真实值；ADMIN_PASSWORD / SECRET_KEY 必须改，
+#    仍为默认/弱值（SECRET_KEY <32 字符）时服务会 fail-closed 拒绝启动）
 cp .env.example server/.env
 
-# 3. 服务端
+# 4. 服务端
 cd server
 uv venv && uv pip install -e ".[dev]"     # 或常规 venv + pip
 .venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --port 8000 --host 0.0.0.0     # 首次启动自动建管理员账号
 
-# 4. 前端（静态导出到 web/out，由服务端同端口托管）
+# 5. 前端（静态导出到 web/out，由服务端同端口托管）
 cd ../web && npm install && npm run build
 
-# 5. 浏览器扩展（可选）
+# 6. 浏览器扩展（可选）
 cd ../extension && npm install && npm run build   # 产物 dist/ → chrome://extensions 开发者模式加载
 ```
 
@@ -74,7 +77,7 @@ cd ../extension && npm install && npm run build   # 产物 dist/ → chrome://ex
 
 ```bash
 # 单元测试（不依赖外部服务）
-cd server && .venv/bin/pytest tests/ -q --ignore=tests/acceptance     # 117 项
+cd server && .venv/bin/pytest tests/ -q --ignore=tests/acceptance     # 168 项
 cd extension && npm test                                              # 36 项
 
 # 验收（需服务已启动；真实调用 LLM/Embedding）
@@ -103,14 +106,15 @@ deploy/     # 部署与备份（docker-compose / systemd / Caddy / 加密备份�
 代码变更必须对照同步文档（矩阵见 `.claude/CLAUDE.md`），工程纪律包括：
 
 - **范式优先**：机制设计默认采用业界已验证方案，自研需举证（调研 → 征询 → 留痕）
-- 开发在 feature 分支上进行（`001-core-qa` / `002-browser-capture` / `004-web-search`；`main` 始终为最新）
+- 开发在 feature 分支上进行（`001-core-qa` / `002-browser-capture` / `004-web-search` / `005-android-capture`；`main` 始终为最新）
 - 里程碑后跑一次 `/speckit-analyze` 兜底审计
 
 ## 安全基线
 
 私有部署（数据不出自租服务器；仅检索命中片段发往模型 API）：密码 argon2id ·
-签名会话 + **纪元吊销**（登出全设备失效）· 登录限速 · 采集 Bearer 令牌（服务端只存哈希）·
-快照回放强制 CSP 沙箱 · 默认密钥 fail-closed 拒绝启动 · 备份加密（GPG AES-256）。
+签名会话 + **纪元吊销**（登出全设备失效）· 登录**双键限速**（单账号 + IP 级）·
+采集 Bearer 令牌（服务端只存哈希）· 快照回放强制 CSP 沙箱 · 读页出站 **SSRF 防护**
+（内网地址拦截 / 重定向逐跳校验）· 默认/弱密钥 fail-closed 拒绝启动 · 备份加密（GPG AES-256）。
 
 ---
 

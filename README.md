@@ -18,7 +18,7 @@ every claim carries a clickable citation; only out-of-corpus questions fall back
 └─────────────┘                                            └─────────────────┘
                                                                    │
                                                                    ├─▶ Cloud LLM (deepseek-flash) · Cloud Embedding (bge-m3)
-                                                                   ├─▶ Rerank (bge-reranker-v2-m3) · Web search (Zhipu, optional)
+                                                                   ├─▶ Rerank (Qwen3-Reranker-4B) · Web search (DeepSeek server-side / self-hosted SearXNG)
 ```
 
 ## Capabilities
@@ -28,11 +28,11 @@ every claim carries a clickable citation; only out-of-corpus questions fall back
 | **F1 Core Q&A** | Upload (PDF / EPUB / TXT / MD / DOCX) → parse & chunk → hybrid retrieval → cited answers (inline `[N]` markers jump to the source); model fallback + **LLM-judged Q&A writeback** (with a near-duplicate pre-check) |
 | **F2 Browser capture** | Extension auto-captures on reading behavior (dwell time / scroll depth); single-file snapshot replay (CSP-sandboxed); blocklisted sites never captured at the source; offline queue with retry |
 | **F3 MCP access** | Exposes the library to Claude Code and other harnesses via MCP (Streamable HTTP): search / read document / save note |
-| **F4 Web search** | Web-grounded answers for out-of-corpus questions (Zhipu search; off by default, daily-capped); sources labeled "from the web" with external links |
+| **F4 Web search** | Web-grounded answers for out-of-corpus questions (DeepSeek server-side search by default; self-hosted SearXNG as a free alternative; paid fallback off by default; daily cap as a guardrail); sources labeled "from the web" with external links |
 | Reader | EPUB table of contents / page numbers (estimated) / jump-to-page / keyboard paging; built-in PDF preview; one-click source location (PDF page / text highlight / EPUB CFI) |
 
 Retrieval-pipeline design (eval-driven): LLM tool-calling query planner (replacing wordlists),
-**two-stage reranking** (correct chunks score 0.77+ vs. noise ≤ 0.38, separation margin +0.39),
+**two-stage reranking** (correct chunks score 0.79+ vs. noise ≤ 0.35, separation margin +0.643),
 HNSW maintenance routine, anti-fabrication answer rules — all backed by research and acceptance records (see `specs/`).
 
 ## Tech stack
@@ -41,8 +41,8 @@ HNSW maintenance routine, anti-fabrication answer rules — all backed by resear
 |-------|--------|
 | Backend | Python 3.12 · FastAPI · SQLAlchemy (async) · Alembic |
 | Storage | PostgreSQL 16 + pgvector (HNSW) · pg_trgm; original files on disk, per-owner |
-| Retrieval | Vector recall + keyword boost → cross-encoder rerank (SiliconFlow bge-reranker-v2-m3) |
-| Models | Chat: deepseek-flash · Embedding: BAAI/bge-m3 · Web search: Zhipu (all swappable) |
+| Retrieval | Vector recall + keyword boost → cross-encoder rerank (SiliconFlow Qwen3-Reranker-4B) |
+| Models | Chat: deepseek-flash (V4, thinking on for answers) · Embedding: BAAI/bge-m3 · Web search: DeepSeek server-side (all swappable) |
 | Frontend | Next.js 15 (static export, served by FastAPI on the same port) · PWA for both ends |
 | Capture | Chrome MV3 extension (esbuild + vitest) |
 | Deployment | Docker (db) + systemd + Caddy (see `deploy/`) · encrypted backup scripts |
@@ -52,23 +52,28 @@ HNSW maintenance routine, anti-fabrication answer rules — all backed by resear
 Prerequisites: Python 3.12, Node ≥ 20, Docker, Chrome/Edge.
 
 ```bash
-# 1. Database (pgvector, bound to 127.0.0.1:5433)
+# 1. Database credentials (required by compose; keep the sample values locally,
+#    switch to random ones for any non-local deployment)
+cp deploy/.env.example deploy/.env
+
+# 2. Database (pgvector, bound to 127.0.0.1:5433)
 docker compose -f deploy/docker-compose.yml up -d db
 
-# 2. Environment (copy the template and fill in real values; ADMIN_PASSWORD / SECRET_KEY
-#    are required — the server refuses to boot (fail-closed) while they hold default values)
+# 3. Environment (copy the template and fill in real values; ADMIN_PASSWORD / SECRET_KEY
+#    are required — the server refuses to boot (fail-closed) while they are default
+#    or too weak (SECRET_KEY < 32 chars))
 cp .env.example server/.env
 
-# 3. Server
+# 4. Server
 cd server
 uv venv && uv pip install -e ".[dev]"     # or a plain venv + pip
 .venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --port 8000 --host 0.0.0.0     # first boot creates the admin account
 
-# 4. Frontend (static export to web/out, served by the server on the same port)
+# 5. Frontend (static export to web/out, served by the server on the same port)
 cd ../web && npm install && npm run build
 
-# 5. Browser extension (optional)
+# 6. Browser extension (optional)
 cd ../extension && npm install && npm run build   # dist/ → load unpacked at chrome://extensions
 ```
 
@@ -78,7 +83,7 @@ Open `http://localhost:8000` and log in with `ADMIN_USERNAME / ADMIN_PASSWORD` f
 
 ```bash
 # Unit tests (no external services required)
-cd server && .venv/bin/pytest tests/ -q --ignore=tests/acceptance     # 117 tests
+cd server && .venv/bin/pytest tests/ -q --ignore=tests/acceptance     # 168 tests
 cd extension && npm test                                              # 36 tests
 
 # Acceptance (server must be running; calls real LLM/Embedding APIs)
@@ -111,16 +116,17 @@ Engineering discipline includes:
 - **Paradigm-first**: mechanism design defaults to industry-proven approaches; anything
   home-grown must be justified (research → consult → record)
 - Development happens on feature branches (`001-core-qa` / `002-browser-capture` /
-  `004-web-search`; `main` is always current)
+  `004-web-search` / `005-android-capture`; `main` is always current)
 - A `/speckit-analyze` audit after each milestone
 
 ## Security baseline
 
 Private deployment (data stays on your own server; only retrieved snippets go to model APIs):
 argon2id passwords · signed sessions with **epoch revocation** (logout invalidates all devices) ·
-login rate limiting · capture bearer tokens (the server stores hashes only) · snapshot replay
-forced into a CSP sandbox · fail-closed boot while default secrets are in place · encrypted
-backups (GPG AES-256).
+**dual-key login rate limiting** (per-account + per-IP) · capture bearer tokens (the server stores
+hashes only) · snapshot replay forced into a CSP sandbox · **SSRF-guarded page reader** (private
+addresses blocked, per-hop redirect validation) · fail-closed boot while secrets are default or
+weak · encrypted backups (GPG AES-256).
 
 ---
 
