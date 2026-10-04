@@ -9,6 +9,8 @@ Not another chat box — answers come first from **your own documents and browsi
 every claim carries a clickable citation; only out-of-corpus questions fall back to the model
 (optionally with web search), and reusable Q&As are written back into the library.
 
+![A grounded answer: inline citation markers with the expanded source excerpts (demo data)](docs/screenshots/desktop-chat.en.png)
+
 ```text
 ┌─────────────┐   capture (reading-triggered + snapshot)   ┌─────────────────┐
 │ Browser ext. │ ─────────────────────────────────────────▶ │                 │
@@ -34,6 +36,20 @@ every claim carries a clickable citation; only out-of-corpus questions fall back
 Retrieval-pipeline design (eval-driven): LLM tool-calling query planner (replacing wordlists),
 **two-stage reranking** (correct chunks score 0.79+ vs. noise ≤ 0.35, separation margin +0.643),
 HNSW maintenance routine, anti-fabrication answer rules — all backed by research and acceptance records (see `specs/`).
+
+## Screenshots
+
+Desktop — the library (uploads + browsing sources):
+
+![Library](docs/screenshots/desktop-library.en.png)
+
+Mobile (PWA — hamburger opens the chat drawer; filters/previews are bottom sheets):
+
+<p>
+  <img src="docs/screenshots/mobile-chat.en.png" width="280" alt="Mobile chat: a cited answer">
+  <img src="docs/screenshots/mobile-drawer.en.png" width="280" alt="Chat drawer">
+  <img src="docs/screenshots/mobile-filter.en.png" width="280" alt="Filter bottom sheet">
+</p>
 
 ## Tech stack
 

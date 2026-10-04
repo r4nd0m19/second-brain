@@ -28,7 +28,7 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/stats/storage` | 存储用量：`{database_bytes, storage_bytes, snapshot_bytes, snapshot_files, storage_files, documents:{upload,browser,conversation,note}}`（会话认证；资料页顶部展示；note= MCP 回存笔记，2026-10-02） |
+| GET | `/api/stats/storage` | 存储用量：`{database_bytes, storage_bytes, snapshot_bytes, snapshot_files, storage_files, documents:{upload,browser,conversation,note}}`（会话认证；资料页顶部展示；note= MCP 回存笔记，2026-10-02；**T094**：`storage_bytes`/计数**按账号隔离**（磁盘扫描限 `storage_path/{owner}`、计数按 `owner_user_id`）；`database_bytes` 为服务器维度） |
 
 ### MCP（Claude Code 等 harness 接入，2026-10-02）
 

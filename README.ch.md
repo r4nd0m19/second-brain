@@ -7,6 +7,8 @@
 不是又一个聊天框——所有回答优先出自**你自己的资料与浏览记录**，每条结论附可点击的出处；
 库外问题才交给模型兜底（可选联网），并把可复用的问答回写进库。
 
+![库内回答：正文引用角标 + 展开的出处原文（截图来自演示数据）](docs/screenshots/desktop-chat.zh.png)
+
 ```text
 ┌─────────────┐   采集（阅读触发 + 快照）    ┌─────────────────┐
 │ 浏览器扩展    │ ────────────────────────▶ │                 │
@@ -30,6 +32,20 @@
 | 阅读器 | EPUB 目录 / 页码（估算）/ 按页跳转 / 键盘翻页；PDF 内置预览；出处一键定位原文（PDF 页码 / 文本高亮 / EPUB CFI） |
 
 检索链路的若干设计（评测驱动）：LLM 工具调用查询规划器（取代词表路由）、**二段式重排**（正确块分 0.79+ vs 噪声 ≤0.35，分离间隔 +0.643）、HNSW 维护流程、防编造回答守则——均留有调研与验收记录（见 `specs/`）。
+
+## 界面
+
+桌面端：资料库（上传与浏览双来源）
+
+![资料库](docs/screenshots/desktop-library.zh.png)
+
+手机端（PWA——左上汉堡打开会话抽屉，筛选/预览为底部弹层）：
+
+<p>
+  <img src="docs/screenshots/mobile-chat.zh.png" width="280" alt="手机对话：带出处的回答">
+  <img src="docs/screenshots/mobile-drawer.zh.png" width="280" alt="会话抽屉">
+  <img src="docs/screenshots/mobile-filter.zh.png" width="280" alt="筛选底部弹层">
+</p>
 
 ## 技术栈
 
