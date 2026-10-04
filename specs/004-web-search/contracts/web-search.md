@@ -33,7 +33,7 @@ def get_web_search() -> WebSearchClient | None:  # 未配置凭据 → None（�
 |----|----|
 | 端点 | `POST {LLM_BASE_URL}/anthropic/v1/messages`（默认 `https://api.deepseek.com/anthropic/v1/messages`） |
 | 鉴权 | `Authorization: Bearer <LLM_API_KEY>` + `anthropic-version: 2023-06-01`（与对话同一 DeepSeek 账户） |
-| 请求 | 声明服务端工具 `tools:[{"type":"web_search_20250305","name":"web_search","max_uses":2}]` + 提示词「请联网搜索：{query}（只要执行搜索、不展开回答）」+ `max_tokens=256` |
+| 请求 | 声明服务端工具 `tools:[{"type":"web_search_20250305","name":"web_search","max_uses":2}]` + 提示词「请联网搜索：{query}（只要执行搜索、不展开回答）」（**不传 `max_tokens`**——T091：上限交由供应商默认兜底；`stop_reason=max_tokens` 时告警） |
 | 响应 | `content` 块序：`thinking` → `server_tool_use`(查询词) → `web_search_tool_result`（结果数组：`title`/`url`/`page_age`；正文为 `encrypted_content` 密文） → `text` |
 | 计费 | **token 制**（无按次费）：按官方分档单价（含峰谷倍率）计入 web 成本；`usage.server_tool_use.web_search_requests` 为搜索次数 |
 | 特性 | 模型自动改写/补全查询（常中英各一轮，单调用 1-2 轮搜索）；结果**无明文摘要**（密文仅模型可见）→ snippet 为空、重排按标题、正文由读页管线补齐 |
@@ -63,5 +63,4 @@ def get_web_search() -> WebSearchClient | None:  # 未配置凭据 → None（�
 | `WEB_SEARCH_PROVIDER` | deepseek | 搜索源：`deepseek`（官方服务端搜索，token 计费；默认，T086）/`searxng`（自建免费）/`zhipu`（付费 API） |
 | `DEEPSEEK_SEARCH_MODEL` | deepseek-flash | 服务端搜索调用所用模型 |
 | `DEEPSEEK_SEARCH_TIMEOUT_S` | 30.0 | 服务端搜索超时（模型轮次 + 服务端检索，慢于直连源） |
-| `DEEPSEEK_SEARCH_MAX_TOKENS` | 256 | 搜索轮输出上限（只搜不答，控成本） |
 | `DEEPSEEK_SEARCH_BASE_URL` | 空 | 空 = 由 `LLM_BASE_URL` 推导（+ `/anthropic`） |

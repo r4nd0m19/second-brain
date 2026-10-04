@@ -72,7 +72,7 @@ async def test_answer_calls_enable_thinking_and_forward_reasoning():
 
 
 async def test_complete_with_tools_disables_thinking():
-    """规划器工具调用：关思考（否则思维链吃满 max_tokens=200，工具调用为空）。"""
+    """规划器工具调用：关思考 + 不传 max_tokens（T091：上限交由供应商默认兜底）。"""
     captured: dict = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -82,4 +82,44 @@ async def test_complete_with_tools_disables_thinking():
         )
 
     await _client(handler).complete_with_tools([{"role": "user", "content": "q"}], tools=[])
-    assert '"thinking":{"type":"disabled"}' in captured["body"].replace(" ", "")
+    compact = captured["body"].replace(" ", "")
+    assert '"thinking":{"type":"disabled"}' in compact
+    assert '"max_tokens"' not in compact
+
+
+async def test_stream_truncation_logs_warning(caplog):
+    """T091：finish_reason=length（输出被上限截断）→ 告警可见，不许静默。"""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=_sse(
+                [
+                    {"choices": [{"delta": {"content": "半句"}, "finish_reason": None}]},
+                    {"choices": [{"delta": {}, "finish_reason": "length"}]},
+                ]
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    with caplog.at_level("WARNING", logger="app.chat.llm"):
+        _ = [e async for e in _client(handler).stream_chat([{"role": "user", "content": "q"}])]
+    assert any("截断" in r.message for r in caplog.records)
+
+
+async def test_complete_with_tools_truncation_logs_warning(caplog):
+    """T091：非流式工具调用 finish_reason=length → 告警可见。"""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"message": {"content": "", "tool_calls": []}, "finish_reason": "length"}
+                ]
+            },
+        )
+
+    with caplog.at_level("WARNING", logger="app.chat.llm"):
+        await _client(handler).complete_with_tools([{"role": "user", "content": "q"}], tools=[])
+    assert any("截断" in r.message for r in caplog.records)

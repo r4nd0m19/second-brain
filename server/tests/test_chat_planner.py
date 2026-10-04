@@ -10,7 +10,7 @@ class _FakeLLM:
         self.error = error
         self.messages: list[dict] = []
 
-    async def complete_with_tools(self, messages, tools, tool_choice="auto", max_tokens=0):
+    async def complete_with_tools(self, messages, tools, tool_choice="auto"):
         self.messages = messages
         if self.error:
             raise self.error

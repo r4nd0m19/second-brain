@@ -18,8 +18,17 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.deepseek.com"
     llm_model: str = "deepseek-flash"
     # 答案调用思考档（V4 系，T088）：low/high/max（官方默认 high）；小调用（规划/扩检/时间解析）
-    # 恒关思考——V4 默认开启且思维链占用 max_tokens，不关会把规划器（200 tokens）打空
+    # 恒关思考——R42 事故：V4 默认开思考时思维链会把小预算调用打空（T091 起小上限已移除，
+    # 关思考保留：小调用要的是短而快的确定性输出）
     llm_answer_effort: str = "high"
+
+    # MCP（T093）：DNS-rebinding 白名单追加项（逗号分隔，含端口的 host，如 "192.168.1.5:8000"）；
+    # 默认仅本机（localhost/127.0.0.1）——局域网访问需显式配置（公开仓库不再硬编码作者内网 IP）
+    mcp_allowed_hosts: str = ""
+
+    # API 文档端点（/docs、/redoc、/openapi.json，T093）：默认关闭（未认证的信息暴露面）；
+    # 本地调试可设 DOCS_ENABLED=true（该开关不走 /api 前缀，生产务必保持关闭）
+    docs_enabled: bool = False
 
     # Embedding
     embedding_provider: str = "siliconflow"
@@ -39,7 +48,8 @@ class Settings(BaseSettings):
     secret_key: str = DEFAULT_SECRET_KEY
 
     # 认证安全（T034；spec NFR Security）
-    login_rate_limit: int = 5  # 登录失败限速：窗口内最大失败次数
+    login_rate_limit: int = 5  # 登录失败限速：窗口内最大失败次数（单账号口径）
+    login_rate_limit_ip: int = 10  # 登录失败限速：窗口内单 IP 最大失败次数（T093，防随机用户名绕过）
     login_rate_window_min: int = 15  # 限速窗口（分钟）
     cookie_secure: bool = False  # HTTPS 部署后置 AUTH_COOKIE_SECURE=true（T035）
 
@@ -77,7 +87,6 @@ class Settings(BaseSettings):
     deepseek_search_base_url: str = ""  # 空 = 由 llm_base_url 推导（+ /anthropic）
     deepseek_search_model: str = "deepseek-flash"
     deepseek_search_timeout_s: float = 30.0  # 模型轮次 + 服务端搜索，比直连搜索源慢（实测 2.7s~15s）
-    deepseek_search_max_tokens: int = 256  # 只要求执行搜索、不展开回答：小上限控成本
     # 免费加深（全部自建的质量补偿）：结果最好分低于此值 → 改写查询变体二轮检索（零成本、耗时）
     web_search_escalate_below: float = 0.45
     # 付费兜底开关（默认关；开启且智谱 key 有效时，"免费加深仍不达标"才付一次）
@@ -87,6 +96,7 @@ class Settings(BaseSettings):
     # 搜索+读页（R38/T082）：对过滤后的前 N 条结果抓取正文、段落级筛选（0 = 关闭读页，仅用摘要）
     web_search_reader_max_pages: int = 4
     web_search_page_timeout_s: float = 8.0
+    web_search_page_total_timeout_s: float = 15.0  # 单页抓取总时限（T093：防慢速滴流续命 per-phase 超时）
     web_search_page_max_bytes: int = 2_000_000
     web_search_fetch_concurrency: int = 4
     web_search_digest_max_chars: int = 2000  # 单页注入上下文字符上限
@@ -128,14 +138,17 @@ class Settings(BaseSettings):
     price_rerank_per_million: float = 0.14  # Qwen3-Reranker-4B @ 硅基流动（R35）
 
     def assert_secure(self) -> None:
-        """fail-closed（审计二期 B1）：默认密钥/口令 → 拒绝启动，要求显式配置。"""
-        if self.secret_key == DEFAULT_SECRET_KEY:
+        """fail-closed（审计二期 B1；T093 强化）：默认/空/过弱值 → 拒绝启动。
+
+        原实现只比对哨兵常量——`.env` 里 `SECRET_KEY=`（空值，注释掉值的常见误配）可静默通过。
+        """
+        if self.secret_key == DEFAULT_SECRET_KEY or len(self.secret_key.strip()) < 32:
             raise RuntimeError(
-                "SECRET_KEY 仍为默认值——请在 .env 设置随机 SECRET_KEY 后重启（fail-closed，审计二期 B1）"
+                "SECRET_KEY 为空/过短（<32 字符）或仍为默认值——请在 .env 设置随机 SECRET_KEY 后重启（fail-closed，T093）"
             )
-        if self.admin_password == DEFAULT_ADMIN_PASSWORD:
+        if self.admin_password == DEFAULT_ADMIN_PASSWORD or len(self.admin_password.strip()) < 8:
             raise RuntimeError(
-                "ADMIN_PASSWORD 仍为默认值——请在 .env 设置 ADMIN_PASSWORD 后重启（fail-closed，审计二期 B1）"
+                "ADMIN_PASSWORD 为空/过短（<8 字符）或仍为默认值——请在 .env 设置 ADMIN_PASSWORD 后重启（fail-closed，T093）"
             )
 
     @property

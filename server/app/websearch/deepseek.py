@@ -43,24 +43,22 @@ class DeepSeekWebSearch:
         base_url: str,
         model: str = "deepseek-flash",
         timeout: float = 30.0,
-        max_tokens: int = 256,
         transport: httpx.AsyncBaseTransport | None = None,  # 测试注入（MockTransport）
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
-        self.max_tokens = max_tokens
         self.transport = transport
 
     async def search(self, query: str, count: int) -> list[WebSearchResult]:
         """服务端联网搜索；失败抛 WebSearchError（上层静默降级）。
 
         count 仅作参考：服务端检索条数不可控，统一返回全部候选（≤MAX_RESULTS）交重排过滤。
+        不设 max_tokens（T091）：上限交由供应商默认兜底；回应若被截断 → 告警可见。
         """
         payload = {
             "model": self.model,
-            "max_tokens": self.max_tokens,
             "messages": [
                 {
                     "role": "user",
@@ -95,6 +93,8 @@ class DeepSeekWebSearch:
         usage = data.get("usage")
         if isinstance(usage, dict):  # 无论结果如何，token 已消耗（失败形态也已计费）
             add_web(estimate_cost_cny_anthropic(usage))
+        if data.get("stop_reason") == "max_tokens":  # 截断可见（T091）
+            logger.warning("DeepSeek 搜索回应被上限截断（stop_reason=max_tokens）")
 
         results: list[WebSearchResult] = []
         seen: set[str] = set()

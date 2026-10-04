@@ -158,6 +158,5 @@ def get_web_search():
             or f"{settings.llm_base_url.rstrip('/')}/anthropic",
             model=settings.deepseek_search_model,
             timeout=settings.deepseek_search_timeout_s,
-            max_tokens=settings.deepseek_search_max_tokens,
         )
     return get_paid_web_search()

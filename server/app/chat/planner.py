@@ -135,7 +135,6 @@ async def plan_retrieval(
             messages,
             tools=PLANNER_TOOLS,
             tool_choice="auto",
-            max_tokens=240,
         )
     except LLMError:
         return []

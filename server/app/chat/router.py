@@ -130,7 +130,7 @@ async def _stream(
                 "related_hints": plan.related_hints,
                 "time_range_label": plan.time_range_label,  # F2 US3：时间解析回显
                 "web_failed": plan.web_failed,  # T083：联网未取得结果 → 前端显式提示
-                "web_error": plan.web_error,  # 失败原因码（balance/ratelimit/quota/unavailable）
+                "web_error": plan.web_error,  # 失败原因码（balance/ratelimit/quota/unavailable/no_results）
             },
         )
         yield _sse("status", {"phase": "generating"})

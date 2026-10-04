@@ -217,6 +217,23 @@ async def test_plan_web_balance_maps_reason(monkeypatch) -> None:
     assert plan.web_error == "balance"
 
 
+async def test_plan_web_empty_results_not_labeled_unavailable(monkeypatch) -> None:
+    """搜索调用全部成功但零结果 → no_results（T090：不得与"服务不可用"混为一谈）。
+
+    2026-10-04 用户实测驱动：真实故障为"查询本身搜到 0 条"，却被标 unavailable=服务不可用。
+    """
+    client = _FakeClient(results=[])
+    _patch(monkeypatch, calls=[("web_search", {"query": "k"})], client=client)
+
+    plan = await orch.prepare_reply(None, OWNER, "联网搜一下 k", [])
+    assert plan.source_type is AnswerSource.model_knowledge
+    assert plan.web_failed is True
+    assert plan.web_error == "no_results"  # 与"服务不可用"（unavailable）区分
+    assert len(client.searches) == 1  # 确已发起搜索（不是没搜）
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "联网检索未成功" in joined  # 防编造系统说明照常注入
+
+
 async def test_plan_weak_search_no_expansion(monkeypatch) -> None:
     """T077 退役：规划查询弱检索不再触发扇出——不升格 kb，走兜底（原问题通道照常参与）。"""
 

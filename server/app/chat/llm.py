@@ -11,6 +11,7 @@ usage 通过 stream_options.include_usage 请求（末尾块由服务端返回�
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Protocol, TypedDict
@@ -20,6 +21,8 @@ import httpx
 
 from app.config import settings
 from app.costing import add_llm
+
+logger = logging.getLogger(__name__)
 
 
 class ChatMessage(TypedDict):
@@ -91,6 +94,7 @@ class OpenAICompatLLM:
             if response.status_code != 200:
                 body = (await response.aread())[:300]
                 raise LLMError(f"对话模型返回 {response.status_code}: {body!r}")
+            finish_reason = ""
             async for line in response.aiter_lines():
                 if not line.startswith("data:"):
                     continue
@@ -106,6 +110,7 @@ class OpenAICompatLLM:
                     yield {"type": "usage", "usage": usage}
                 choices = obj.get("choices") or []
                 if choices:
+                    finish_reason = choices[0].get("finish_reason") or finish_reason
                     delta = choices[0].get("delta") or {}
                     reasoning = delta.get("reasoning_content")  # 思维链增量（T088，思考档）
                     if reasoning:
@@ -113,6 +118,9 @@ class OpenAICompatLLM:
                     content = delta.get("content")
                     if content:
                         yield {"type": "token", "text": content}
+            # 截断可见（T091，AWS 范式：溢出必须报错/告警，不许静默——上限已交由供应商默认兜底）
+            if finish_reason == "length":
+                logger.warning("LLM 输出被上限截断（stream_chat, model=%s）", self.model)
 
 
     async def complete_with_tools(
@@ -120,17 +128,19 @@ class OpenAICompatLLM:
         messages: list[dict],
         tools: list[dict],
         tool_choice: str = "auto",
-        max_tokens: int = 200,
     ) -> dict:
-        """非流式请求（带 tools）：解析 OpenAI 兼容 tool_calls 为 {name, arguments}。"""
+        """非流式请求（带 tools）：解析 OpenAI 兼容 tool_calls 为 {name, arguments}。
+
+        不设 max_tokens（T091）：上限交由供应商默认（非思考 8K）兜底——紧上限是 R42 事故的
+        止血带，真机制是"小调用关思考"（下行 payload）；截断改为告警可见。
+        """
         payload = {
             "model": self.model,
             "messages": messages,
             "tools": tools,
             "tool_choice": tool_choice,
-            "max_tokens": max_tokens,
             "stream": False,
-            "thinking": {"type": "disabled"},  # 规划器等工具调用：关思考防思维链吃满 max_tokens（T088）
+            "thinking": {"type": "disabled"},  # 规划器等工具调用：关思考（T088；关思考后输出短而快）
         }
         async with httpx.AsyncClient(
             timeout=self.timeout, transport=self.transport
@@ -144,7 +154,10 @@ class OpenAICompatLLM:
             body = response.text[:300]
             raise LLMError(f"对话模型返回 {response.status_code}: {body!r}")
         data = response.json()
-        message = ((data.get("choices") or [{}])[0].get("message")) or {}
+        choice = (data.get("choices") or [{}])[0]
+        if choice.get("finish_reason") == "length":  # 截断可见（T091）
+            logger.warning("LLM 输出被上限截断（complete_with_tools, model=%s）", self.model)
+        message = choice.get("message") or {}
         tool_calls = []
         for call in message.get("tool_calls") or []:
             function = call.get("function") or {}

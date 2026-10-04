@@ -95,7 +95,16 @@ async def test_request_shape():
     assert captured["auth"] == "Bearer k"
     assert '"web_search_20250305"' in compact and '"web_search"' in compact
     assert "Upwork需求" in compact  # strip 后入提示词
-    assert '"max_tokens":256' in compact
+    assert '"max_tokens"' not in compact  # T091：不再传上限（供应商默认兜底）
+
+
+async def test_truncation_logs_warning(caplog):
+    """T091：stop_reason=max_tokens → 告警可见（截断不许静默）。"""
+    body = _ok_body()
+    body["stop_reason"] = "max_tokens"
+    with caplog.at_level("WARNING", logger="app.websearch.deepseek"):
+        await _make(lambda _req: httpx.Response(200, json=body)).search("q", 5)
+    assert any("截断" in r.message for r in caplog.records)
 
 
 async def test_token_cost_accounted(monkeypatch):

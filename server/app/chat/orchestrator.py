@@ -311,7 +311,12 @@ async def _build_web_context(
     await _run_queries(queries)
     results = list(merged.values())
     if not results:
-        return None, [], True, error_code or "unavailable"  # 全部查询失败
+        if error_code is not None:
+            return None, [], True, error_code  # 全部查询失败（原因随 meta 透出）
+        # 查询全部执行成功但零结果：与"服务故障"区分文案（T090；2026-10-04 用户实测：
+        # 曾把"搜到 0 条"标成 unavailable=服务不可用，误导）；留一行日志（此前该路径零日志）
+        logger.info("web search: all queries returned no results (n=%d)", len(queries))
+        return None, [], True, "no_results"
 
     filtered, top_score, _all_low = await _filter_web_results(user_text, results)
     # 免费加深（R39，全部自建路线的质量补偿）：结果不够好 → 改写查询变体二轮检索
