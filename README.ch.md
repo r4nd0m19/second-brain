@@ -83,8 +83,8 @@ uv venv && uv pip install -e ".[dev]"     # 或常规 venv + pip
 # 5. 前端（静态导出到 web/out，由服务端同端口托管）
 cd ../web && npm install && npm run build
 
-# 6. 浏览器扩展（可选）
-cd ../extension && npm install && npm run build   # 产物 dist/ → chrome://extensions 开发者模式加载
+# 6. 浏览器扩展（可选；dist/ 的加载与配置见下方「浏览器扩展」节）
+cd ../extension && npm install && npm run build
 ```
 
 > 提示：若把 `deploy/.env` 的 `POSTGRES_PASSWORD` 改成随机值，记得同步改 `server/.env` 的 `DATABASE_URL` 口令段（两处必须一致）。
@@ -101,6 +101,29 @@ cd ../extension && npm install && npm run build   # 产物 dist/ → chrome://ex
 | 联网搜索（可选替换） | 自建 SearXNG 零成本备选：`docker compose -f deploy/docker-compose.yml up -d searxng` 后设 `WEB_SEARCH_PROVIDER=searxng` | — | 无需 key |
 
 两家都是 OpenAI 兼容 API——`LLM_BASE_URL` / `EMBEDDING_BASE_URL` 与模型名均可替换为任意兼容服务（如 OpenAI、其他厂商）。
+
+### 浏览器扩展（Chrome / Edge，可选）
+
+自动采集"你正在读的网页"（按停留/滚动阈值触发），源码在 `extension/`。三步：
+
+1. **构建**
+
+   ```bash
+   cd extension && npm install && npm run build
+   ```
+
+2. **加载**：打开 `chrome://extensions`（Edge 为 `edge://extensions`）→ 打开右上角「开发者模式」→
+   「加载已解压的扩展程序」→ 选择 `extension/dist` 目录。
+
+3. **配置**（不配置不会采集）：
+   - 先在应用里生成**采集凭据**：登录 → 资料页 → 「浏览器采集」卡片 → 采集凭据 → 新建（类型选「采集」）——
+     凭据只显示一次，先复制保存；
+   - 点扩展图标 → 打开设置页 → 填**服务器地址**与**采集凭据** → 「保存并测试」
+     （会依次检查健康端点与采集端点）；
+   - ⚠️ 安全设计：服务器地址仅接受 **https** 或**本机回环 http**（`http://localhost:8000` /
+     `http://127.0.0.1:8000`）——明文公网/局域网 http 会被拒绝；对外部署请走 https（见 `deploy/`）。
+
+日常控制：**扩展弹窗**可一键暂停（含队列深度/今日计数）；**设置页**可维护黑名单（这些站点永不采集）与触发阈值。凭据仅用于采集写入，可随时在应用内吊销。
 
 ## 测试与评测
 

@@ -89,8 +89,8 @@ uv venv && uv pip install -e ".[dev]"     # or a plain venv + pip
 # 5. Frontend (static export to web/out, served by the server on the same port)
 cd ../web && npm install && npm run build
 
-# 6. Browser extension (optional)
-cd ../extension && npm install && npm run build   # dist/ → load unpacked at chrome://extensions
+# 6. Browser extension (optional; loading & configuration in "Browser extension" below)
+cd ../extension && npm install && npm run build
 ```
 
 > Note: if you change `POSTGRES_PASSWORD` in `deploy/.env`, update the password part of `DATABASE_URL` in `server/.env` to match (the two must agree).
@@ -107,6 +107,30 @@ Open `http://localhost:8000` and log in with `ADMIN_USERNAME / ADMIN_PASSWORD` f
 | Web search (optional swap) | Self-hosted SearXNG as a zero-cost alternative: `docker compose -f deploy/docker-compose.yml up -d searxng`, then set `WEB_SEARCH_PROVIDER=searxng` | — | no key needed |
 
 Both providers are OpenAI-compatible — `LLM_BASE_URL` / `EMBEDDING_BASE_URL` and the model names can be swapped for any compatible service (OpenAI, other vendors).
+
+### Browser extension (Chrome / Edge, optional)
+
+Captures the pages you actually read (triggered by dwell-time / scroll-depth thresholds). Source in `extension/` — three steps:
+
+1. **Build**
+
+   ```bash
+   cd extension && npm install && npm run build
+   ```
+
+2. **Load**: open `chrome://extensions` (Edge: `edge://extensions`) → enable "Developer mode" (top right) →
+   "Load unpacked" → select the `extension/dist` directory.
+
+3. **Configure** (nothing is captured until configured):
+   - First create a **capture token** in the app: log in → Library → the "Browser capture" card →
+     capture tokens → create one with the "capture" scope. The token is shown **once** — copy it first;
+   - Click the extension icon → open its options page → enter the **server URL** and the **capture token** →
+     "Save & test" (checks the health endpoint, then the capture endpoint);
+   - ⚠️ Security by design: the server URL must be **https** or **loopback http** (`http://localhost:8000` /
+     `http://127.0.0.1:8000`) — plain http over a public/LAN address is rejected; deploy behind https (see `deploy/`).
+
+Day-to-day: the **popup** shows pause/queue/today's count (one-click pause); the **options page** manages the
+blocklist (sites never captured) and trigger thresholds. Tokens are write-scoped and revocable anytime in the app.
 
 ## Tests & evals
 
