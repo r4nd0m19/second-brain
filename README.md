@@ -30,7 +30,7 @@ every claim carries a clickable citation; only out-of-corpus questions fall back
 | **F1 Core Q&A** | Upload (PDF / EPUB / TXT / MD / DOCX) → parse & chunk → hybrid retrieval → cited answers (inline `[N]` markers jump to the source); model fallback + **LLM-judged Q&A writeback** (with a near-duplicate pre-check) |
 | **F2 Browser capture** | Extension auto-captures on reading behavior (dwell time / scroll depth); single-file snapshot replay (CSP-sandboxed); blocklisted sites never captured at the source; offline queue with retry |
 | **F3 MCP access** | Exposes the library to Claude Code and other harnesses via MCP (Streamable HTTP): search / read document / save note |
-| **F4 Web search** | Web-grounded answers for out-of-corpus questions (DeepSeek server-side search by default; self-hosted SearXNG as a free alternative; paid fallback off by default; daily cap as a guardrail); sources labeled "from the web" with external links |
+| **F4 Web search** | Web-grounded answers for out-of-corpus questions (DeepSeek server-side search by default; self-hosted SearXNG as a free alternative; paid fallback off by default; daily cap as a guardrail); sources labeled "from the web" with external links; **links you paste into chat are read directly** (honest failure when unreachable — never guessed) |
 | Reader | EPUB table of contents / page numbers (estimated) / jump-to-page / keyboard paging; built-in PDF preview; one-click source location (PDF page / text highlight / EPUB CFI) |
 
 Retrieval-pipeline design (eval-driven): LLM tool-calling query planner (replacing wordlists),

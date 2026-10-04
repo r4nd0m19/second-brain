@@ -405,3 +405,74 @@ async def test_web_multiple_queries_merged(monkeypatch) -> None:
     assert [q for q, _ in client.searches] == ["q1", "q2"]  # 两条查询都执行
     assert len([c for c in plan.citations if c.get("web")]) == 2  # 同 URL 去重后 2 条
     assert plan.web_failed is False
+
+
+# ── T097：聊天内链接直读 ──
+
+
+def _fake_read(monkeypatch, calls: list):
+    async def fake(_user_text: str, urls: list[str]) -> dict[str, str]:
+        calls.append(list(urls))
+        return {u: f"ok 正文：{u}" for u in urls if "bad" not in u}
+
+    monkeypatch.setattr(orch, "read_pages", fake)
+
+
+async def test_chat_url_direct_baseline(monkeypatch) -> None:
+    """基线路径（规划器未选工具）：消息里的链接直读 → web 引用（含 quote），不经搜索。"""
+    calls: list = []
+    _fake_read(monkeypatch, calls)
+    _patch(monkeypatch, calls=[])  # 规划器返回空 → 基线
+
+    plan = await orch.prepare_reply(
+        None, OWNER, "看看这个 https://github.com/r4nd0m19/second-brain 项目", []
+    )
+    assert calls == [["https://github.com/r4nd0m19/second-brain"]]
+    assert plan.source_type is AnswerSource.web
+    assert len(plan.citations) == 1
+    cite = plan.citations[0]
+    assert cite["source_url"] == "https://github.com/r4nd0m19/second-brain"
+    assert cite["web"] is True and "正文" in cite["quote"]
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "用户所提供链接" in joined and "[1]" in joined
+
+
+async def test_chat_url_direct_failure_note(monkeypatch) -> None:
+    """抓取失败 → 如实说明系统注记、零引用（防按链接地址猜测内容）。"""
+    calls: list = []
+    _fake_read(monkeypatch, calls)
+    _patch(monkeypatch, calls=[])
+
+    plan = await orch.prepare_reply(None, OWNER, "读一下 https://x.example/bad 这个", [])
+    assert plan.citations == []
+    assert plan.source_type is AnswerSource.model_knowledge
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "未能读取" in joined
+
+
+async def test_chat_url_cap_and_code_exclusion(monkeypatch) -> None:
+    """上限 3 条；行内代码与代码块内的链接不直读（被讨论的数据，非指向）。"""
+    calls: list = []
+    _fake_read(monkeypatch, calls)
+    _patch(monkeypatch, calls=[])
+
+    text = (
+        "链接 `https://a.example/incode` 和 ```\nhttps://b.example/fence\n``` 加上 "
+        "https://c.example/1 https://d.example/2 https://e.example/3 https://f.example/4"
+    )
+    await orch.prepare_reply(None, OWNER, text, [])
+    assert calls == [["https://c.example/1", "https://d.example/2", "https://e.example/3"]]
+
+
+async def test_chat_url_numbering_precedes_search(monkeypatch) -> None:
+    """编号：链接先于搜索（用户所指即最相关）——url=[1]，搜索结果=[2]。"""
+    calls: list = []
+    _fake_read(monkeypatch, calls)
+    client = _FakeClient(results=[_result("S")])
+    _patch(monkeypatch, calls=[("web_search", {"query": "k"})], client=client)
+
+    plan = await orch.prepare_reply(None, OWNER, "看看 https://u.example/page", [])
+    assert plan.citations[0]["source_url"] == "https://u.example/page"
+    assert plan.citations[1]["source_url"] == "https://s.example/1"
+    joined = "\n".join(m["content"] for m in plan.llm_messages)
+    assert "[1] " in joined and "[2] " in joined

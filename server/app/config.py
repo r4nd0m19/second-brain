@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     web_search_reader_max_pages: int = 4
     web_search_page_timeout_s: float = 8.0
     web_search_page_total_timeout_s: float = 15.0  # 单页抓取总时限（T093：防慢速滴流续命 per-phase 超时）
+    chat_url_fetch_max: int = 3  # 聊天内链接直读上限（T097：消息中的 http(s) 链接直接抓正文；0=关闭）
     web_search_page_max_bytes: int = 2_000_000
     web_search_fetch_concurrency: int = 4
     web_search_digest_max_chars: int = 2000  # 单页注入上下文字符上限
