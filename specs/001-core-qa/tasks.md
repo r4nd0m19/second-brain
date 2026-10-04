@@ -418,6 +418,9 @@ Task: "T022 前端-对话页 web/app/chat/"
 - [x] **T095 回答语言跟随提问（2026-10-04，英文截图驱动）**：建 `demo-en` 英文演示账号后实测——英文提问、回答仍全程中文。根因：answer 系统提示词规则 8 写死「全程用中文回答」（单语产品时代的假设）。修复：规则 8 改为「回答语言与用户提问语言保持一致（中文提问用中文、英文提问用英文；专有名词可保留英文）」。中文提问行为不变；英文提问全英文作答（实测 3/3，引用角标/「非资料原文」类标注/来源行随 UI 语言一致）
   - Deps: 无（T094 同批）
   - DoD: 三问重做英文作答 + 引用 2/1/1 ✓；**全量 169 通过** ✓；英文截图组（`.en.png` ×5）重拍 ✓
+- [x] **T096 防泄露机制（跨项目，R47，2026-10-04 用户驱动）**：动因："以后推送别再靠人肉审"，且要求**跨项目复用**（下一个项目也生效）。机制本体放 `~/code/sdd-standard/security/`：① `gitleaks.toml` 全局规则（内置全量密钥规则 + 隐私三规：私网 IPv4/个人邮箱/Windows 用户路径；通用示例段与锁文件在 allowlist）；② `git-hooks/pre-commit`（gitleaks 扫 staged，命中阻断、`--redact` 不打印值 + **链式调用**仓库自带 `.githooks/pre-commit`）；③ `install.sh` 幂等安装（二进制→`~/.local/bin`、规则→`~/.config/gitleaks/`、钩子→`~/.git-hooks` + 全局 `core.hooksPath`）。本仓移除本地 hooksPath（防遮蔽全局）；sdd-standard `bootstrap.sh` 新项目自动带上；全局 `~/.claude/CLAUDE.md` 增「防泄露机制」节
+  - Deps: 无（安全冲刺收尾）
+  - DoD: 实测四例——假密钥阻断（exit 1）✓ / 私网 IP 阻断 ✓ / 通用示例段放行 + 链式文档提醒出现 ✓ / **跨项目（my-saas）自动生效** ✓；**当场战绩**：机制首扫全历史即抓出 R46 补记"复录真实内网 IP"回归（已推送状态）→ 修复 + 第三次 filter-repo 擦除 + 强推，复扫 0 命中 ✓
 - [x] **T067 日期控件替换（R26 追补，2026-10-03 用户实测）**：原生 `<input type="date">` 显示格式随浏览器语言、无法随界面切换（Chrome 官方 FAQ 确认无作者接口）→ 新增 `web/app/_components/date-field.tsx`（业界组件 react-day-picker v10：触发钮按界面语言格式化显示所选日期、弹层日历跟随 zh/en locale、外部点击/Escape 关闭、有值时提供「清除」）；接入 `docs` 页清理区两处（value 契约保持 "YYYY-MM-DD"，后端参数与 UTC 语义不变）；组件与中文 locale 经 `next/dynamic` 按需加载，不进页面首包
   - Deps: 无（独立前端组件替换）
   - DoD: `tsc`/`eslint` 0 问题 ✓；`npm run build` 通过、`/` 首包 122 kB（与改造前持平）✓；rdp 样式已入导出 CSS ✓；真机复核（用户）

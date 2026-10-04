@@ -63,6 +63,8 @@ echo "SEARXNG_SECRET=$(openssl rand -hex 32)" >> deploy/.env
 - [ ] `deploy/.env` 已设置（compose 必填：POSTGRES_PASSWORD / SEARXNG_SECRET）
 - [ ] `/docs` `/openapi.json` 生产环境不可访问（默认关闭）
 - [ ] 登录限速生效（连续失败 5 次收到 429；换随机用户名后失败 10 次同样 429）
+- [ ] 本地提交防线（防泄露机制）生效：`git hook run pre-commit` 无报错（gitleaks 全局钩子，见 T096/R47）
+- [ ] GitHub 侧（public 后确认一次，默认开）：secret scanning / push protection / Dependabot alerts
 - [ ] HTTPS 生效 + Cookie `Secure` 标志
 - [ ] 防火墙最小开放（80/443）
 - [ ] 备份密钥离线副本已存（密码管理器 + 手写）
