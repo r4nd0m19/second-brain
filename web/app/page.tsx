@@ -128,6 +128,8 @@ function HomeInner() {
   // 按时间清理（F2 FR-007）
   const [cleanupAfter, setCleanupAfter] = useState("");
   const [cleanupBefore, setCleanupBefore] = useState("");
+  // 手机端「按时间清理」卡片折叠（默认收起；桌面恒展开，CSS 控制）
+  const [cleanupOpen, setCleanupOpen] = useState(false);
 
   // 存储占用（试用需求）
   const [storage, setStorage] = useState<StorageStats | null>(null);
@@ -675,21 +677,33 @@ function HomeInner() {
           </div>
 
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>{t("docs.cleanupTitle")}</h3>
-            <div className="actions">
-              <div className="muted cleanup-date">
-                {t("docs.cleanupStart")}
-                <DateField value={cleanupAfter} onChange={setCleanupAfter} />
-              </div>
-              <div className="muted cleanup-date">
-                {t("docs.cleanupEnd")}
-                <DateField value={cleanupBefore} onChange={setCleanupBefore} />
-              </div>
-              <button className="btn btn-danger" onClick={() => void onCleanup()}>
-                {t("docs.cleanup")}
+            <h3 style={{ marginTop: 0 }} className="cleanup-head">
+              {t("docs.cleanupTitle")}
+              <button
+                className="btn cleanup-toggle"
+                aria-expanded={cleanupOpen}
+                aria-label={t("docs.cleanupTitle")}
+                onClick={() => setCleanupOpen((v) => !v)}
+              >
+                {cleanupOpen ? "▾" : "▸"}
               </button>
+            </h3>
+            <div className={cleanupOpen ? "" : "cleanup-body-closed"}>
+              <div className="actions">
+                <div className="muted cleanup-date">
+                  {t("docs.cleanupStart")}
+                  <DateField value={cleanupAfter} onChange={setCleanupAfter} />
+                </div>
+                <div className="muted cleanup-date">
+                  {t("docs.cleanupEnd")}
+                  <DateField value={cleanupBefore} onChange={setCleanupBefore} />
+                </div>
+                <button className="btn btn-danger" onClick={() => void onCleanup()}>
+                  {t("docs.cleanup")}
+                </button>
+              </div>
+              <div className="muted">{t("docs.cleanupHint")}</div>
             </div>
-            <div className="muted">{t("docs.cleanupHint")}</div>
           </div>
 
           <div className="card">

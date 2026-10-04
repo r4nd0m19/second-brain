@@ -54,6 +54,13 @@ const zh = {
   "list.prev": "‹ 上一页",
   "list.next": "下一页 ›",
   "list.pageOf": "第 {page}/{totalPages} 页",
+  "list.filter": "筛选",
+  "list.filterTitle": "筛选与排序",
+  "list.sortSection": "排序方式",
+  "list.dirSection": "排序方向",
+  "list.asc": "升序",
+  "list.desc": "降序",
+  "list.done": "完成",
 
   // ── 快照页 ──
   "snap.backToChat": "返回对话",
@@ -224,6 +231,7 @@ const zh = {
   "chat.webErrRate": "请求被限流",
   "chat.webErrQuota": "今日联网额度已用尽",
   "chat.webErrUnavailable": "服务不可用",
+  "chat.webNoResults": "（联网检索未找到相关结果，未使用网络来源）",
   "chat.timeRange": "🕐 检索时间范围：{label}",
   "chat.cacheHit": " · 缓存命中 {n}",
   "chat.costLlm": "模型",
@@ -299,6 +307,13 @@ const en: Record<keyof typeof zh, string> = {
   "list.prev": "‹ Prev",
   "list.next": "Next ›",
   "list.pageOf": "Page {page}/{totalPages}",
+  "list.filter": "Filter",
+  "list.filterTitle": "Filter & sort",
+  "list.sortSection": "Sort by",
+  "list.dirSection": "Direction",
+  "list.asc": "Ascending",
+  "list.desc": "Descending",
+  "list.done": "Done",
 
   // ── Snapshot page ──
   "snap.backToChat": "Back to chat",
@@ -469,6 +484,7 @@ const en: Record<keyof typeof zh, string> = {
   "chat.webErrRate": "provider rate limited",
   "chat.webErrQuota": "daily web-search quota used up",
   "chat.webErrUnavailable": "service unavailable",
+  "chat.webNoResults": " (web search found no relevant results — no web sources used)",
   "chat.timeRange": "🕐 Time range: {label}",
   "chat.cacheHit": " · cache hit {n}",
   "chat.costLlm": "Model",

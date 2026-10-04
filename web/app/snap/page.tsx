@@ -70,8 +70,9 @@ function SnapInner() {
       </div>
       {error && <p className="error">{error}</p>}
       {doc && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          {/* 空 sandbox：禁脚本 / 表单 / 弹窗 / 顶层跳转（快照按不可信内容处理；R4） */}
+        <div className="card snap-scroll" style={{ padding: 0, overflowX: "auto" }}>
+          {/* 空 sandbox：禁脚本 / 表单 / 弹窗 / 顶层跳转（快照按不可信内容处理；R4）
+              手机端：iframe 保持桌面宽（CSS min-width），外层横向滚动——不裁切、不改原排版 */}
           <iframe
             sandbox=""
             src={`/api/documents/${doc.id}/snapshot`}

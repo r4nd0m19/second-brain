@@ -30,7 +30,7 @@ type ChatMsg = {
   thinkingStartedAt?: number; // 思考起始时间戳（前端推算思维链用时）
   thinkingMs?: number; // 思维链用时（首个正文 token 到达时定格）
   web_failed?: boolean; // 联网被规划但未取得结果（T083：显式提示，避免"以为在搜却没搜"）
-  web_error?: string | null; // 失败原因码（balance/ratelimit/quota/unavailable）
+  web_error?: string | null; // 失败原因码（balance/ratelimit/quota/unavailable；no_results=搜索成功但零结果）
 };
 
 /** 联网失败原因码 → 文案键（T083 追记：原因对用户可见） */
@@ -43,6 +43,8 @@ const WEB_ERR_KEY: Record<string, MsgKey> = {
 
 function webFailedText(msg: ChatMsg, t: Translate): string {
   if (!msg.web_failed) return "";
+  // 搜索完成但零结果（T090）：措辞与"故障"区分——不说"失败"（2026-10-04 实测误标驱动）
+  if (msg.web_error === "no_results") return t("chat.webNoResults");
   if (msg.web_error && WEB_ERR_KEY[msg.web_error]) {
     return t("chat.webFailedReason", { reason: t(WEB_ERR_KEY[msg.web_error]) });
   }
@@ -621,6 +623,8 @@ export default function ChatPage() {
 
   // 侧栏收起（惯例：独立切换按钮 + localStorage 记忆 + Ctrl/Cmd+B；首屏由 layout 内联脚本防闪跳）
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // 手机端会话抽屉（ChatGPT 移动端同款：左上角汉堡 → 左侧滑出会话列表；汉堡钮仅 ≤720px 显示）
+  const [drawerOpen, setDrawerOpen] = useState(false);
   // 对话全文搜索（会话级结果）
   const [convQuery, setConvQuery] = useState("");
   const [convHits, setConvHits] = useState<ConversationSearchHit[] | null>(null);
@@ -784,6 +788,7 @@ export default function ChatPage() {
   }, [input]);
 
   async function openConversation(id: string, jumpMessageId?: string) {
+    setDrawerOpen(false); // 选中会话即收起手机抽屉（点选后立即看到内容）
     const seq = ++convOpenSeq.current;
     try {
       const stored = await api.conversationMessages(id);
@@ -830,6 +835,7 @@ export default function ChatPage() {
   }
 
   function newChat() {
+    setDrawerOpen(false); // 新建对话同样收起抽屉
     convRef.current = null;
     setActiveConv(null);
     localStorage.removeItem("sb-conv");
@@ -1000,6 +1006,22 @@ export default function ChatPage() {
     <main className="chat-shell">
       <div className="header chat-header">
         <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          {/* 手机端（≤720px）：左上角汉堡 → 会话抽屉（桌面隐藏，见 globals.css .drawer-toggle） */}
+          <button
+            className="btn drawer-toggle"
+            aria-label={t("chat.toggleExpand")}
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
           {!sidebarOpen && (
             <button
               className="btn sidebar-toggle"
@@ -1023,7 +1045,11 @@ export default function ChatPage() {
       </div>
 
       <div className="chat-layout">
-        <aside className="sidebar" style={{ display: sidebarOpen ? undefined : "none" }}>
+        {/* 手机端遮罩：点按关闭抽屉（桌面端该元素 display:none，且汉堡不可达） */}
+        {drawerOpen && <div className="drawer-backdrop" onClick={() => setDrawerOpen(false)} />}
+        {/* 桌面收起由 html[data-sidebar=off]（layout 内联脚本 + toggleSidebar 设置）；
+            手机端固定定位 + transform 显隐（.drawer-open），不再用内联 style 双通道 */}
+        <aside className={`sidebar${drawerOpen ? " drawer-open" : ""}`}>
           <div className="sidebar-top">
             <button
               className="btn sidebar-toggle"
@@ -1279,7 +1305,9 @@ export default function ChatPage() {
                 title={t("chat.stop")}
                 aria-label={t("chat.stop")}
               >
-                ■
+                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" />
+                </svg>
               </button>
             ) : (
               <button
@@ -1290,7 +1318,15 @@ export default function ChatPage() {
                 title={t("chat.sendTitle")}
                 aria-label={t("chat.send")}
               >
-                ↑
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M12 19V5M5.5 11.5 12 5l6.5 6.5"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
             )}
           </div>
