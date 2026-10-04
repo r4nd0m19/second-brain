@@ -23,12 +23,17 @@ async def storage_stats(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    # T094：资料计数与文件字节**按账号隔离**（原为全表/全目录——单用户时代等价，多账号下
+    # 每个用户都会看到他人库的规模；demo 账号截图时实锤）。数据库大小为服务器维度（保留直读）。
     database_bytes = await session.scalar(text("SELECT pg_database_size(current_database())"))
+
+    owner_dir = settings.storage_path / str(user.id)  # 存储按归属分目录（storage/local.py）
 
     def _disk_scan() -> tuple[int, int, int, int]:
         total = snapshot = files = snapshot_files = 0
-        root = settings.storage_path
-        for dirpath, _dirnames, filenames in os.walk(root):
+        if not owner_dir.exists():
+            return total, snapshot, files, snapshot_files
+        for dirpath, _dirnames, filenames in os.walk(owner_dir):
             for name in filenames:
                 try:
                     size = (Path(dirpath) / name).stat().st_size
@@ -47,7 +52,9 @@ async def storage_stats(
     counts = dict(
         (
             await session.execute(
-                select(Document.source_type, func.count()).group_by(Document.source_type)
+                select(Document.source_type, func.count())
+                .where(Document.owner_user_id == user.id)
+                .group_by(Document.source_type)
             )
         ).all()
     )
