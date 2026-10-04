@@ -168,6 +168,10 @@ deploy/     # 部署与备份（docker-compose / systemd / Caddy / 加密备份�
 采集 Bearer 令牌（服务端只存哈希）· 快照回放强制 CSP 沙箱 · 读页出站 **SSRF 防护**
 （内网地址拦截 / 重定向逐跳校验）· 默认/弱密钥 fail-closed 拒绝启动 · 备份加密（GPG AES-256）。
 
+## 许可证
+
+[MIT](LICENSE)
+
 ---
 
-*私人项目 · 开发中（F1–F4 已可用，部署上线进行中）。详细状态见 `.specify/memory/project.md`。*
+*个人项目，持续开发中（F1–F4 已可用，部署上线进行中）。详细状态见 `.specify/memory/project.md`。*

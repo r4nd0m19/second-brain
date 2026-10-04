@@ -181,7 +181,11 @@ hashes only) · snapshot replay forced into a CSP sandbox · **SSRF-guarded page
 addresses blocked, per-hop redirect validation) · fail-closed boot while secrets are default or
 weak · encrypted backups (GPG AES-256).
 
+## License
+
+[MIT](LICENSE)
+
 ---
 
-*Private project · in development (F1–F4 usable; production rollout in progress).
+*Personal project, in active development (F1–F4 usable; production rollout in progress).
 Detailed status in `.specify/memory/project.md`.*
